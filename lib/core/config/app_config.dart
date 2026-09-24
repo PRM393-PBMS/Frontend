@@ -10,9 +10,9 @@ class AppConfig {
 
   static String get baseUrl => useCloudBackend ? cloudBaseUrl : localBaseUrl;
 
-  static const Duration connectTimeout = Duration(seconds: 20);
-  static const Duration receiveTimeout = Duration(seconds: 20);
-  static const Duration sendTimeout = Duration(seconds: 20);
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 10);
+  static const Duration sendTimeout = Duration(seconds: 10);
 
   static const String appTitle = 'PRM393 Parking System';
   static const String appVersion = '1.0.0';

@@ -25,7 +25,6 @@ class ApiClient {
             sendTimeout: AppConfig.sendTimeout,
             headers: {
               'Content-Type': 'application/json',
-              'Accept': 'application/json',
             },
           ),
         );
@@ -186,15 +185,18 @@ class ApiClient {
         error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
-        error.type == DioExceptionType.connectionError) {
-      return const NetworkException();
+        error.type == DioExceptionType.connectionError ||
+        (error.message != null && error.message!.contains('XMLHttpRequest'))) {
+      return const NetworkException(
+        message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc kết nối server.',
+      );
     }
 
     final response = error.response;
     if (response != null) {
       final statusCode = response.statusCode ?? 500;
       final dynamic data = response.data;
-      String errorMessage = 'Đã xảy ra lỗi (${response.statusCode})';
+      String errorMessage = 'Đã xảy ra lỗi ($statusCode)';
 
       if (data is Map<String, dynamic>) {
         if (data['message'] is String) {

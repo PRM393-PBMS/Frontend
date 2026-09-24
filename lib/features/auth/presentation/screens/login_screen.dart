@@ -345,7 +345,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 20),
+
+                              // Quick Bypass / Preview Button
+                              FadeInUp(
+                                duration: const Duration(milliseconds: 700),
+                                delay: const Duration(milliseconds: 950),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      context.read<AuthBloc>().add(AuthDemoLoginRequested());
+                                    },
+                                    icon: const Icon(Icons.rocket_launch_rounded, color: AppColors.accent, size: 20),
+                                    label: Text(
+                                      'Vào xem ngay giao diện Home (Bypass)',
+                                      style: AppTypography.labelLarge.copyWith(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: AppColors.accent.withValues(alpha: 0.08),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(50),
+                                        side: BorderSide(
+                                          color: AppColors.accent.withValues(alpha: 0.3),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
 
                               // Quick helper note for testers
                               FadeInUp(
@@ -353,7 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 delay: const Duration(milliseconds: 1000),
                                 child: Center(
                                   child: Text(
-                                    'Demo: fonHocPRM393@gmail.com / passcuafon@123',
+                                    'Bấm nút tím ở trên để xem trực tiếp giao diện bãi đỗ xe và thanh điều hướng',
                                     textAlign: TextAlign.center,
                                     style: AppTypography.bodySmall.copyWith(
                                       color: Colors.grey.shade400,

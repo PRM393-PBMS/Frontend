@@ -94,3 +94,6 @@ class AuthClearMessageRequested extends AuthEvent {}
 
 /// Đăng xuất khỏi hệ thống
 class AuthLogoutRequested extends AuthEvent {}
+
+/// Xem trước giao diện Home / Demo Mode (Bypass backend)
+class AuthDemoLoginRequested extends AuthEvent {}

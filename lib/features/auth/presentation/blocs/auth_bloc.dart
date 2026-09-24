@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/failure.dart';
+import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -13,6 +14,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginSubmitted>(_onAuthLoginSubmitted);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
+    on<AuthDemoLoginRequested>((event, emit) {
+      emit(state.copyWith(
+        status: AuthStatus.authenticated,
+        user: const UserEntity(
+          id: '29b15059-9b8f-4679-801b-f31684af6e49',
+          userName: 'ThanhLong',
+          email: 'longnguyenthanh07102005@gmail.com',
+          fullName: 'Nguyễn Thành Long',
+          phoneNumber: '0987654321',
+          roleName: 'Customer',
+        ),
+      ));
+    });
     on<AuthSendRegisterOtpSubmitted>(_onAuthSendRegisterOtpSubmitted);
     on<AuthVerifyRegisterOtpSubmitted>(_onAuthVerifyRegisterOtpSubmitted);
     on<AuthRequestResetPasswordSubmitted>(_onAuthRequestResetPasswordSubmitted);
@@ -25,7 +39,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      final user = await _authRepository.getCurrentUser();
+      final user = await _authRepository
+          .getCurrentUser()
+          .timeout(const Duration(seconds: 4), onTimeout: () => null);
       if (user != null) {
         emit(state.copyWith(
           status: AuthStatus.authenticated,
