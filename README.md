@@ -79,44 +79,6 @@ flowchart TD
   - Sử dụng cơ chế hàng đợi bất đồng bộ (**Completer Mutex Queue**): Khi có nhiều request đồng thời nhận lỗi 401, chỉ **1 request duy nhất** được phép gọi refresh token; các request còn lại sẽ tạm dừng chờ và tự động retry lại với token mới ngay sau đó.
 - **Bảo mật lưu trữ**: Token được lưu trong `FlutterSecureStorage` (sử dụng Keychain trên iOS/macOS và Keystore EncryptedSharedPreferences trên Android).
 
----
-
-## 🎨 Ngôn ngữ thiết kế (Web-inspired Modern Aesthetic)
-
-Giao diện mang phong cách hiện đại lấy cảm hứng từ các dashboard web cao cấp:
-
-1. **Card bo góc mềm mại (`16px - 24px`)**:
-   - Sử dụng bo cong lớn (`AppSpacing.roundedLg` 16px, `roundedXl` 24px) tạo cảm giác thân thiện, thanh lịch.
-2. **Viền mỏng tinh tế (`1px Border`)**:
-   - Thay vì lạm dụng đổ bóng đậm, các card và input sử dụng viền mỏng `1px` (`AppColors.borderLight: #E2E8F0` / `AppColors.borderDark: #334155`) mang lại sự sắc sảo, tối giản.
-3. **Bóng đổ khuếch tán dịu (Soft Ambient Shadows)**:
-   - Các hiệu ứng nổi bật (như Primary Button, User Card) sử dụng bóng đổ màu thương hiệu với độ mờ cao và độ đục thấp (`blurRadius: 16-24px`, `alpha: 0.15 - 0.25`).
-4. **Khoảng trắng thoáng đãng (Generous Whitespace)**:
-   - Hệ thống spacing dạng lưới chuẩn 4/8/12/16/20/24/32px giúp bố cục thoáng mắt, không gây ngột ngạt khi hiển thị nhiều dữ liệu bãi xe.
-5. **AppBar phẳng & Header Gradient**:
-   - AppBar phẳng (`elevation: 0`) tệp hoàn toàn với màu nền. Header tổng quan bãi xe sử dụng dải chuyển sắc Gradient Royal Blue thời thượng.
-6. **Màu sắc trạng thái bãi xe chuyên dụng**:
-   - 🟢 **Available (Chỗ trống)**: `#10B981` (Emerald Green)
-   - 🔴 **Occupied (Đã có xe)**: `#EF4444` (Rose Red)
-   - 🟡 **Reserved (Đã đặt trước)**: `#F59E0B` (Amber Yellow)
-   - 🔵 **Primary Branding**: `#2563EB` (Electric Royal Blue)
-
----
-
-## 📱 Cơ chế Responsive Mobile & Chống tràn
-
-Ứng dụng giải quyết triệt để các bài toán hiển thị đa màn hình:
-
-- **Chống lỗi tràn màn hình (`RenderFlex overflowed`)**:
-  - Mọi màn hình nhập liệu và form đều được bọc trong `SingleChildScrollView` kết hợp `ConstrainedBox(constraints: BoxConstraints(maxWidth: 440))` và `IntrinsicHeight` khi cần, giúp giao diện co giãn tự nhiên trên màn hình lớn (Tablet, Web, Desktop) mà không bị vỡ layout trên thiết bị nhỏ.
-- **An toàn với bàn phím mềm & Tai thỏ (Notch / Dynamic Island)**:
-  - Bọc cấu trúc màn hình bằng `SafeArea`.
-  - Tận dụng cơ chế `resizeToAvoidBottomInset: true` mặc định của `Scaffold`, kết hợp `keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag` để tự ẩn bàn phím khi cuộn.
-- **Tương thích từ màn hình nhỏ (4.7") đến Pro Max (6.7"+)**:
-  - Sử dụng các đơn vị co giãn `Expanded`, `Flexible`, và `GridView` với tỷ lệ `childAspectRatio` linh hoạt, bảo đảm thông tin vé xe, biển số và thời gian gửi luôn hiển thị đầy đủ, không bị cắt cụt chữ.
-
----
-
 ## 📂 Cây thư mục dự án (`lib/`)
 
 ```

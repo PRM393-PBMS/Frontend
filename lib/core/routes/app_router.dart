@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/blocs/auth_bloc.dart';
 import '../../features/auth/presentation/blocs/auth_state.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import 'route_names.dart';
 
-/// Lắng nghe Stream của BLoC để làm mới Route của GoRouter khi đổi AuthState
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
@@ -36,22 +38,22 @@ class AppRouter {
         final currentPath = state.uri.path;
 
         final isSplash = currentPath == RouteNames.splashPath;
-        final isLoggingIn = currentPath == RouteNames.loginPath;
+        final isAuthFlow = currentPath == RouteNames.loginPath ||
+            currentPath == RouteNames.registerPath ||
+            currentPath == RouteNames.verifyOtpPath ||
+            currentPath == RouteNames.forgotPasswordPath;
 
-        // Nếu BLoC đang ở trạng thái ban đầu (đang kiểm tra token)
         if (authState.status == AuthStatus.initial) {
           return RouteNames.splashPath;
         }
 
-        // Nếu chưa đăng nhập
         if (authState.status == AuthStatus.unauthenticated ||
             authState.status == AuthStatus.failure) {
-          return isLoggingIn ? null : RouteNames.loginPath;
+          return isAuthFlow ? null : RouteNames.loginPath;
         }
 
-        // Nếu đã đăng nhập thành công
         if (authState.status == AuthStatus.authenticated) {
-          if (isLoggingIn || isSplash) {
+          if (isAuthFlow || isSplash) {
             return RouteNames.homePath;
           }
         }
@@ -68,6 +70,29 @@ class AppRouter {
           path: RouteNames.loginPath,
           name: RouteNames.login,
           builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.registerPath,
+          name: RouteNames.register,
+          builder: (context, state) => const RegisterScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.verifyOtpPath,
+          name: RouteNames.verifyOtp,
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return VerifyOtpScreen(
+              email: extra['email'] as String? ?? '',
+              isResetPassword: extra['isResetPassword'] as bool? ?? false,
+              newPassword: extra['newPassword'] as String?,
+              confirmPassword: extra['confirmPassword'] as String?,
+            );
+          },
+        ),
+        GoRoute(
+          path: RouteNames.forgotPasswordPath,
+          name: RouteNames.forgotPassword,
+          builder: (context, state) => const ForgotPasswordScreen(),
         ),
         GoRoute(
           path: RouteNames.homePath,

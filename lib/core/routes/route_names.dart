@@ -8,6 +8,15 @@ class RouteNames {
   static const String login = 'login';
   static const String loginPath = '/login';
 
+  static const String register = 'register';
+  static const String registerPath = '/register';
+
+  static const String verifyOtp = 'verifyOtp';
+  static const String verifyOtpPath = '/verify-otp';
+
+  static const String forgotPassword = 'forgotPassword';
+  static const String forgotPasswordPath = '/forgot-password';
+
   static const String home = 'home';
   static const String homePath = '/home';
 

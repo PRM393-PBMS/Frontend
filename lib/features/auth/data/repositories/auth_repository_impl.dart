@@ -6,6 +6,7 @@ import 'package:prm393_frontend/core/storage/secure_storage_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
+import '../models/auth_dto.dart';
 import '../models/login_request_dto.dart';
 import '../models/user_model.dart';
 
@@ -34,7 +35,6 @@ class AuthRepositoryImpl implements AuthRepository {
         throw const ServerException(message: 'Không nhận được dữ liệu phiên đăng nhập.');
       }
 
-      // Lưu trữ an toàn Token và Thông tin cá nhân vào Keychain/EncryptedSharedPreferences
       await _storageService.saveAccessToken(data.accessToken);
       await _storageService.saveRefreshToken(data.refreshToken);
       await _storageService.saveUserData(jsonEncode(data.user.toJson()));
@@ -53,14 +53,12 @@ class AuthRepositoryImpl implements AuthRepository {
       final isAuth = await isAuthenticated();
       if (!isAuth) return null;
 
-      // Đọc trước từ local cache để hiển thị tức thì
       final cachedJson = await _storageService.getUserData();
       UserModel? cachedUser;
       if (cachedJson != null) {
         cachedUser = UserModel.fromJson(jsonDecode(cachedJson) as Map<String, dynamic>);
       }
 
-      // Gọi API /api/profile để cập nhật dữ liệu mới nhất
       try {
         final profileResponse = await _remoteDataSource.getProfile();
         if (profileResponse.result != null) {
@@ -69,7 +67,6 @@ class AuthRepositoryImpl implements AuthRepository {
           return freshUser;
         }
       } catch (_) {
-        // Nếu offline, fallback dùng cached user
         return cachedUser;
       }
 
@@ -87,7 +84,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await _remoteDataSource.logout(refreshToken);
       }
     } catch (_) {
-      // Dù API logout backend có lỗi vẫn tiến hành xóa local storage phía client
+      // Bỏ qua lỗi logout phía server
     } finally {
       await _storageService.clearAuthData();
     }
@@ -102,11 +99,89 @@ class AuthRepositoryImpl implements AuthRepository {
       final isExpired = JwtDecoder.isExpired(token);
       if (!isExpired) return true;
 
-      // Nếu accessToken hết hạn, kiểm tra xem còn refreshToken không
       final refreshToken = await _storageService.getRefreshToken();
       return refreshToken != null && refreshToken.isNotEmpty;
     } catch (_) {
       return false;
+    }
+  }
+
+  @override
+  Future<void> sendRegisterOtp({
+    required String userName,
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _remoteDataSource.sendRegisterOtp(
+        RegisterRequestDto(
+          userName: userName,
+          fullName: fullName,
+          email: email,
+          phoneNumber: phoneNumber,
+          password: password,
+          confirmPassword: confirmPassword,
+        ),
+      );
+    } on AppException catch (e) {
+      throw ValidationFailure(message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      throw ServerFailure(message: e.toString());
+    }
+  }
+
+  @override
+  Future<void> verifyRegisterOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      await _remoteDataSource.verifyRegisterOtp(
+        VerifyRegisterOtpDto(email: email, otp: otp),
+      );
+    } on AppException catch (e) {
+      throw ValidationFailure(message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      throw ServerFailure(message: e.toString());
+    }
+  }
+
+  @override
+  Future<void> requestResetPassword({required String email}) async {
+    try {
+      await _remoteDataSource.requestResetPassword(
+        RequestResetPasswordDto(email: email),
+      );
+    } on AppException catch (e) {
+      throw ValidationFailure(message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      throw ServerFailure(message: e.toString());
+    }
+  }
+
+  @override
+  Future<void> verifyResetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _remoteDataSource.verifyResetPassword(
+        VerifyResetPasswordDto(
+          email: email,
+          otp: otp,
+          newPassword: newPassword,
+          confirmPassword: confirmPassword,
+        ),
+      );
+    } on AppException catch (e) {
+      throw ValidationFailure(message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      throw ServerFailure(message: e.toString());
     }
   }
 }

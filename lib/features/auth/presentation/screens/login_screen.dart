@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/theme/app_spacing.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
@@ -185,7 +187,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () => context.pushNamed(RouteNames.forgotPassword),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    'Quên mật khẩu?',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
 
                               BlocBuilder<AuthBloc, AuthState>(
                                 builder: (context, state) {
@@ -210,6 +231,30 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Register Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Chưa có tài khoản? ',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textSecondaryLight,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => context.pushNamed(RouteNames.register),
+                            child: Text(
+                              'Đăng ký ngay',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
 
