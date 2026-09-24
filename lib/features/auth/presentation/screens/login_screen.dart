@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
+import 'package:prm393_frontend/core/theme/responsive_components.dart';
+import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import 'package:prm393_frontend/core/widgets/fade_in_up.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
@@ -21,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController(text: 'fonHocPRM393@gmail.com');
   final _passwordController = TextEditingController(text: 'passcuafon@123');
   bool _obscurePassword = true;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -226,25 +229,42 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Forgot password link
+                              // Remember Me Checkbox & Forgot Password Link
                               FadeInUp(
                                 duration: const Duration(milliseconds: 700),
                                 delay: const Duration(milliseconds: 600),
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () => context.pushNamed(RouteNames.forgotPassword),
-                                    child: Text(
-                                      'Quên mật khẩu?',
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w600,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: ResponsiveCheckbox(
+                                        value: _rememberMe,
+                                        label: 'Ghi nhớ đăng nhập',
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _rememberMe = val ?? false;
+                                          });
+                                        },
                                       ),
                                     ),
-                                  ),
+                                    TextButton(
+                                      onPressed: () => context.pushNamed(RouteNames.forgotPassword),
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.symmetric(horizontal: context.space(8)),
+                                      ),
+                                      child: Text(
+                                        'Quên mật khẩu?',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: context.sp(12.5),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              SizedBox(height: context.space(16)),
 
                               // Pill Login Button
                               FadeInUp(

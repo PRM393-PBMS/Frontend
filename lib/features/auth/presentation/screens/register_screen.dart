@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
-import 'package:prm393_frontend/core/theme/app_spacing.dart';
-import 'package:prm393_frontend/core/theme/app_typography.dart';
+import 'package:prm393_frontend/core/theme/responsive_components.dart';
+import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
@@ -26,6 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _agreeTerms = true;
 
   @override
   void dispose() {
@@ -39,6 +40,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _onRegisterPressed() {
+    if (!_agreeTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đồng ý với Điều khoản dịch vụ'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
             AuthSendRegisterOtpSubmitted(
@@ -68,7 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context.read<AuthBloc>().add(AuthClearMessageRequested());
         }
 
-        // Khi OTP đã gửi thành công -> chuyển sang màn hình nhập OTP
         if (state.otpSent && state.pendingEmail != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -86,16 +97,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Scaffold(
         backgroundColor: AppColors.bgLight,
         appBar: AppBar(
-          title: const Text('Tạo tài khoản mới'),
+          title: const ResponsiveText('Tạo tài khoản mới', variant: ResponsiveTextVariant.titleMedium),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, size: context.iconSize(20)),
             onPressed: () => context.pop(),
           ),
         ),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.wp(6),
+                vertical: context.space(20),
+              ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 480),
                 child: Form(
@@ -103,163 +117,144 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
+                      ResponsiveText(
                         'Đăng ký PBMS',
-                        style: AppTypography.displayMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimaryLight,
-                        ),
+                        variant: ResponsiveTextVariant.displayMedium,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimaryLight,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
+                      SizedBox(height: context.space(6)),
+                      ResponsiveText(
                         'Nhập thông tin cá nhân để kích hoạt tài khoản bãi đỗ xe',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondaryLight,
+                        variant: ResponsiveTextVariant.bodyMedium,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      SizedBox(height: context.space(24)),
+
+                      ResponsiveCard(
+                        padding: EdgeInsets.all(context.space(20)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Username
+                            ResponsiveTextField(
+                              controller: _userNameController,
+                              label: 'Tên đăng nhập (Username)',
+                              hintText: 'ví dụ: seiryuu',
+                              prefixIcon: Icons.person_outline_rounded,
+                              validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập tên đăng nhập' : null,
+                            ),
+                            SizedBox(height: context.space(16)),
+
+                            // Full name
+                            ResponsiveTextField(
+                              controller: _fullNameController,
+                              label: 'Họ và tên',
+                              hintText: 'ví dụ: Nguyễn Văn A',
+                              prefixIcon: Icons.badge_outlined,
+                              validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập họ và tên' : null,
+                            ),
+                            SizedBox(height: context.space(16)),
+
+                            // Email
+                            ResponsiveTextField(
+                              controller: _emailController,
+                              label: 'Email nhận mã OTP',
+                              hintText: 'name@example.com',
+                              prefixIcon: Icons.mail_outline_rounded,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
+                                if (!v.contains('@')) return 'Email không hợp lệ';
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: context.space(16)),
+
+                            // Phone
+                            ResponsiveTextField(
+                              controller: _phoneController,
+                              label: 'Số điện thoại',
+                              hintText: '0901234567',
+                              prefixIcon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                              validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập số điện thoại' : null,
+                            ),
+                            SizedBox(height: context.space(16)),
+
+                            // Password
+                            ResponsiveTextField(
+                              controller: _passwordController,
+                              label: 'Mật khẩu',
+                              hintText: '••••••••',
+                              prefixIcon: Icons.lock_outline_rounded,
+                              obscureText: _obscurePassword,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  size: context.iconSize(20),
+                                ),
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              ),
+                              validator: (v) => (v == null || v.length < 3) ? 'Mật khẩu tối thiểu 3 ký tự' : null,
+                            ),
+                            SizedBox(height: context.space(16)),
+
+                            // Confirm password
+                            ResponsiveTextField(
+                              controller: _confirmPasswordController,
+                              label: 'Xác nhận mật khẩu',
+                              hintText: '••••••••',
+                              prefixIcon: Icons.lock_reset_rounded,
+                              obscureText: _obscureConfirmPassword,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  size: context.iconSize(20),
+                                ),
+                                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                              ),
+                              validator: (v) {
+                                if (v != _passwordController.text) return 'Mật khẩu xác nhận không khớp';
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: context.space(14)),
+
+                            // Terms Checkbox (Touch target >= 48dp)
+                            ResponsiveCheckbox(
+                              value: _agreeTerms,
+                              onChanged: (val) => setState(() => _agreeTerms = val ?? false),
+                              label: 'Tôi đồng ý với Điều khoản và Chính sách bãi đỗ xe',
+                            ),
+                            SizedBox(height: context.space(20)),
+
+                            // Submit Button
+                            BlocBuilder<AuthBloc, AuthState>(
+                              builder: (context, state) {
+                                return ResponsiveButton(
+                                  label: 'Gửi mã xác thực OTP',
+                                  isLoading: state.isLoading,
+                                  onPressed: _onRegisterPressed,
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
-
-                      Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppSpacing.roundedLg,
-                          side: const BorderSide(color: AppColors.borderLight),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Username
-                              Text('Tên đăng nhập (Username)', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _userNameController,
-                                decoration: const InputDecoration(
-                                  hintText: 'ví dụ: seiryuu',
-                                  prefixIcon: Icon(Icons.person_outline_rounded),
-                                ),
-                                validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập tên đăng nhập' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Full name
-                              Text('Họ và tên', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _fullNameController,
-                                decoration: const InputDecoration(
-                                  hintText: 'ví dụ: Nguyễn Văn A',
-                                  prefixIcon: Icon(Icons.badge_outlined),
-                                ),
-                                validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập họ và tên' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Email
-                              Text('Email nhận mã OTP', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  hintText: 'name@example.com',
-                                  prefixIcon: Icon(Icons.mail_outline_rounded),
-                                ),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
-                                  if (!v.contains('@')) return 'Email không hợp lệ';
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Phone number
-                              Text('Số điện thoại', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                decoration: const InputDecoration(
-                                  hintText: '0901234567',
-                                  prefixIcon: Icon(Icons.phone_outlined),
-                                ),
-                                validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập số điện thoại' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Password
-                              Text('Mật khẩu', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                decoration: InputDecoration(
-                                  hintText: '••••••••',
-                                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                                  ),
-                                ),
-                                validator: (v) => (v == null || v.length < 3) ? 'Mật khẩu tối thiểu 3 ký tự' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Confirm password
-                              Text('Xác nhận mật khẩu', style: AppTypography.labelLarge),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _confirmPasswordController,
-                                obscureText: _obscureConfirmPassword,
-                                decoration: InputDecoration(
-                                  hintText: '••••••••',
-                                  prefixIcon: const Icon(Icons.lock_reset_rounded),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                                  ),
-                                ),
-                                validator: (v) {
-                                  if (v != _passwordController.text) return 'Mật khẩu xác nhận không khớp';
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 24),
-
-                              BlocBuilder<AuthBloc, AuthState>(
-                                builder: (context, state) {
-                                  final isLoading = state.isLoading;
-                                  return ElevatedButton(
-                                    onPressed: isLoading ? null : _onRegisterPressed,
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                            ),
-                                          )
-                                        : const Text('Gửi mã xác thực OTP'),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: context.space(20)),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Đã có tài khoản? ', style: AppTypography.bodyMedium),
+                          ResponsiveText('Đã có tài khoản? ', variant: ResponsiveTextVariant.bodyMedium),
                           GestureDetector(
                             onTap: () => context.pop(),
-                            child: Text(
+                            child: ResponsiveText(
                               'Đăng nhập ngay',
-                              style: AppTypography.labelLarge.copyWith(color: AppColors.primary),
+                              variant: ResponsiveTextVariant.labelLarge,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],

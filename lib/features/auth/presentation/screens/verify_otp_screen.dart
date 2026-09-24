@@ -3,8 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
-import 'package:prm393_frontend/core/theme/app_spacing.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
+import 'package:prm393_frontend/core/theme/responsive_components.dart';
+import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
@@ -157,67 +158,59 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 36),
+                    SizedBox(height: context.space(32)),
 
-                    Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppSpacing.roundedLg,
-                        side: const BorderSide(color: AppColors.borderLight),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Nhập mã OTP 6 số',
-                              style: AppTypography.labelLarge.copyWith(
-                                color: AppColors.textPrimaryLight,
-                              ),
+                    ResponsiveCard(
+                      padding: EdgeInsets.all(context.space(24)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ResponsiveText(
+                            'Nhập mã OTP 6 số',
+                            variant: ResponsiveTextVariant.labelLarge,
+                            color: AppColors.textPrimaryLight,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          SizedBox(height: context.space(12)),
+                          TextFormField(
+                            controller: _otpController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.displayMedium.copyWith(
+                              letterSpacing: 12.0,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                              fontSize: context.sp(26),
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _otpController,
-                              keyboardType: TextInputType.number,
-                              maxLength: 6,
-                              textAlign: TextAlign.center,
-                              style: AppTypography.displayMedium.copyWith(
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: '000000',
+                              hintStyle: TextStyle(
                                 letterSpacing: 12.0,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                color: Colors.black26,
+                                fontSize: context.sp(26),
                               ),
-                              decoration: const InputDecoration(
-                                counterText: '',
-                                hintText: '000000',
-                                hintStyle: TextStyle(letterSpacing: 12.0, color: Colors.black26),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: context.space(14),
                               ),
                             ),
-                            const SizedBox(height: 28),
+                          ),
+                          SizedBox(height: context.space(28)),
 
-                            BlocBuilder<AuthBloc, AuthState>(
-                              builder: (context, state) {
-                                final isLoading = state.isLoading;
-                                return ElevatedButton(
-                                  onPressed: isLoading ? null : _onVerifyPressed,
-                                  child: isLoading
-                                      ? const SizedBox(
-                                          width: 22,
-                                          height: 22,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : const Text('Kích hoạt tài khoản'),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                          BlocBuilder<AuthBloc, AuthState>(
+                            builder: (context, state) {
+                              return ResponsiveButton(
+                                label: 'Kích hoạt tài khoản',
+                                isLoading: state.isLoading,
+                                onPressed: _onVerifyPressed,
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.space(24)),
 
                     Center(
                       child: TextButton.icon(

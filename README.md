@@ -79,6 +79,30 @@ flowchart TD
   - Sử dụng cơ chế hàng đợi bất đồng bộ (**Completer Mutex Queue**): Khi có nhiều request đồng thời nhận lỗi 401, chỉ **1 request duy nhất** được phép gọi refresh token; các request còn lại sẽ tạm dừng chờ và tự động retry lại với token mới ngay sau đó.
 - **Bảo mật lưu trữ**: Token được lưu trong `FlutterSecureStorage` (sử dụng Keychain trên iOS/macOS và Keystore EncryptedSharedPreferences trên Android).
 
+---
+
+## 📐 Đặc tả Hệ thống Responsive Mobile & Modern Web Aesthetic
+
+Hệ thống Responsive được thiết kế chuyên biệt tại:
+- `lib/core/utils/responsive_utils.dart` (Core Calculation & Extensions)
+- `lib/core/theme/responsive_components.dart` (Atomic Components)
+
+### 1. Responsive Core Extension (Design Base: 390 × 844 dp)
+- `context.wp(percent)`: Chiều rộng tính theo phần trăm màn hình (0-100%).
+- `context.hp(percent)`: Chiều cao tính theo phần trăm màn hình (0-100%).
+- `context.sp(fontSize, {minScale = 0.85, maxScale = 1.25})`: Co giãn font có clamp giới hạn an toàn.
+- `context.iconSize(baseSize)`: Tự động cân chỉnh kích thước icon tương ứng với text.
+- `context.space(baseSpace)`: Scale khoảng cách, margin, padding và border radius.
+
+### 2. Bộ thành phần Atomic Components
+- **`ResponsiveText`**: Hỗ trợ 10 typography variants, tự động scale clamp và chống tràn văn bản.
+- **`ResponsiveButton`**: Chuẩn chiều cao 48-54dp, bo góc 14-16dp, đổ bóng mềm Modern Web, hiệu ứng loading/disabled.
+- **`ResponsiveTextField`**: Full-width, viền hairline 1px, hiệu ứng Focus Glow viền xanh 12px blur, an toàn với bàn phím ảo.
+- **`ResponsiveCheckbox`**: Vùng chạm cảm ứng tối thiểu 48dp (WCAG standard), visual checkbox 22dp bo góc mềm.
+- **`ResponsiveCard` & `showResponsiveBottomSheet`**: Bo góc lớn 16-24dp, tự động co giãn theo keyboard insets.
+
+---
+
 ## 📂 Cây thư mục dự án (`lib/`)
 
 ```
@@ -88,7 +112,7 @@ lib/
 │
 ├── core/                                   # Mã nguồn hạ tầng dùng chung (Shared Core)
 │   ├── config/
-│   │   ├── api_endpoints.dart              # Quản lý 126 endpoints backend (chuẩn casing: /api/Auth, /api/reservations,...)
+│   │   ├── api_endpoints.dart              # Quản lý 126 endpoints backend (chuẩn casing)
 │   │   └── app_config.dart                 # Cấu hình môi trường (Cloud Render Backend / Localhost)
 │   ├── constants/
 │   │   └── storage_keys.dart               # Hằng số định danh bộ nhớ mã hóa (Keychain/Keystore)
@@ -98,8 +122,8 @@ lib/
 │   ├── network/
 │   │   ├── api_client.dart                 # Base Client Dio với kiểu dữ liệu trả về Type-safe
 │   │   ├── api_response.dart               # Generic PBMS Envelope { statusCode, message, isSuccess, result }
-│   │   ├── auth_interceptor.dart           # QueuedInterceptor: Tiêm Bearer & tự động Refresh Token khi gặp 401
-│   │   └── logging_interceptor.dart        # Logger định dạng console box trực quan trong Debug Mode
+│   │   ├── auth_interceptor.dart           # QueuedInterceptor: Tiêm Bearer & tự động Refresh Token
+│   │   └── logging_interceptor.dart        # Logger định dạng console trực quan trong Debug Mode
 │   ├── routes/
 │   │   ├── app_router.dart                 # Cấu hình GoRouter với Auth Guard redirect tự động
 │   │   └── route_names.dart                # Tên định danh và đường dẫn URL của các màn hình
@@ -109,16 +133,20 @@ lib/
 │   │   ├── app_colors.dart                 # Bảng mã màu Design Tokens (Primary, Status, Light/Dark)
 │   │   ├── app_spacing.dart                # Thước đo khoảng cách (Padding, Margin, Border Radius)
 │   │   ├── app_theme.dart                  # Cấu hình Material 3 ThemeData cho cả Light & Dark
-│   │   └── app_typography.dart             # Cấu hình Typography Google Fonts (Outfit & Inter)
-│   └── utils/
-│       ├── currency_formatter.dart         # Định dạng tiền tệ VNĐ (ví dụ: 25.000 ₫)
-│       └── date_formatter.dart             # Định dạng mốc thời gian vào/ra, đặt chỗ (HH:mm - dd/MM/yyyy)
+│   │   ├── app_typography.dart             # Cấu hình Typography Google Fonts (Outfit & Inter)
+│   │   └── responsive_components.dart      # Bộ Atomic Components (Text, Button, Input, Checkbox, Card, Modal)
+│   ├── utils/
+│   │   ├── currency_formatter.dart         # Định dạng tiền tệ VNĐ (ví dụ: 25.000 ₫)
+│   │   ├── date_formatter.dart             # Định dạng mốc thời gian vào/ra, đặt chỗ (HH:mm - dd/MM/yyyy)
+│   │   └── responsive_utils.dart           # Hệ thống Responsive Core (wp, hp, sp, space, clamp)
+│   └── widgets/
+│       └── fade_in_up.dart                 # Hiệu ứng chuyển động mượt mà Modern Web Animation
 │
 └── features/                               # Các mô-đun chức năng (Feature-First Modules)
     ├── auth/                               # Feature: Xác thực & Tài khoản
     │   ├── data/
     │   │   ├── datasources/
-    │   │   │   └── auth_remote_datasource.dart # Gọi POST /api/Auth/login, profile, logout
+    │   │   │   └── auth_remote_datasource.dart # Gọi POST /api/Auth/login, profile, register, OTP
     │   │   ├── models/
     │   │   │   ├── auth_tokens_model.dart      # Parse accessToken, refreshToken, user
     │   │   │   ├── login_request_dto.dart      # DTO email, password gửi lên backend
@@ -132,11 +160,14 @@ lib/
     │   │       └── auth_repository.dart        # Interface hợp đồng xác thực
     │   └── presentation/
     │       ├── blocs/
-    │       │   ├── auth_bloc.dart              # Xử lý login, auto check session, logout
+    │       │   ├── auth_bloc.dart              # Xử lý login, auto check session, logout, OTP
     │       │   ├── auth_event.dart             # Các sự kiện xác thực
     │       │   └── auth_state.dart             # Trạng thái xác thực (Loading, Authenticated,...)
     │       └── screens/
-    │           ├── login_screen.dart           # Giao diện Đăng nhập chuẩn Responsive
+    │           ├── login_screen.dart           # Giao diện Đăng nhập chuẩn Responsive & FadeInUp
+    │           ├── register_screen.dart        # Giao diện Đăng ký với Responsive Components
+    │           ├── verify_otp_screen.dart      # Giao diện Xác thực mã OTP 6 số
+    │           ├── forgot_password_screen.dart # Giao diện Khôi phục mật khẩu
     │           └── splash_screen.dart          # Màn hình Splash kiểm tra trạng thái khởi động
     │
     └── home/                               # Feature: Dashboard & Trang chủ

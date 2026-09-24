@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/theme/app_spacing.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
+import 'package:prm393_frontend/core/theme/responsive_components.dart';
+import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_event.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart';
@@ -158,6 +160,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildMetricCard(
+                        context,
                         title: 'Chỗ trống',
                         value: '142',
                         subtitle: 'Tầng B1, B2',
@@ -168,6 +171,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildMetricCard(
+                        context,
                         title: 'Đang gửi',
                         value: '78',
                         subtitle: 'Xe ô tô, xe máy',
@@ -197,6 +201,7 @@ class HomeScreen extends StatelessWidget {
                   childAspectRatio: 1.35,
                   children: [
                     _buildActionCard(
+                      context,
                       title: 'Đặt chỗ trước',
                       subtitle: 'Giữ chỗ trước khi đến',
                       icon: Icons.calendar_month_rounded,
@@ -208,6 +213,7 @@ class HomeScreen extends StatelessWidget {
                       },
                     ),
                     _buildActionCard(
+                      context,
                       title: 'Mã QR gửi xe',
                       subtitle: 'Check-in / Check-out',
                       icon: Icons.qr_code_scanner_rounded,
@@ -219,6 +225,7 @@ class HomeScreen extends StatelessWidget {
                       },
                     ),
                     _buildActionCard(
+                      context,
                       title: 'Gói gửi xe tháng',
                       subtitle: 'Đăng ký & gia hạn',
                       icon: Icons.card_membership_rounded,
@@ -230,6 +237,7 @@ class HomeScreen extends StatelessWidget {
                       },
                     ),
                     _buildActionCard(
+                      context,
                       title: 'Báo cáo sự cố',
                       subtitle: 'Gửi hình ảnh chứng thực',
                       icon: Icons.report_problem_outlined,
@@ -253,88 +261,91 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.available.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.available,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Đang đỗ xe',
-                                    style: AppTypography.labelMedium.copyWith(
-                                      color: AppColors.available,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                ResponsiveCard(
+                  padding: EdgeInsets.all(context.space(16)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.space(10),
+                              vertical: context.space(4),
                             ),
-                            Text(
-                              'Vào lúc: Hôm nay 08:30',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textMutedLight,
-                              ),
+                            decoration: BoxDecoration(
+                              color: AppColors.available.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(context.space(8)),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.bgLight,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.borderLight, width: 1.5),
-                              ),
-                              child: Text(
-                                '51G-888.88',
-                                style: AppTypography.titleMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Text(
-                                  'Vị trí: Tầng B1 - B12',
-                                  style: AppTypography.labelLarge,
-                                ),
-                                Text(
-                                  'Cổng vào: Cổng A1',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textSecondaryLight,
+                                Container(
+                                  width: context.space(8),
+                                  height: context.space(8),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.available,
+                                    shape: BoxShape.circle,
                                   ),
+                                ),
+                                SizedBox(width: context.space(6)),
+                                ResponsiveText(
+                                  'Đang đỗ xe',
+                                  variant: ResponsiveTextVariant.labelMedium,
+                                  color: AppColors.available,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                          ResponsiveText(
+                            'Vào lúc: Hôm nay 08:30',
+                            variant: ResponsiveTextVariant.bodySmall,
+                            color: AppColors.textMutedLight,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: context.space(14)),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.space(14),
+                              vertical: context.space(8),
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.bgLight,
+                              borderRadius: BorderRadius.circular(context.space(8)),
+                              border: Border.all(color: AppColors.borderLight, width: 1.5),
+                            ),
+                            child: ResponsiveText(
+                              '51G-888.88',
+                              variant: ResponsiveTextVariant.titleMedium,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          SizedBox(width: context.space(16)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ResponsiveText(
+                                  'Vị trí: Tầng B1 - B12',
+                                  variant: ResponsiveTextVariant.labelLarge,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                ResponsiveText(
+                                  'Cổng vào: Cổng A1',
+                                  variant: ResponsiveTextVariant.bodySmall,
+                                  color: AppColors.textSecondaryLight,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -346,121 +357,131 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricCard({
+  Widget _buildMetricCard(
+    BuildContext context, {
     required String title,
     required String value,
     required String subtitle,
     required Color color,
     required IconData icon,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondaryLight),
-                ),
-                Icon(icon, color: color, size: 20),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: AppTypography.displayMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimaryLight,
+    return ResponsiveCard(
+      padding: EdgeInsets.all(context.space(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ResponsiveText(
+                title,
+                variant: ResponsiveTextVariant.bodySmall,
+                color: AppColors.textSecondaryLight,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: AppTypography.bodySmall.copyWith(color: AppColors.textMutedLight),
-            ),
-          ],
-        ),
+              Icon(icon, color: color, size: context.iconSize(20)),
+            ],
+          ),
+          SizedBox(height: context.space(8)),
+          ResponsiveText(
+            value,
+            variant: ResponsiveTextVariant.displayMedium,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimaryLight,
+          ),
+          SizedBox(height: context.space(4)),
+          ResponsiveText(
+            subtitle,
+            variant: ResponsiveTextVariant.bodySmall,
+            color: AppColors.textMutedLight,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildActionCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14.0),
-          child: Column(
+    return ResponsiveCard(
+      onTap: onTap,
+      padding: EdgeInsets.all(context.space(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: EdgeInsets.all(context.space(8)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(context.space(10)),
+            ),
+            child: Icon(icon, color: color, size: context.iconSize(22)),
+          ),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 22),
+              ResponsiveText(
+                title,
+                variant: ResponsiveTextVariant.labelLarge,
+                fontWeight: FontWeight.bold,
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textMutedLight,
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              SizedBox(height: context.space(2)),
+              ResponsiveText(
+                subtitle,
+                variant: ResponsiveTextVariant.bodySmall,
+                color: AppColors.textMutedLight,
+                maxLines: 1,
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
   void _showLogoutDialog(BuildContext context) {
-    showDialog(
+    showResponsiveBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng không?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ResponsiveText(
+            'Xác nhận đăng xuất',
+            variant: ResponsiveTextVariant.titleLarge,
+            fontWeight: FontWeight.bold,
+            textAlign: TextAlign.center,
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              minimumSize: const Size(90, 40),
-            ),
+          SizedBox(height: sheetContext.space(12)),
+          ResponsiveText(
+            'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng PBMS không? Phiên đăng nhập hiện tại sẽ kết thúc.',
+            variant: ResponsiveTextVariant.bodyMedium,
+            color: AppColors.textSecondaryLight,
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: sheetContext.space(24)),
+          ResponsiveButton(
+            label: 'Đăng xuất',
+            backgroundColor: AppColors.error,
             onPressed: () {
-              Navigator.pop(dialogContext);
+              Navigator.pop(sheetContext);
               context.read<AuthBloc>().add(AuthLogoutRequested());
             },
-            child: const Text('Đăng xuất'),
           ),
+          SizedBox(height: sheetContext.space(10)),
+          ResponsiveButton(
+            label: 'Hủy',
+            type: ResponsiveButtonType.outlined,
+            backgroundColor: Colors.grey.shade400,
+            foregroundColor: AppColors.textPrimaryLight,
+            onPressed: () => Navigator.pop(sheetContext),
+          ),
+          SizedBox(height: sheetContext.space(10)),
         ],
       ),
     );
