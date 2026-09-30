@@ -8,6 +8,7 @@ import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_event.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart';
+import 'package:prm393_frontend/features/home/presentation/models/vehicle_card_model.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,29 +18,57 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _pushNotifications = true;
-  bool _darkMode = false;
+  static const _profilePrimary = Color(0xFF00616E);
+  static const _profilePrimaryContainer = Color(0xFF087B8C);
+  static const _profileSecondary = Color(0xFF136873);
+  static const _profileSecondaryContainer = Color(0xFFA3EBF7);
+  static const _profileSurface = Color(0xFFF9F9FF);
+  static const _profileSurfaceLow = Color(0xFFF0F3FF);
+  static const _profileOutline = Color(0xFFBEC8CB);
+  static const _profileOnSurface = Color(0xFF111C2D);
+  static const _profileOnSurfaceVariant = Color(0xFF3E484B);
+  static const _profileErrorContainer = Color(0xFFFFDAD6);
+  static const _profileOnErrorContainer = Color(0xFF93000A);
+
+  bool _parkingNotifications = true;
+  bool _monthlyPassAutoRenew = false;
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: _profileSurface,
       appBar: AppBar(
-        title: const Text('Hồ sơ cá nhân'),
+        backgroundColor: _profileSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Cá Nhân',
+          style: AppTypography.titleMedium.copyWith(
+            color: _profileOnSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         actions: [
+          IconButton(
+            tooltip: 'Thông báo',
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () => _showFeatureNotice(context, 'Thông báo'),
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Cài đặt',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Cài đặt hệ thống đang hoàn thiện'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: () => _showFeatureNotice(context, 'Cài đặt hệ thống'),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: _profilePrimary,
+              child: const Icon(Icons.person_rounded,
+                  size: 19, color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -51,415 +80,165 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final phone = user?.phoneNumber ?? '0987 654 321';
           final role = user?.roleName ?? 'Khách hàng VIP';
           final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'P';
+          final vehicle = VehicleCardModel.mockVehicles.first;
 
           return RefreshIndicator(
             onRefresh: () async {
               context.read<AuthBloc>().add(AuthCheckRequested());
             },
             child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: context.space(AppSpacing.pagePadding)),
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                context.space(AppSpacing.pagePadding),
+                context.space(12),
+                context.space(AppSpacing.pagePadding),
+                context.space(84) + bottomPad + 24,
+              ),
               children: [
-                SizedBox(height: context.space(12)),
-
-                // ============================================================
-                // HERO PROFILE CARD (Modern Web Gradient)
-                // ============================================================
-                Container(
-                  padding: EdgeInsets.all(context.space(20)),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF3B82F6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(context.space(24)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.28),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Avatar with Initial & Camera badge
-                      Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            width: context.space(84),
-                            height: context.space(84),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                initial,
-                                style: AppTypography.displayLarge.copyWith(
-                                  fontSize: context.sp(36),
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: context.space(12)),
-
-                      // User Full Name
-                      ResponsiveText(
-                        displayName,
-                        variant: ResponsiveTextVariant.titleLarge,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: context.space(4)),
-
-                      // Email with verified check
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.verified_rounded, color: AppColors.secondary, size: context.iconSize(16)),
-                          SizedBox(width: context.space(6)),
-                          Flexible(
-                            child: ResponsiveText(
-                              email,
-                              variant: ResponsiveTextVariant.bodySmall,
-                              color: Colors.white.withValues(alpha: 0.88),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: context.space(14)),
-
-                      // Role Tag Badge
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.space(14),
-                          vertical: context.space(6),
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.20),
-                          borderRadius: BorderRadius.circular(context.space(20)),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.stars_rounded, color: Colors.amberAccent, size: 16),
-                            SizedBox(width: context.space(6)),
-                            Text(
-                              role,
-                              style: AppTypography.labelMedium.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                _buildProfileSummary(
+                  context,
+                  displayName: displayName,
+                  email: email,
+                  phone: phone,
+                  role: role,
+                  initial: initial,
+                  onEdit: () => _showEditProfileSheet(context, displayName, phone),
                 ),
-                SizedBox(height: context.space(20)),
-
-                // ============================================================
-                // MINI STATS ROW
-                // ============================================================
-                Row(
+                SizedBox(height: context.space(12)),
+                _buildStats(context),
+                SizedBox(height: context.space(16)),
+                _buildSectionCard(
+                  context,
+                  title: 'Phương tiện đã liên kết (ANPR)',
+                  icon: Icons.directions_car_rounded,
+                  trailing: '1 phương tiện',
                   children: [
-                    Expanded(
-                      child: _buildMiniStat(
-                        context,
-                        icon: Icons.directions_car_rounded,
-                        color: AppColors.primary,
-                        value: '02',
-                        label: 'Phương tiện',
-                      ),
-                    ),
-                    SizedBox(width: context.space(12)),
-                    Expanded(
-                      child: _buildMiniStat(
-                        context,
-                        icon: Icons.card_membership_rounded,
-                        color: AppColors.accent,
-                        value: '01',
-                        label: 'Vé tháng',
-                      ),
-                    ),
-                    SizedBox(width: context.space(12)),
-                    Expanded(
-                      child: _buildMiniStat(
-                        context,
-                        icon: Icons.local_parking_rounded,
-                        color: AppColors.available,
-                        value: '24',
-                        label: 'Lượt đỗ',
+                    _buildVehicleCard(context, vehicle),
+                    SizedBox(height: context.space(8)),
+                    SizedBox(
+                      height: context.space(48),
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            _showFeatureNotice(context, 'Thêm biển số xe mới'),
+                        icon: const Icon(Icons.add_circle_outline_rounded),
+                        label: const Text('Thêm biển số xe mới'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _profilePrimaryContainer,
+                          backgroundColor: _profileSurfaceLow,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(context.space(12)),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: context.space(24)),
-
-                // ============================================================
-                // SECTION 1: THÔNG TIN TÀI KHOẢN (Personal Information)
-                // ============================================================
-                _buildSectionHeader(context, title: 'Thông tin cá nhân', actionLabel: 'Chỉnh sửa', onAction: () {
-                  _showEditProfileSheet(context, displayName, phone);
-                }),
-                SizedBox(height: context.space(10)),
-                ResponsiveCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.space(16),
-                    vertical: context.space(8),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildInfoTile(
-                        context,
-                        icon: Icons.badge_outlined,
-                        label: 'Họ và tên',
-                        value: displayName,
-                      ),
-                      const Divider(height: 1),
-                      _buildInfoTile(
-                        context,
-                        icon: Icons.phone_android_rounded,
-                        label: 'Số điện thoại',
-                        value: phone,
-                      ),
-                      const Divider(height: 1),
-                      _buildInfoTile(
-                        context,
-                        icon: Icons.alternate_email_rounded,
-                        label: 'Tên tài khoản',
-                        value: '@${user?.userName ?? 'thanhlong'}',
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.space(24)),
-
-                // ============================================================
-                // SECTION 2: PHƯƠNG TIỆN & DỊCH VỤ (Vehicles & Subscriptions)
-                // ============================================================
-                _buildSectionHeader(context, title: 'Dịch vụ của tôi'),
-                SizedBox(height: context.space(10)),
-                ResponsiveCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.space(16),
-                    vertical: context.space(8),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildActionTile(
-                        context,
-                        icon: Icons.two_wheeler_rounded,
-                        color: AppColors.primary,
-                        title: 'Phương tiện đã đăng ký',
-                        subtitle: '29A-888.99 (Honda SH), 30E-123.45',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Quản lý danh sách phương tiện');
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.card_membership_rounded,
-                        color: AppColors.accent,
-                        title: 'Gói vé tháng đang dùng',
-                        subtitle: 'Gói Resident Car VIP • Còn 22 ngày',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Chi tiết gói vé tháng');
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.swap_horiz_rounded,
-                        color: AppColors.secondary,
-                        title: 'Yêu cầu đổi phương tiện',
-                        subtitle: 'Xem lịch sử và gửi yêu cầu đổi xe mới',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Yêu cầu đổi xe');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.space(24)),
-
-                // ============================================================
-                // SECTION 3: CÀI ĐẶT & BẢO MẬT (Settings & Security)
-                // ============================================================
-                _buildSectionHeader(context, title: 'Cài đặt & Tiện ích'),
-                SizedBox(height: context.space(10)),
-                ResponsiveCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.space(16),
-                    vertical: context.space(6),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildSwitchTile(
-                        context,
-                        icon: Icons.notifications_active_outlined,
-                        title: 'Thông báo đẩy',
-                        subtitle: 'Nhận tin nhắn khi xe vào / ra bãi đỗ',
-                        value: _pushNotifications,
-                        onChanged: (val) {
-                          setState(() => _pushNotifications = val);
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildSwitchTile(
-                        context,
-                        icon: Icons.dark_mode_outlined,
-                        title: 'Chế độ tối (Dark Mode)',
-                        subtitle: 'Tối ưu mắt khi đỗ xe vào ban đêm',
-                        value: _darkMode,
-                        onChanged: (val) {
-                          setState(() => _darkMode = val);
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.lock_outline_rounded,
-                        color: AppColors.warning,
-                        title: 'Đổi mật khẩu',
-                        subtitle: 'Bảo vệ tài khoản an toàn',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Đổi mật khẩu tài khoản');
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.translate_rounded,
-                        color: AppColors.info,
-                        title: 'Ngôn ngữ',
-                        subtitle: 'Tiếng Việt (Mặc định)',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Chuyển đổi ngôn ngữ');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.space(24)),
-
-                // ============================================================
-                // SECTION 4: HỖ TRỢ & THÔNG TIN ỨNG DỤNG
-                // ============================================================
-                _buildSectionHeader(context, title: 'Hỗ trợ'),
-                SizedBox(height: context.space(10)),
-                ResponsiveCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.space(16),
-                    vertical: context.space(8),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildActionTile(
-                        context,
-                        icon: Icons.headset_mic_outlined,
-                        color: AppColors.available,
-                        title: 'Liên hệ quản lý bãi đỗ',
-                        subtitle: 'Hotline trực ban: 1900 6868 (24/7)',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Gọi tổng đài hỗ trợ bãi xe');
-                        },
-                      ),
-                      const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.policy_outlined,
-                        color: Colors.grey.shade600,
-                        title: 'Quy định bãi đỗ & Điều khoản',
-                        subtitle: 'Chính sách gửi xe và bảo hiểm phương tiện',
-                        onTap: () {
-                          _showFeatureNotice(context, 'Chính sách bãi xe');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.space(28)),
-
-                // ============================================================
-                // DANGER ZONE: LOGOUT BUTTON
-                // ============================================================
-                SizedBox(
-                  width: double.infinity,
-                  height: context.space(52),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showLogoutDialog(context),
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
-                    label: Text(
-                      'Đăng xuất tài khoản',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: context.sp(15),
-                      ),
+                SizedBox(height: context.space(12)),
+                _buildSectionCard(
+                  context,
+                  title: 'Ví & Phương thức thanh toán',
+                  children: [
+                    _buildActionTile(
+                      context,
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: _profilePrimary,
+                      title: 'Ví điện tử & Thẻ thanh toán',
+                      subtitle: 'MoMo • Visa ending **** 4288',
+                      onTap: () => _showFeatureNotice(context, 'Ví và thẻ thanh toán'),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
-                      elevation: 4,
-                      shadowColor: AppColors.error.withValues(alpha: 0.35),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(context.space(16)),
-                      ),
+                    const Divider(height: 1),
+                    _buildActionTile(
+                      context,
+                      icon: Icons.receipt_long_outlined,
+                      color: _profilePrimary,
+                      title: 'Lịch sử đỗ xe & Hóa đơn VAT',
+                      subtitle: 'Xuất hóa đơn điện tử qua email',
+                      onTap: () => _showFeatureNotice(context, 'Lịch sử đỗ xe và hóa đơn'),
                     ),
-                  ),
+                  ],
+                ),
+                SizedBox(height: context.space(12)),
+                _buildSectionCard(
+                  context,
+                  title: 'Cài đặt & Tiện ích',
+                  children: [
+                    _buildSwitchTile(
+                      context,
+                      icon: Icons.notifications_active_outlined,
+                      title: 'Cảnh báo sắp hết giờ',
+                      subtitle: 'Báo trước 15 phút khi sắp hết giờ đỗ',
+                      value: _parkingNotifications,
+                      onChanged: (value) =>
+                          setState(() => _parkingNotifications = value),
+                    ),
+                    const Divider(height: 1),
+                    _buildSwitchTile(
+                      context,
+                      icon: Icons.autorenew_rounded,
+                      title: 'Gia hạn vé tháng tự động',
+                      subtitle: 'Tự động thanh toán vào ngày 28 hàng tháng',
+                      value: _monthlyPassAutoRenew,
+                      onChanged: (value) =>
+                          setState(() => _monthlyPassAutoRenew = value),
+                    ),
+                    const Divider(height: 1),
+                    _buildActionTile(
+                      context,
+                      icon: Icons.fingerprint_rounded,
+                      color: _profilePrimary,
+                      title: 'Bảo mật & Sinh trắc học',
+                      subtitle: 'Face ID / Mã PIN xác thực thanh toán',
+                      trailingLabel: 'Bật',
+                      onTap: () => _showFeatureNotice(context, 'Bảo mật và sinh trắc học'),
+                    ),
+                    const Divider(height: 1),
+                    _buildActionTile(
+                      context,
+                      icon: Icons.support_agent_rounded,
+                      color: _profilePrimary,
+                      title: 'Trung tâm trợ giúp & Cứu hộ bãi xe',
+                      subtitle: 'Hotline miễn phí 1900 6868 (24/7)',
+                      onTap: () => _showFeatureNotice(context, 'Trung tâm trợ giúp'),
+                    ),
+                  ],
                 ),
                 SizedBox(height: context.space(16)),
-
-                // App Version Footer
-                Center(
-                  child: Text(
-                    'PBMS Smart Parking • Phiên bản 1.0.0 (Release 2026)',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textMutedLight,
-                      fontSize: context.sp(11),
+                SizedBox(
+                  height: context.space(48),
+                  child: FilledButton.icon(
+                    onPressed: () => _showLogoutDialog(context),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Đăng xuất tài khoản'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _profileErrorContainer,
+                      foregroundColor: _profileOnErrorContainer,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(context.space(12)),
+                      ),
                     ),
                   ),
                 ),
-
-                // ============================================================
-                // KHOẢNG TRỐNG AN TOÀN ĐỘNG (Tránh thanh Nav Bar che nội dung)
-                // ============================================================
-                SizedBox(
-                  height: context.space(84) + bottomPad + 24,
+                SizedBox(height: context.space(8)),
+                Center(
+                  child: Column(
+                    children: [
+                      ResponsiveText(
+                        'PBMS Smart Parking • Phiên bản 1.0.0 (Release 2026)',
+                        variant: ResponsiveTextVariant.labelMedium,
+                        color: _profileOnSurfaceVariant,
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: context.space(2)),
+                      ResponsiveText(
+                        'Hệ thống bãi đỗ thông minh ANPR AI',
+                        variant: ResponsiveTextVariant.labelMedium,
+                        color: _profileOutline,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -469,116 +248,359 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ---- Helper Widgets ----
+  // ---- Profile UI ----
 
-  Widget _buildMiniStat(
+  Widget _buildProfileSummary(
     BuildContext context, {
-    required IconData icon,
-    required Color color,
-    required String value,
-    required String label,
+    required String displayName,
+    required String email,
+    required String phone,
+    required String role,
+    required String initial,
+    required VoidCallback onEdit,
   }) {
     return ResponsiveCard(
-      padding: EdgeInsets.all(context.space(12)),
-      child: Column(
+      padding: EdgeInsets.all(context.space(16)),
+      borderRadius: BorderRadius.circular(context.space(12)),
+      backgroundColor: Colors.white,
+      borderColor: _profileSurfaceLow,
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              CircleAvatar(
+                radius: context.space(32),
+                backgroundColor: _profileSurfaceLow,
+                child: Text(
+                  initial,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: _profilePrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: context.space(44),
+                height: context.space(44),
+                child: IconButton(
+                  tooltip: 'Thay đổi ảnh đại diện hoặc thông tin',
+                  onPressed: onEdit,
+                  padding: EdgeInsets.zero,
+                  style: IconButton.styleFrom(
+                    backgroundColor: _profilePrimaryContainer,
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white, width: 2),
+                  ),
+                  icon: Icon(Icons.camera_alt_rounded,
+                      size: context.iconSize(15)),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(width: context.space(12)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: ResponsiveText(
+                        displayName,
+                        variant: ResponsiveTextVariant.titleMedium,
+                        color: _profileOnSurface,
+                        fontWeight: FontWeight.w700,
+                        maxLines: 1,
+                      ),
+                    ),
+                    SizedBox(width: context.space(4)),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.space(6),
+                        vertical: context.space(2),
+                      ),
+                      decoration: BoxDecoration(
+                        color: _profileSecondaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified_rounded,
+                              size: context.iconSize(13),
+                              color: _profileSecondary),
+                          SizedBox(width: context.space(2)),
+                          ResponsiveText(
+                            'Đã xác minh',
+                            variant: ResponsiveTextVariant.labelMedium,
+                            color: _profileSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: context.space(2)),
+                ResponsiveText(
+                  '$role • Ô tô chính chủ',
+                  variant: ResponsiveTextVariant.labelMedium,
+                  color: _profilePrimary,
+                  fontWeight: FontWeight.w600,
+                  maxLines: 1,
+                ),
+                SizedBox(height: context.space(4)),
+                _buildContactLine(
+                  context,
+                  icon: Icons.smartphone_rounded,
+                  value: phone,
+                ),
+                SizedBox(height: context.space(2)),
+                _buildContactLine(
+                  context,
+                  icon: Icons.email_outlined,
+                  value: email,
+                ),
+              ],
             ),
-            child: Icon(icon, color: color, size: context.iconSize(20)),
-          ),
-          SizedBox(height: context.space(8)),
-          ResponsiveText(
-            value,
-            variant: ResponsiveTextVariant.titleLarge,
-            fontWeight: FontWeight.w800,
-          ),
-          SizedBox(height: context.space(2)),
-          ResponsiveText(
-            label,
-            variant: ResponsiveTextVariant.bodySmall,
-            color: AppColors.textMutedLight,
-            maxLines: 1,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(
+  Widget _buildContactLine(
     BuildContext context, {
-    required String title,
-    String? actionLabel,
-    VoidCallback? onAction,
+    required IconData icon,
+    required String value,
   }) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        ResponsiveText(
-          title,
-          variant: ResponsiveTextVariant.titleMedium,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimaryLight,
-        ),
-        if (actionLabel != null && onAction != null)
-          TextButton(
-            onPressed: onAction,
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: context.space(8)),
-            ),
-            child: Text(
-              actionLabel,
-              style: AppTypography.labelMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+        Icon(icon, size: context.iconSize(14), color: _profileOnSurfaceVariant),
+        SizedBox(width: context.space(4)),
+        Expanded(
+          child: ResponsiveText(
+            value,
+            variant: ResponsiveTextVariant.bodySmall,
+            color: _profileOnSurfaceVariant,
+            maxLines: 1,
           ),
+        ),
       ],
     );
   }
 
-  Widget _buildInfoTile(
+  Widget _buildStats(BuildContext context) {
+    return ResponsiveCard(
+      padding: EdgeInsets.all(context.space(8)),
+      borderRadius: BorderRadius.circular(context.space(12)),
+      backgroundColor: Colors.white,
+      borderColor: _profileSurfaceLow,
+      child: Row(
+        children: [
+          _buildStat(context,
+              value: '24', label: 'Lượt đỗ tháng', valueColor: _profilePrimaryContainer),
+          SizedBox(width: context.space(4)),
+          _buildStat(context,
+              value: '01',
+              label: 'Vé tháng hiệu lực',
+              valueColor: _profileSecondary,
+              highlighted: true),
+          SizedBox(width: context.space(4)),
+          _buildStat(context,
+              value: '320',
+              label: 'Điểm Eco-Park',
+              valueColor: _profilePrimaryContainer,
+              icon: Icons.eco_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStat(
     BuildContext context, {
-    required IconData icon,
-    required String label,
     required String value,
+    required String label,
+    required Color valueColor,
+    IconData? icon,
+    bool highlighted = false,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.space(10)),
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.space(4),
+          vertical: context.space(10),
+        ),
+        decoration: BoxDecoration(
+          color: highlighted ? _profileSurfaceLow : Colors.transparent,
+          borderRadius: BorderRadius.circular(context.space(8)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ResponsiveText(
+                  value,
+                  variant: ResponsiveTextVariant.titleLarge,
+                  color: valueColor,
+                  fontWeight: FontWeight.w700,
+                ),
+                if (icon != null) ...[
+                  SizedBox(width: context.space(2)),
+                  Icon(icon, size: context.iconSize(16), color: _profilePrimary),
+                ],
+              ],
+            ),
+            SizedBox(height: context.space(2)),
+            ResponsiveText(
+              label,
+              variant: ResponsiveTextVariant.labelMedium,
+              color: _profileOnSurfaceVariant,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    IconData? icon,
+    String? trailing,
+    required List<Widget> children,
+  }) {
+    return ResponsiveCard(
+      padding: EdgeInsets.all(context.space(16)),
+      borderRadius: BorderRadius.circular(context.space(12)),
+      backgroundColor: Colors.white,
+      borderColor: _profileSurfaceLow,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon,
+                    size: context.iconSize(20), color: _profilePrimaryContainer),
+                SizedBox(width: context.space(8)),
+              ],
+              Expanded(
+                child: ResponsiveText(
+                  title,
+                  variant: ResponsiveTextVariant.titleSmall,
+                  color: _profileOnSurface,
+                  fontWeight: FontWeight.w600,
+                  maxLines: 2,
+                ),
+              ),
+              if (trailing != null) ...[
+                SizedBox(width: context.space(8)),
+                ResponsiveText(
+                  trailing,
+                  variant: ResponsiveTextVariant.labelMedium,
+                  color: _profilePrimary,
+                  fontWeight: FontWeight.w600,
+                  maxLines: 1,
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: context.space(8)),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleCard(BuildContext context, VehicleCardModel vehicle) {
+    return Container(
+      padding: EdgeInsets.all(context.space(12)),
+      decoration: BoxDecoration(
+        color: _profileSecondaryContainer.withValues(alpha: 0.30),
+        borderRadius: BorderRadius.circular(context.space(12)),
+      ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: context.space(48),
+            height: context.space(48),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(context.space(12)),
             ),
-            child: Icon(icon, size: context.iconSize(20), color: AppColors.primary),
+            child: Icon(Icons.directions_car_rounded,
+                size: context.iconSize(26), color: _profilePrimaryContainer),
           ),
-          SizedBox(width: context.space(14)),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textMutedLight,
-                  fontSize: context.sp(11.5),
+          SizedBox(width: context.space(12)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: ResponsiveText(
+                        vehicle.vehicleName,
+                        variant: ResponsiveTextVariant.titleSmall,
+                        color: _profileOnSurface,
+                        fontWeight: FontWeight.w600,
+                        maxLines: 1,
+                      ),
+                    ),
+                    SizedBox(width: context.space(4)),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.space(4),
+                        vertical: context.space(2),
+                      ),
+                      decoration: BoxDecoration(
+                        color: _profilePrimary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(context.space(4)),
+                      ),
+                      child: const ResponsiveText(
+                        'Mặc định',
+                        variant: ResponsiveTextVariant.labelMedium,
+                        color: _profilePrimary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: AppTypography.labelLarge.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimaryLight,
+                SizedBox(height: context.space(4)),
+                ResponsiveText(
+                  vehicle.licensePlate,
+                  variant: ResponsiveTextVariant.labelLarge,
+                  color: _profileOnSurface,
+                  fontWeight: FontWeight.w700,
+                  maxLines: 1,
                 ),
-              ),
-            ],
+                SizedBox(height: context.space(2)),
+                Row(
+                  children: [
+                    Icon(Icons.sensor_door_outlined,
+                        size: context.iconSize(13), color: _profileSecondary),
+                    SizedBox(width: context.space(2)),
+                    const ResponsiveText(
+                      'Auto barrier',
+                      variant: ResponsiveTextVariant.labelMedium,
+                      color: _profileSecondary,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: context.space(4)),
+          IconButton(
+            tooltip: 'Tùy chọn xe ${vehicle.vehicleName}',
+            onPressed: () => _showFeatureNotice(context, 'Tùy chọn phương tiện'),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.more_vert_rounded,
+                color: _profileOnSurfaceVariant),
           ),
         ],
       ),
@@ -591,34 +613,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color color,
     required String title,
     required String subtitle,
+    String? trailingLabel,
     required VoidCallback onTap,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        width: context.space(40),
+        height: context.space(40),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
+          color: _profileSurfaceLow,
+          shape: BoxShape.circle,
         ),
         child: Icon(icon, size: context.iconSize(20), color: color),
       ),
       title: Text(
         title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: AppTypography.labelLarge.copyWith(
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryLight,
+          color: _profileOnSurface,
         ),
       ),
       subtitle: Text(
         subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: AppTypography.bodySmall.copyWith(
-          color: AppColors.textMutedLight,
+          color: _profileOnSurfaceVariant,
           fontSize: context.sp(11.5),
         ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey, size: 20),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingLabel != null) ...[
+            Text(
+              trailingLabel,
+              style: AppTypography.labelMedium.copyWith(
+                color: _profilePrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(width: context.space(4)),
+          ],
+          Icon(Icons.chevron_right_rounded,
+              color: _profileOutline, size: context.iconSize(20)),
+        ],
+      ),
     );
   }
 
@@ -633,30 +677,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        width: context.space(40),
+        height: context.space(40),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: _profileSurfaceLow,
+          shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: context.iconSize(20), color: AppColors.primary),
+        child: Icon(icon,
+            size: context.iconSize(20), color: _profilePrimaryContainer),
       ),
       title: Text(
         title,
         style: AppTypography.labelLarge.copyWith(
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryLight,
+          color: _profileOnSurface,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodySmall.copyWith(
-          color: AppColors.textMutedLight,
+          color: _profileOnSurfaceVariant,
           fontSize: context.sp(11.5),
         ),
       ),
       trailing: Switch(
         value: value,
-        activeThumbColor: AppColors.primary,
+        activeThumbColor: _profilePrimary,
         onChanged: onChanged,
       ),
     );
@@ -719,7 +765,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ResponsiveButton(
             label: 'Hủy',
             type: ResponsiveButtonType.outlined,
-            backgroundColor: Colors.grey.shade400,
+            backgroundColor: AppColors.borderLight,
             foregroundColor: AppColors.textPrimaryLight,
             onPressed: () => Navigator.pop(sheetContext),
           ),
@@ -762,7 +808,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ResponsiveButton(
             label: 'Hủy',
             type: ResponsiveButtonType.outlined,
-            backgroundColor: Colors.grey.shade400,
+            backgroundColor: AppColors.borderLight,
             foregroundColor: AppColors.textPrimaryLight,
             onPressed: () => Navigator.pop(sheetContext),
           ),

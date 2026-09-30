@@ -41,4 +41,24 @@ class AppColors {
   static const Color textPrimaryDark = Color(0xFFF8FAFC);
   static const Color textSecondaryDark = Color(0xFF94A3B8);
   static const Color textMutedDark = Color(0xFF64748B);
+
+  // Material 3 tokens (onboarding / auth surfaces)
+  static const Color m3Primary = Color(0xFF0058BC);
+  static const Color m3OnPrimary = Color(0xFFFFFFFF);
+  static const Color m3PrimaryFixed = Color(0xFFD8E2FF);
+  static const Color m3OnPrimaryFixed = Color(0xFF001A41);
+  static const Color m3PrimaryFixedDim = Color(0xFFADC6FF);
+  static const Color m3Secondary = Color(0xFF006E28);
+  static const Color m3SecondaryContainer = Color(0xFF6FFB85);
+  static const Color m3SecondaryFixed = Color(0xFF72FE88);
+  static const Color m3TertiaryContainer = Color(0xFFAC6300);
+  static const Color m3Surface = Color(0xFFFCF8FB);
+  static const Color m3SurfaceContainerLow = Color(0xFFF6F3F5);
+  static const Color m3SurfaceContainer = Color(0xFFF0EDEF);
+  static const Color m3SurfaceContainerHighest = Color(0xFFE4E2E4);
+  static const Color m3OnSurface = Color(0xFF1B1B1D);
+  static const Color m3OnSurfaceVariant = Color(0xFF414755);
+  static const Color m3OutlineVariant = Color(0xFFC1C6D7);
+  static const Color m3InverseSurface = Color(0xFF303032);
+  static const Color m3InverseOnSurface = Color(0xFFF3F0F2);
 }

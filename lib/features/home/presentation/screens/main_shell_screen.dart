@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
-import 'package:prm393_frontend/features/home/presentation/screens/home_screen.dart';
-import 'package:prm393_frontend/features/home/presentation/widgets/services_popup_sheet.dart';
+import 'package:go_router/go_router.dart';
+import 'package:prm393_frontend/core/routes/route_names.dart';
+import 'package:prm393_frontend/features/home/presentation/screens/home_dashboard_screen.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
+import 'package:prm393_frontend/features/subscriptions/presentation/screens/monthly_pass_screen.dart';
 
 /// Thanh điều hướng dùng chung với Floating Glass Pill + Radial Arc Menu
 class MainShellScreen extends StatefulWidget {
@@ -17,35 +18,47 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int _currentTab = 0;
 
-  // ---- Tab definitions (4 items, center button is separate) ----
+  // ---- Main destinations ----
   static const _tabs = [
-    NavTab(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Trang chủ'),
-    NavTab(icon: Icons.history_outlined, activeIcon: Icons.history_rounded, label: 'Lịch sử'),
-    NavTab(icon: Icons.widgets_outlined, activeIcon: Icons.widgets_rounded, label: 'Dịch vụ'),
-    NavTab(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Hồ sơ'),
+    NavTab(
+        icon: Icons.local_parking_outlined,
+        activeIcon: Icons.local_parking_rounded,
+        label: 'Đặt chỗ'),
+    NavTab(
+        icon: Icons.history_outlined,
+        activeIcon: Icons.history_rounded,
+        label: 'Lịch sử'),
+    NavTab(
+        icon: Icons.card_membership_outlined,
+        activeIcon: Icons.card_membership_rounded,
+        label: 'Vé tháng'),
+    NavTab(
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Cá nhân'),
   ];
 
-  // ---- Body pages per tab index (0, 1, 3, 4 — tab 2 is center CTA) ----
+  // ---- Body pages per tab index ----
   Widget _bodyForTab(int idx) {
     switch (idx) {
-      case 0: return const HomeScreen();
-      case 1: return _PlaceholderPage(icon: Icons.history_rounded, label: 'Lịch sử giao dịch', color: AppColors.secondary);
-      case 3: return const HomeScreen(); // Fallback keep home active when services popup closes
-      case 4: return const ProfileScreen();
-      default: return const HomeScreen();
+      case 0:
+        return HomeDashboardScreen(
+          onOpenMap: (lotId) => context.push(RouteNames.mapPath, extra: lotId),
+        );
+      case 1:
+        return _PlaceholderPage(
+            icon: Icons.history_rounded,
+            label: 'Lịch sử giao dịch',
+            color: AppColors.secondary);
+      case 2:
+        return const MonthlyPassScreen();
+      case 3:
+        return const ProfileScreen();
+      default:
+        return HomeDashboardScreen(
+          onOpenMap: (lotId) => context.push(RouteNames.mapPath, extra: lotId),
+        );
     }
-  }
-
-  void _handleCenterTap() {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng chính: Đặt chỗ gửi xe'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-      ),
-    );
   }
 
   @override
@@ -57,52 +70,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
       body: _bodyForTab(_currentTab),
       bottomNavigationBar: FloatingBottomNavBar(
         currentIndex: _currentTab,
-        onTabChanged: (i) {
-          if (i == 3) {
-            // Nhấp vào Dịch vụ trên taskbar -> mở popup modal
-            ServicesPopupSheet.show(context);
-          } else {
-            setState(() => _currentTab = i);
-          }
-        },
+        onTabChanged: (i) => setState(() => _currentTab = i),
         tabs: _tabs,
-        centerIcon: Icons.add_rounded,
-        centerColor: AppColors.primary,
-        onCenterTap: _handleCenterTap,
-        radialOptions: [
-          RadialOption(
-            icon: Icons.calendar_month_rounded,
-            label: 'Đặt chỗ',
-            color: AppColors.primary,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/reservations'), behavior: SnackBarBehavior.floating),
-            ),
-          ),
-          RadialOption(
-            icon: Icons.qr_code_scanner_rounded,
-            label: 'Quét QR',
-            color: AppColors.secondary,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/ParkingOperation/upload-and-decode-qr'), behavior: SnackBarBehavior.floating),
-            ),
-          ),
-          RadialOption(
-            icon: Icons.card_membership_rounded,
-            label: 'Vé tháng',
-            color: AppColors.accent,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ GET /api/MonthlySubscription/my'), behavior: SnackBarBehavior.floating),
-            ),
-          ),
-          RadialOption(
-            icon: Icons.report_problem_outlined,
-            label: 'Sự cố',
-            color: AppColors.warning,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/IncidentReport'), behavior: SnackBarBehavior.floating),
-            ),
-          ),
-        ],
+        radialOptions: const [],
+        onCenterTap: () {},
+        showCenterButton: false,
       ),
     );
   }
@@ -114,7 +86,8 @@ class _PlaceholderPage extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _PlaceholderPage({required this.icon, required this.label, required this.color});
+  const _PlaceholderPage(
+      {required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -136,9 +109,17 @@ class _PlaceholderPage extends StatelessWidget {
                 child: Icon(icon, size: 48, color: color),
               ),
               const SizedBox(height: 16),
-              Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Text('Tính năng đang phát triển', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMutedLight)),
+              Text('Tính năng đang phát triển',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.textMutedLight)),
             ],
           ),
         ),

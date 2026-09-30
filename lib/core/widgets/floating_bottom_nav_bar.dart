@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,6 +48,7 @@ class FloatingBottomNavBar extends StatefulWidget {
   final VoidCallback onCenterTap;
   final IconData centerIcon;
   final Color centerColor;
+  final bool showCenterButton;
 
   const FloatingBottomNavBar({
     super.key,
@@ -58,6 +59,7 @@ class FloatingBottomNavBar extends StatefulWidget {
     required this.onCenterTap,
     this.centerIcon = Icons.add_rounded,
     this.centerColor = AppColors.primary,
+    this.showCenterButton = true,
   });
 
   @override
@@ -85,10 +87,12 @@ class _FloatingBottomNavBarState extends State<FloatingBottomNavBar>
 
   // Semicircle geometry constants – Full 180 degrees (Horizontal left to horizontal right)
   static const double kInnerRadius = 52.0;
-  static const double kOuterRadius = 182.0;         // Bigger, spacious radius
-  static const double kStartAngle = -math.pi;        // Exactly -180 degrees (horizontal left)
-  static const double kTotalSweep = math.pi;         // Exactly 180 degrees (full semicircle)
-  static const double kGap = 0.046;                 // Equal gap between sectors (~2.6 deg)
+  static const double kOuterRadius = 182.0; // Bigger, spacious radius
+  static const double kStartAngle =
+      -math.pi; // Exactly -180 degrees (horizontal left)
+  static const double kTotalSweep =
+      math.pi; // Exactly 180 degrees (full semicircle)
+  static const double kGap = 0.046; // Equal gap between sectors (~2.6 deg)
 
   @override
   void initState() {
@@ -255,7 +259,8 @@ class _FloatingBottomNavBarState extends State<FloatingBottomNavBar>
 
     int best = -1;
     for (int i = 0; i < count; i++) {
-      final sStart = kStartAngle + i * (sliceSweep + kGap) - (i == 0 ? 0.30 : kGap / 2);
+      final sStart =
+          kStartAngle + i * (sliceSweep + kGap) - (i == 0 ? 0.30 : kGap / 2);
       final sEnd = sStart + sliceSweep + (i == count - 1 ? 0.30 : kGap);
 
       if (touchAngle >= sStart && touchAngle <= sEnd) {
@@ -286,6 +291,7 @@ class _FloatingBottomNavBarState extends State<FloatingBottomNavBar>
       centerKey: _centerKey,
       centerIcon: widget.centerIcon,
       centerColor: widget.centerColor,
+      showCenterButton: widget.showCenterButton,
       bounceAnim: _bounceAnim,
       isMenuOpen: _isMenuOpen,
       bp: bp,
@@ -308,6 +314,7 @@ class _GlassPill extends StatelessWidget {
   final GlobalKey centerKey;
   final IconData centerIcon;
   final Color centerColor;
+  final bool showCenterButton;
   final Animation<double> bounceAnim;
   final bool isMenuOpen;
   final double bp;
@@ -323,6 +330,7 @@ class _GlassPill extends StatelessWidget {
     required this.centerKey,
     required this.centerIcon,
     required this.centerColor,
+    required this.showCenterButton,
     required this.bounceAnim,
     required this.isMenuOpen,
     required this.bp,
@@ -361,66 +369,95 @@ class _GlassPill extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Tab 0 & 1
-                Expanded(child: _NavItem(tab: tabs[0], tabIndex: 0, cur: currentIndex, onTap: onTabChanged)),
-                Expanded(child: _NavItem(tab: tabs[1], tabIndex: 1, cur: currentIndex, onTap: onTabChanged)),
-
-                // Center Action Button (Hold to open Semicircle)
-                SizedBox(
-                  width: sp(72),
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: onCenterTap,
-                      onLongPressStart: onCenterLongPressStart,
-                      onLongPressMoveUpdate: onCenterLongPressMoveUpdate,
-                      onLongPressEnd: onCenterLongPressEnd,
-                      child: AnimatedBuilder(
-                        animation: bounceAnim,
-                        builder: (_, child) => Transform.scale(
-                          scale: (bounceAnim.value).clamp(0.5, 2.0),
-                          child: child,
-                        ),
-                        child: Container(
-                          key: centerKey,
-                          width: sp(56),
-                          height: sp(56),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                centerColor,
-                                Color.lerp(centerColor, AppColors.accent, 0.40) ?? centerColor,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: centerColor.withValues(alpha: 0.45),
-                                blurRadius: sp(18),
-                                offset: Offset(0, sp(6)),
-                              ),
-                            ],
+                if (showCenterButton) ...[
+                  Expanded(
+                      child: _NavItem(
+                          tab: tabs[0],
+                          tabIndex: 0,
+                          cur: currentIndex,
+                          onTap: onTabChanged)),
+                  Expanded(
+                      child: _NavItem(
+                          tab: tabs[1],
+                          tabIndex: 1,
+                          cur: currentIndex,
+                          onTap: onTabChanged)),
+                  SizedBox(
+                    width: sp(72),
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: onCenterTap,
+                        onLongPressStart: onCenterLongPressStart,
+                        onLongPressMoveUpdate: onCenterLongPressMoveUpdate,
+                        onLongPressEnd: onCenterLongPressEnd,
+                        child: AnimatedBuilder(
+                          animation: bounceAnim,
+                          builder: (_, child) => Transform.scale(
+                            scale: (bounceAnim.value).clamp(0.5, 2.0),
+                            child: child,
                           ),
-                          child: AnimatedRotation(
-                            turns: isMenuOpen ? 0.125 : 0,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOutBack,
-                            child: Icon(
-                              isMenuOpen ? Icons.close_rounded : centerIcon,
-                              color: Colors.white,
-                              size: context.iconSize(28),
+                          child: Container(
+                            key: centerKey,
+                            width: sp(56),
+                            height: sp(56),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  centerColor,
+                                  Color.lerp(centerColor, AppColors.accent,
+                                          0.40) ??
+                                      centerColor,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: centerColor.withValues(alpha: 0.45),
+                                  blurRadius: sp(18),
+                                  offset: Offset(0, sp(6)),
+                                ),
+                              ],
+                            ),
+                            child: AnimatedRotation(
+                              turns: isMenuOpen ? 0.125 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOutBack,
+                              child: Icon(
+                                isMenuOpen ? Icons.close_rounded : centerIcon,
+                                color: Colors.white,
+                                size: context.iconSize(28),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-
-                // Tab 2 & 3
-                Expanded(child: _NavItem(tab: tabs[2], tabIndex: 3, cur: currentIndex, onTap: onTabChanged)),
-                Expanded(child: _NavItem(tab: tabs[3], tabIndex: 4, cur: currentIndex, onTap: onTabChanged)),
+                  Expanded(
+                      child: _NavItem(
+                          tab: tabs[2],
+                          tabIndex: 3,
+                          cur: currentIndex,
+                          onTap: onTabChanged)),
+                  Expanded(
+                      child: _NavItem(
+                          tab: tabs[3],
+                          tabIndex: 4,
+                          cur: currentIndex,
+                          onTap: onTabChanged)),
+                ] else ...[
+                  for (var index = 0; index < tabs.length; index++)
+                    Expanded(
+                      child: _NavItem(
+                        tab: tabs[index],
+                        tabIndex: index,
+                        cur: currentIndex,
+                        onTap: onTabChanged,
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -461,7 +498,9 @@ class _NavItem extends StatelessWidget {
             curve: Curves.easeOut,
             padding: EdgeInsets.all(context.space(5)),
             decoration: BoxDecoration(
-              color: active ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+              color: active
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(context.space(11)),
             ),
             child: Icon(
@@ -478,7 +517,8 @@ class _NavItem extends StatelessWidget {
               color: active ? AppColors.primary : AppColors.textMutedLight,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
-            child: Text(tab.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            child:
+                Text(tab.label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -572,10 +612,14 @@ class _SemicircleRadialOverlay extends StatelessWidget {
                     for (int i = 0; i < count; i++)
                       Builder(builder: (ctx) {
                         // Mid-angle of slice i
-                        final midAngle = startAngle + i * (sliceSweep + gap) + sliceSweep / 2;
+                        final midAngle = startAngle +
+                            i * (sliceSweep + gap) +
+                            sliceSweep / 2;
                         final currentMidRadius = midRadius * expansion;
-                        final posX = centerPos.dx + math.cos(midAngle) * currentMidRadius;
-                        final posY = centerPos.dy + math.sin(midAngle) * currentMidRadius;
+                        final posX = centerPos.dx +
+                            math.cos(midAngle) * currentMidRadius;
+                        final posY = centerPos.dy +
+                            math.sin(midAngle) * currentMidRadius;
 
                         final isHighlighted = highlightedIdx == i;
 
@@ -583,9 +627,11 @@ class _SemicircleRadialOverlay extends StatelessWidget {
                           left: posX,
                           top: posY,
                           child: Transform.translate(
-                            offset: const Offset(-41, -30), // center the 82x60 container
+                            offset: const Offset(
+                                -41, -30), // center the 82x60 container
                             child: Transform.scale(
-                              scale: (expansion * (isHighlighted ? 1.15 : 1.0)).clamp(0.01, 1.5),
+                              scale: (expansion * (isHighlighted ? 1.15 : 1.0))
+                                  .clamp(0.01, 1.5),
                               child: Opacity(
                                 opacity: expansion.clamp(0.0, 1.0),
                                 child: SizedBox(
@@ -596,15 +642,22 @@ class _SemicircleRadialOverlay extends StatelessWidget {
                                       Icon(
                                         options[i].icon,
                                         size: isHighlighted ? 30 : 26,
-                                        color: isHighlighted ? Colors.white : options[i].color,
+                                        color: isHighlighted
+                                            ? Colors.white
+                                            : options[i].color,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         options[i].label,
-                                        style: AppTypography.labelMedium.copyWith(
+                                        style:
+                                            AppTypography.labelMedium.copyWith(
                                           fontSize: 11,
-                                          color: isHighlighted ? Colors.white : AppColors.textPrimaryLight,
-                                          fontWeight: isHighlighted ? FontWeight.w800 : FontWeight.w600,
+                                          color: isHighlighted
+                                              ? Colors.white
+                                              : AppColors.textPrimaryLight,
+                                          fontWeight: isHighlighted
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
                                         ),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
@@ -669,7 +722,8 @@ class _SemicirclePiePainter extends CustomPainter {
 
       // Expand the highlighted sector outward
       final currentOuter = isHighlighted ? outerRadius + 10.0 : outerRadius;
-      final currentInner = isHighlighted ? math.max(0.0, innerRadius - 2.0) : innerRadius;
+      final currentInner =
+          isHighlighted ? math.max(0.0, innerRadius - 2.0) : innerRadius;
 
       final path = Path();
       path.arcTo(

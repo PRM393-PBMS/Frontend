@@ -5,6 +5,15 @@ class RouteNames {
   static const String splash = 'splash';
   static const String splashPath = '/';
 
+  static const String onboarding = 'onboarding';
+  static const String onboardingPath = '/onboarding';
+
+  static const String map = 'map';
+  static const String mapPath = '/map';
+
+  static const String bookingConfirmation = 'bookingConfirmation';
+  static const String bookingConfirmationPath = '/booking-confirmation';
+
   static const String login = 'login';
   static const String loginPath = '/login';
 
