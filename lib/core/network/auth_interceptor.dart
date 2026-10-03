@@ -1,16 +1,26 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
+
 import '../config/api_endpoints.dart';
 import '../storage/secure_storage_service.dart';
 
-/// Interceptor tự động thêm Bearer token vào Request và xử lý Refresh Token khi gặp HTTP 401
-class AuthInterceptor extends QueuedInterceptor {
+class AuthInterceptor extends Interceptor {
   final Dio dio;
   final SecureStorageService storageService;
   final void Function()? onSessionExpired;
 
-  bool _isRefreshing = false;
-  Completer<String?>? _refreshCompleter;
+  Future<String?>? _refreshFuture;
+  Future<void>? _expirationFuture;
+
+  static const _retryKey = 'authRetried';
+
+  static const _publicPaths = {
+    ApiEndpoints.login,
+    ApiEndpoints.sendRegisterOtp,
+    ApiEndpoints.verifyRegisterOtp,
+    ApiEndpoints.requestResetPassword,
+    ApiEndpoints.verifyResetPassword,
+    ApiEndpoints.refreshToken,
+  };
 
   AuthInterceptor({
     required this.dio,
@@ -18,117 +28,217 @@ class AuthInterceptor extends QueuedInterceptor {
     this.onSessionExpired,
   });
 
+  bool _isPublic(RequestOptions options) {
+    return _publicPaths.contains(Uri.parse(options.path).path);
+  }
+
   @override
-  Future<void> onRequest(
+  void onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Không gán token cho các endpoint public như Login, OTP, Refresh
-    final path = options.path;
-    final isPublicEndpoint = path.contains(ApiEndpoints.login) ||
-        path.contains(ApiEndpoints.sendRegisterOtp) ||
-        path.contains(ApiEndpoints.verifyRegisterOtp) ||
-        path.contains(ApiEndpoints.requestResetPassword) ||
-        path.contains(ApiEndpoints.verifyResetPassword) ||
-        path.contains(ApiEndpoints.refreshToken);
+    try {
+      if (!_isPublic(options)) {
+        final token = await storageService.getAccessToken();
 
-    if (!isPublicEndpoint) {
-      final token = await storageService.getAccessToken();
-      if (token != null && token.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $token';
+        if (token != null && token.isNotEmpty) {
+          _expirationFuture = null;
+          options.headers['Authorization'] = 'Bearer $token';
+        } else {
+          options.headers.remove('Authorization');
+        }
       }
-    }
 
-    return handler.next(options);
+      handler.next(options);
+    } catch (error, stackTrace) {
+      handler.reject(
+        DioException(
+          requestOptions: options,
+          error: error,
+          stackTrace: stackTrace,
+          message: 'Không thể đọc thông tin đăng nhập.',
+        ),
+      );
+    }
   }
 
   @override
-  Future<void> onError(
+  void onError(
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Nếu lỗi không phải 401 hoặc xảy ra ngay tại API auth/refresh, bỏ qua cho handler xử lý lỗi
+    final request = err.requestOptions;
+
     if (err.response?.statusCode != 401 ||
-        err.requestOptions.path.contains(ApiEndpoints.login) ||
-        err.requestOptions.path.contains(ApiEndpoints.refreshToken)) {
-      return handler.next(err);
+        _isPublic(request) ||
+        request.extra[_retryKey] == true) {
+      handler.next(err);
+      return;
     }
-
-    // Nếu đang trong quá trình Refresh Token, các request 401 khác sẽ đợi token mới
-    if (_isRefreshing) {
-      try {
-        final newToken = await _refreshCompleter?.future;
-        if (newToken != null && newToken.isNotEmpty) {
-          final clonedOptions = err.requestOptions;
-          clonedOptions.headers['Authorization'] = 'Bearer $newToken';
-          final response = await dio.fetch(clonedOptions);
-          return handler.resolve(response);
-        }
-      } catch (_) {
-        return handler.next(err);
-      }
-    }
-
-    _isRefreshing = true;
-    _refreshCompleter = Completer<String?>();
 
     try {
-      final refreshToken = await storageService.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        if (_refreshCompleter?.isCompleted == false) {
-          _refreshCompleter?.complete(null);
-        }
-        return handler.next(err);
+      var token = await storageService.getAccessToken();
+      final failedAuthorization = request.headers['Authorization'];
+
+      // Nếu một request khác đã refresh xong, dùng token mới luôn.
+      if (token == null ||
+          token.isEmpty ||
+          failedAuthorization == 'Bearer $token') {
+        token = await _refreshOnce();
       }
 
-      // Gọi endpoint cấp Access Token mới: POST /api/Auth/refresh-token
-      // DTO: { "refreshTokenKey": "..." }
-      final refreshResponse = await dio.post(
-        ApiEndpoints.refreshToken,
-        data: {'refreshTokenKey': refreshToken},
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+      if (token == null || token.isEmpty) {
+        handler.next(err);
+        return;
+      }
+
+      final retry = request.copyWith(
+        headers: {
+          ...request.headers,
+          'Authorization': 'Bearer $token',
+        },
+        extra: {
+          ...request.extra,
+          _retryKey: true,
+        },
       );
 
-      final responseData = refreshResponse.data;
-      if (responseData is Map<String, dynamic> &&
-          (responseData['isSuccess'] == true || responseData['statusCode'] == 200)) {
-        final result = responseData['result'];
-        final newAccessToken = result is Map<String, dynamic>
-            ? result['accessToken'] as String?
-            : null;
+      // FormData đã gửi cần được clone trước khi gửi lại.
+      if (request.data is FormData) {
+        retry.data = (request.data as FormData).clone();
+      }
 
-        if (newAccessToken != null && newAccessToken.isNotEmpty) {
-          await storageService.saveAccessToken(newAccessToken);
-
-          _refreshCompleter?.complete(newAccessToken);
-
-          // Thử lại request ban đầu với Access Token mới
-          final retryOptions = err.requestOptions;
-          retryOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-          final retryResponse = await dio.fetch(retryOptions);
-          return handler.resolve(retryResponse);
+      try {
+        final response = await dio.fetch<dynamic>(retry);
+        handler.resolve(response);
+      } on DioException catch (retryError) {
+        if (retryError.response?.statusCode == 401) {
+          await _expireSession();
         }
-      }
 
-      if (_refreshCompleter?.isCompleted == false) {
-        _refreshCompleter?.complete(null);
+        handler.next(retryError);
       }
-      return handler.next(err);
-    } catch (e) {
-      _handleSessionExpired();
-      if (_refreshCompleter?.isCompleted == false) {
-        _refreshCompleter?.completeError(e);
-      }
-      return handler.next(err);
-    } finally {
-      _isRefreshing = false;
+    } on DioException catch (refreshError) {
+      // Giữ nguyên lỗi mạng/timeout, không biến thành đăng xuất.
+      handler.next(refreshError);
+    } catch (error, stackTrace) {
+      handler.next(
+        DioException(
+          requestOptions: request,
+          error: error,
+          stackTrace: stackTrace,
+          message: 'Không thể khôi phục phiên đăng nhập.',
+        ),
+      );
     }
   }
 
-  void _handleSessionExpired() {
-    storageService.clearAuthData();
+  Future<String?> _refreshOnce() async {
+    final running = _refreshFuture;
+    if (running != null) return running;
+
+    final future = _refreshAccessToken();
+    _refreshFuture = future;
+
+    try {
+      return await future;
+    } finally {
+      if (identical(_refreshFuture, future)) {
+        _refreshFuture = null;
+      }
+    }
+  }
+
+  Future<String?> _refreshAccessToken() async {
+    final refreshToken = await storageService.getRefreshToken();
+
+    if (refreshToken == null || refreshToken.isEmpty) {
+      await _expireSession();
+      return null;
+    }
+
+    final refreshDio = Dio(
+      BaseOptions(
+        baseUrl: dio.options.baseUrl,
+        connectTimeout: dio.options.connectTimeout,
+        receiveTimeout: dio.options.receiveTimeout,
+        sendTimeout: dio.options.sendTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    try {
+      final response = await refreshDio.post<dynamic>(
+        ApiEndpoints.refreshToken,
+        data: {'refreshTokenKey': refreshToken},
+      );
+
+      final data = response.data;
+
+      if (data is! Map<String, dynamic> ||
+          data['isSuccess'] != true) {
+        if (data is Map<String, dynamic> &&
+            (data['statusCode'] == 401 ||
+                data['statusCode'] == 403)) {
+          await _expireSession();
+          return null;
+        }
+
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+          message: 'Máy chủ không cấp được access token mới.',
+        );
+      }
+
+      final result = data['result'];
+      final token = result is Map<String, dynamic>
+          ? result['accessToken']
+          : null;
+
+      if (token is! String || token.isEmpty) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+          message: 'Phản hồi refresh thiếu access token.',
+        );
+      }
+
+      // Không khôi phục token nếu người dùng đã đổi/xóa phiên.
+      final currentRefreshToken =
+          await storageService.getRefreshToken();
+
+      if (currentRefreshToken != refreshToken) {
+        return null;
+      }
+
+      await storageService.saveAccessToken(token);
+      return token;
+    } on DioException catch (error) {
+      final status = error.response?.statusCode;
+
+      if (status == 401 || status == 403) {
+        await _expireSession();
+        return null;
+      }
+
+      rethrow;
+    } finally {
+      refreshDio.close();
+    }
+  }
+
+  Future<void> _expireSession() {
+    return _expirationFuture ??= _clearSession();
+  }
+
+  Future<void> _clearSession() async {
+    await storageService.clearAuthData();
     onSessionExpired?.call();
   }
 }
