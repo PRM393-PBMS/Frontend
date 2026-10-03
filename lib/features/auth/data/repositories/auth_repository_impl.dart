@@ -32,7 +32,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final data = response.result;
       if (data == null) {
-        throw const ServerException(message: 'Không nhận được dữ liệu phiên đăng nhập.');
+        throw const ServerException(
+            message: 'Không nhận được dữ liệu phiên đăng nhập.');
       }
 
       await _storageService.saveAccessToken(data.accessToken);
@@ -55,22 +56,35 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final cachedJson = await _storageService.getUserData();
       UserModel? cachedUser;
+
       if (cachedJson != null) {
-        cachedUser = UserModel.fromJson(jsonDecode(cachedJson) as Map<String, dynamic>);
+        cachedUser = UserModel.fromJson(
+          jsonDecode(cachedJson) as Map<String, dynamic>,
+        );
       }
 
       try {
         final profileResponse = await _remoteDataSource.getProfile();
-        if (profileResponse.result != null) {
-          final freshUser = profileResponse.result!;
-          await _storageService.saveUserData(jsonEncode(freshUser.toJson()));
+        final freshUser = profileResponse.result;
+
+        if (freshUser != null) {
+          await _storageService.saveUserData(
+            jsonEncode(freshUser.toJson()),
+          );
           return freshUser;
         }
-      } catch (_) {
+
+        return null;
+      } on UnauthorizedException {
+        // Phiên đăng nhập bị từ chối.
+        return null;
+      } on ForbiddenException {
+        // Không được phép truy cập hồ sơ.
+        return null;
+      } on NetworkException {
+        // Mất mạng hoặc timeout: dùng dữ liệu đã lưu.
         return cachedUser;
       }
-
-      return cachedUser;
     } catch (_) {
       return null;
     }
