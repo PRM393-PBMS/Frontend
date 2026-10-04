@@ -32,6 +32,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRequestResetPasswordSubmitted>(_onAuthRequestResetPasswordSubmitted);
     on<AuthVerifyResetPasswordSubmitted>(_onAuthVerifyResetPasswordSubmitted);
     on<AuthClearMessageRequested>(_onAuthClearMessageRequested);
+    on<AuthProfileUpdated>((event, emit) {
+      // Không cập nhật nhầm hồ sơ nếu người dùng đã đổi phiên.
+      if (!state.isAuthenticated || state.user?.id != event.user.id) {
+        return;
+      }
+      emit(state.copyWith(user: event.user));
+    });
   }
 
   Future<void> _onAuthCheckRequested(
@@ -59,7 +66,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null, successMessage: null));
+    emit(state.copyWith(
+        status: AuthStatus.loading, errorMessage: null, successMessage: null));
 
     try {
       final user = await _authRepository.login(
@@ -97,7 +105,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSendRegisterOtpSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null, successMessage: null));
+    emit(state.copyWith(
+        status: AuthStatus.loading, errorMessage: null, successMessage: null));
 
     try {
       await _authRepository.sendRegisterOtp(
@@ -132,7 +141,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthVerifyRegisterOtpSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null, successMessage: null));
+    emit(state.copyWith(
+        status: AuthStatus.loading, errorMessage: null, successMessage: null));
 
     try {
       await _authRepository.verifyRegisterOtp(
@@ -163,7 +173,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRequestResetPasswordSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null, successMessage: null));
+    emit(state.copyWith(
+        status: AuthStatus.loading, errorMessage: null, successMessage: null));
 
     try {
       await _authRepository.requestResetPassword(email: event.email);
@@ -172,7 +183,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         otpSent: true,
         pendingEmail: event.email,
-        successMessage: 'Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi!',
+        successMessage:
+            'Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi!',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(
@@ -191,7 +203,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthVerifyResetPasswordSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null, successMessage: null));
+    emit(state.copyWith(
+        status: AuthStatus.loading, errorMessage: null, successMessage: null));
 
     try {
       await _authRepository.verifyResetPassword(
@@ -205,7 +218,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         resetPasswordSuccess: true,
         otpSent: false,
-        successMessage: 'Đặt lại mật khẩu thành công! Hãy đăng nhập bằng mật khẩu mới.',
+        successMessage:
+            'Đặt lại mật khẩu thành công! Hãy đăng nhập bằng mật khẩu mới.',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(

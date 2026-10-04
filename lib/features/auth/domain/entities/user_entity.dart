@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-/// Entity đại diện cho người dùng trong ứng dụng
 class UserEntity extends Equatable {
   final String id;
   final String userName;
@@ -8,6 +7,7 @@ class UserEntity extends Equatable {
   final String? fullName;
   final String? phoneNumber;
   final String roleName;
+  final String? avatarUrl;
 
   const UserEntity({
     required this.id,
@@ -16,12 +16,24 @@ class UserEntity extends Equatable {
     this.fullName,
     this.phoneNumber,
     required this.roleName,
+    this.avatarUrl,
   });
 
-  bool get isManager => roleName.toLowerCase() == 'manager' || roleName.toLowerCase() == 'admin';
+  bool get isManager =>
+      roleName.toLowerCase() == 'manager' || roleName.toLowerCase() == 'admin';
+
   bool get isStaff => roleName.toLowerCase() == 'staff';
+
   bool get isCustomer => !isManager && !isStaff;
 
   @override
-  List<Object?> get props => [id, userName, email, fullName, phoneNumber, roleName];
+  List<Object?> get props => [
+        id,
+        userName,
+        email,
+        fullName,
+        phoneNumber,
+        roleName,
+        avatarUrl,
+      ];
 }
