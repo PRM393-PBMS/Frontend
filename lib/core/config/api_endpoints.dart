@@ -13,6 +13,7 @@ class ApiEndpoints {
 
   // ================= Profile (lowercase /api/profile) =================
   static const String profile = '/api/profile';
+  static const String profileAvatar = '/api/profile/avatar';
 
   // ================= Reservations (lowercase /api/reservations) =================
   static const String reservations = '/api/reservations';

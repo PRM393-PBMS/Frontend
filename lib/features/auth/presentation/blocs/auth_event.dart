@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/user_entity.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -55,7 +56,8 @@ class AuthVerifyRegisterOtpSubmitted extends AuthEvent {
   final String email;
   final String otp;
 
-  const AuthVerifyRegisterOtpSubmitted({required this.email, required this.otp});
+  const AuthVerifyRegisterOtpSubmitted(
+      {required this.email, required this.otp});
 
   @override
   List<Object?> get props => [email, otp];
@@ -97,3 +99,12 @@ class AuthLogoutRequested extends AuthEvent {}
 
 /// Xem trước giao diện Home / Demo Mode (Bypass backend)
 class AuthDemoLoginRequested extends AuthEvent {}
+
+class AuthProfileUpdated extends AuthEvent {
+  final UserEntity user;
+
+  const AuthProfileUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
