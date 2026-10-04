@@ -1,6 +1,5 @@
 import '../../domain/entities/user_entity.dart';
 
-/// Data Model parse an toàn dữ liệu User từ Backend PBMS
 class UserModel extends UserEntity {
   const UserModel({
     required super.id,
@@ -9,6 +8,7 @@ class UserModel extends UserEntity {
     super.fullName,
     super.phoneNumber,
     required super.roleName,
+    super.avatarUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -19,6 +19,7 @@ class UserModel extends UserEntity {
       fullName: json['fullName'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
       roleName: (json['roleName'] ?? 'User') as String,
+      avatarUrl: json['avatarUrl'] as String?,
     );
   }
 
@@ -30,6 +31,7 @@ class UserModel extends UserEntity {
       'fullName': fullName,
       'phoneNumber': phoneNumber,
       'roleName': roleName,
+      'avatarUrl': avatarUrl,
     };
   }
 }
