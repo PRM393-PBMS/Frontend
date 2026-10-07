@@ -11,8 +11,13 @@ import 'features/auth/presentation/blocs/auth_event.dart';
 import 'features/home/data/datasources/parking_remote_datasource.dart';
 import 'features/home/data/repositories/parking_repository.dart';
 
+import 'core/localization/app_language.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 0. Khởi tạo Language & Localization Controller
+  await LanguageController.instance.init();
 
   // 1. Khởi tạo Local Services & Network Core
   final storageService = SecureStorageService();
