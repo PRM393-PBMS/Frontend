@@ -7,6 +7,8 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 
+import 'core/localization/app_language.dart';
+
 class ParkingApp extends StatefulWidget {
   const ParkingApp({super.key});
 
@@ -29,13 +31,19 @@ class _ParkingAppState extends State<ParkingApp> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeController.instance.themeModeNotifier,
       builder: (context, currentMode, _) {
-        return MaterialApp.router(
-          title: AppConfig.appTitle,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: currentMode,
-          routerConfig: _router,
+        return ValueListenableBuilder<AppLanguage>(
+          valueListenable: LanguageController.instance.languageNotifier,
+          builder: (context, currentLang, _) {
+            return MaterialApp.router(
+              title: AppConfig.appTitle,
+              debugShowCheckedModeBanner: false,
+              locale: Locale(currentLang.code),
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: currentMode,
+              routerConfig: _router,
+            );
+          },
         );
       },
     );

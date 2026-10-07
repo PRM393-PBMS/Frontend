@@ -735,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: context.space(10)),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     HapticFeedback.mediumImpact();
                     if (hasActiveSession) {
                       _handleCheckoutSession(context, _activeSession!);
@@ -744,7 +744,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     } else if (_currentVehicle.paymentStatus == 'PendingPayment') {
                       _openPaymentForVehicle(_currentVehicle);
                     } else {
-                      _triggerBiometricAuth();
+                      if (!_isCardUnlocked) {
+                        final ok = await _triggerBiometricAuth();
+                        if (ok && context.mounted) {
+                          _showVehicleQREntryModal(context, _currentVehicle);
+                        }
+                      } else {
+                        _showVehicleQREntryModal(context, _currentVehicle);
+                      }
                     }
                   },
                   icon: Icon(
@@ -754,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? Icons.add_circle_outline_rounded
                             : (_currentVehicle.paymentStatus == 'PendingPayment'
                                 ? Icons.payment_rounded
-                                : Icons.fingerprint_rounded)),
+                                : (_isCardUnlocked ? Icons.qr_code_rounded : Icons.fingerprint_rounded))),
                     size: context.iconSize(16),
                   ),
                   label: Text(
@@ -764,13 +771,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? 'Đăng ký xe ngay'
                             : (_currentVehicle.paymentStatus == 'PendingPayment'
                                 ? 'Thanh toán kích hoạt'
-                                : 'Lật vé vào bãi')),
+                                : (_isCardUnlocked ? 'Mã QR vào bãi' : 'Mở vé vào bãi'))),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _currentVehicle.paymentStatus == 'PendingPayment' && !hasActiveSession
                         ? const Color(0xFFF59E0B)
                         : (isDark ? AppColors.primary : const Color(0xFF090D14)),
-                    foregroundColor: const Color(0xFF090D14),
+                    foregroundColor: _currentVehicle.paymentStatus == 'PendingPayment' && !hasActiveSession
+                        ? Colors.white
+                        : (isDark ? const Color(0xFF090D14) : Colors.white),
                     padding: EdgeInsets.symmetric(vertical: context.space(11)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.space(10))),
                   ),
@@ -1530,6 +1539,148 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showVehicleQREntryModal(BuildContext context, VehicleCardModel vehicle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final now = DateTime.now();
+    final dynamicPayload = 'PBMS-GATE-IN|${vehicle.licensePlate}|${vehicle.nfcTagId}|${now.millisecondsSinceEpoch ~/ 30000}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Thẻ vé điện tử vào bãi', style: AppTypography.titleLarge),
+                        Text(
+                          'Quét tại Camera Barrier hoặc chạm cảm biến NFC',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Thẻ hiển thị QR Code động
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.borderSubtleDark : const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      vehicle.licensePlate,
+                      style: AppTypography.licensePlateMono.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${vehicle.vehicleName} • ${vehicle.ticketType}',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: dynamicPayload,
+                        version: QrVersions.auto,
+                        size: 180,
+                        backgroundColor: Colors.white,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.nfc_rounded, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Mã NFC PBMS: ${vehicle.nfcTagId}',
+                          style: AppTypography.badgeMono.copyWith(fontSize: 10.5, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Đóng'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleCheckoutSession(BuildContext context, ParkingSessionModel session) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final repo = context.read<ParkingRepository>();
@@ -1866,7 +2017,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _triggerBiometricAuth({VehicleCardModel? vehicle}) async {
+  Future<bool> _triggerBiometricAuth({VehicleCardModel? vehicle}) async {
     final target = vehicle ?? _currentVehicle;
     final canAuth = await BiometricService.instance.canAuthenticate();
     bool success = false;
@@ -1876,14 +2027,14 @@ class _HomeScreenState extends State<HomeScreen> {
         reason: 'Xác thực vân tay mở khoá thẻ xe ${target.licensePlate}',
       );
     } else {
-      if (!mounted) return;
+      if (!mounted) return false;
       success = await UltrasonicFingerprintDialog.authenticate(
         context,
         vehiclePlate: target.licensePlate,
       );
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
     if (success) {
       setState(() => _isCardUnlocked = true);
       HapticFeedback.heavyImpact();
@@ -1909,6 +2060,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+      return true;
     }
+    return false;
   }
 }

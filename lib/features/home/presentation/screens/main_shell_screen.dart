@@ -8,6 +8,7 @@ import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/home/presentation/screens/home_screen.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/services_popup_sheet.dart';
+import 'package:prm393_frontend/core/localization/app_translations.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
 
 /// Dual-Responsive Master Shell (Web Desktop Navigation Rail & Mobile Compact Dock)
@@ -21,11 +22,11 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int _currentTab = 0;
 
-  static const _tabs = [
-    NavTab(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Trang chủ'),
-    NavTab(icon: Icons.history_outlined, activeIcon: Icons.history_rounded, label: 'Lịch sử'),
-    NavTab(icon: Icons.widgets_outlined, activeIcon: Icons.widgets_rounded, label: 'Dịch vụ'),
-    NavTab(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Hồ sơ'),
+  List<NavTab> _getTabs(BuildContext context) => [
+    NavTab(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: context.tr('nav_home')),
+    NavTab(icon: Icons.history_outlined, activeIcon: Icons.history_rounded, label: context.tr('nav_history')),
+    NavTab(icon: Icons.widgets_outlined, activeIcon: Icons.widgets_rounded, label: context.tr('nav_services')),
+    NavTab(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: context.tr('nav_profile')),
   ];
 
   Widget _bodyForTab(int idx) {
@@ -114,7 +115,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 setState(() => _currentTab = i);
               }
             },
-            tabs: _tabs,
+            tabs: _getTabs(context),
             centerIcon: Icons.add_rounded,
             centerColor: AppColors.primary,
             onCenterTap: _handleCenterTap,
