@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Hiệu ứng chuyển động mượt mà xuất hiện từ dưới lên kèm mờ dần (Fade In Up)
+/// Hiệu ứng chuyển động xúc giác tinh tế (Tactile Micro-Transition)
+/// Chuẩn impeccable: 180ms - 240ms dứt khoát, độ dời ngắn (12px), loại bỏ độ trễ gây cảm giác lề mề
 class FadeInUp extends StatefulWidget {
   final Widget child;
   final Duration duration;
@@ -10,9 +11,9 @@ class FadeInUp extends StatefulWidget {
   const FadeInUp({
     super.key,
     required this.child,
-    this.duration = const Duration(milliseconds: 800),
+    this.duration = const Duration(milliseconds: 220),
     this.delay = Duration.zero,
-    this.from = 30.0,
+    this.from = 12.0,
   });
 
   @override
@@ -30,7 +31,7 @@ class _FadeInUpState extends State<FadeInUp> with SingleTickerProviderStateMixin
     _controller = AnimationController(vsync: this, duration: widget.duration);
 
     _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuad),
     );
 
     _translateAnimation = Tween<double>(begin: widget.from, end: 0.0).animate(

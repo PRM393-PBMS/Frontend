@@ -22,13 +22,13 @@ class ExploreHomeScreen extends StatefulWidget {
 
 class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   static const _initialCenter = LatLng(10.7791, 106.7009);
-  static const _brand = Color(0xFF087B8C);
-  static const _ink = Color(0xFF0F172A);
-  static const _muted = Color(0xFF64748B);
-  static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceLow = Color(0xFFF8FAFC);
-  static const _border = Color(0xFFE2E8F0);
-  static const _green = Color(0xFF059669);
+  static const _brand = AppColors.primary;
+  static const _ink = AppColors.textPrimaryLight;
+  static const _muted = AppColors.textSecondaryLight;
+  static const _surface = AppColors.surfaceLight;
+  static const _surfaceLow = AppColors.bgLight;
+  static const _border = AppColors.borderLight;
+  static const _green = AppColors.available;
 
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
