@@ -11,6 +11,9 @@ class VehicleCarousel extends StatefulWidget {
   final bool isUnlocked;
   final VoidCallback? onTapToUnlock;
 
+  final VoidCallback? onAddVehicle;
+  final ValueChanged<VehicleCardModel>? onTapPendingPayment;
+
   const VehicleCarousel({
     super.key,
     required this.cards,
@@ -18,6 +21,8 @@ class VehicleCarousel extends StatefulWidget {
     this.initialIndex = 0,
     this.isUnlocked = false,
     this.onTapToUnlock,
+    this.onAddVehicle,
+    this.onTapPendingPayment,
   });
 
   @override
@@ -26,22 +31,14 @@ class VehicleCarousel extends StatefulWidget {
 
 class VehicleCarouselState extends State<VehicleCarousel> {
   late PageController _pageController;
-  late double _currentPage;
 
   @override
   void initState() {
     super.initState();
-    _currentPage = widget.initialIndex.toDouble();
     _pageController = PageController(
       initialPage: widget.initialIndex,
       viewportFraction: 0.87, // Hiển thị lấp ló thẻ 2 bên chuẩn Samsung Wallet
-    )..addListener(() {
-        if (mounted) {
-          setState(() {
-            _currentPage = _pageController.page ?? 0.0;
-          });
-        }
-      });
+    );
   }
 
   @override
@@ -62,77 +59,146 @@ class VehicleCarouselState extends State<VehicleCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (widget.cards.isEmpty) {
       return Container(
         height: context.space(210),
-        alignment: Alignment.center,
-        child: Text(
-          'Chưa có phương tiện nào trong mục này',
-          style: TextStyle(
-            color: AppColors.textSecondaryLight,
-            fontSize: context.sp(14),
+        margin: EdgeInsets.symmetric(horizontal: context.space(20)),
+        padding: EdgeInsets.all(context.space(20)),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(context.space(16)),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+            width: 1.2,
           ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.directions_car_filled_outlined,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có phương tiện nào',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: context.sp(15),
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Đăng ký biển số xe để kích hoạt thẻ vé thông minh và nhận diện barrier tự động.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                fontSize: context.sp(11.5),
+              ),
+            ),
+            if (widget.onAddVehicle != null) ...[
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: widget.onAddVehicle,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Đăng ký phương tiện ngay'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: const Color(0xFF090D14),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // CAROUSEL VIEWPORT
-        SizedBox(
-          height: context.space(224),
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: widget.cards.length,
-            onPageChanged: (index) {
-              widget.onCardChanged?.call(index);
-            },
-            physics: const BouncingScrollPhysics(),
-            itemBuilder: (context, index) {
-              final card = widget.cards[index];
-              final difference = (index - _currentPage).abs();
-              final scale = (1.0 - (difference * 0.08)).clamp(0.90, 1.0);
-              final opacity = (1.0 - (difference * 0.18)).clamp(0.72, 1.0);
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, _) {
+        final double currentPage = (_pageController.hasClients && _pageController.page != null)
+            ? _pageController.page!
+            : widget.initialIndex.toDouble();
 
-              return Transform.scale(
-                scale: scale,
-                child: Opacity(
-                  opacity: opacity,
-                  child: VehicleCardItem(
-                    card: card,
-                    isCurrent: index == _currentPage.round(),
-                    isUnlocked: widget.isUnlocked && (index == _currentPage.round()),
-                    onTapToUnlock: widget.onTapToUnlock,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // CAROUSEL VIEWPORT
+            SizedBox(
+              height: context.space(236),
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: widget.cards.length,
+                onPageChanged: (index) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      widget.onCardChanged?.call(index);
+                    }
+                  });
+                },
+                physics: const BouncingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final card = widget.cards[index];
+                  final difference = (index - currentPage).abs();
+                  final scale = (1.0 - (difference * 0.08)).clamp(0.90, 1.0);
+                  final opacity = (1.0 - (difference * 0.18)).clamp(0.72, 1.0);
 
-        SizedBox(height: context.space(10)),
-
-        // SUBTLE PAGE INDICATOR (Samsung Wallet Style)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(widget.cards.length, (index) {
-            final isSelected = index == _currentPage.round();
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: EdgeInsets.symmetric(horizontal: context.space(3)),
-              width: isSelected ? context.space(18) : context.space(6),
-              height: context.space(5),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.textSecondaryLight.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(context.space(3)),
+                  return Transform.scale(
+                    scale: scale,
+                    child: Opacity(
+                      opacity: opacity,
+                      child: VehicleCardItem(
+                        card: card,
+                        isCurrent: index == currentPage.round(),
+                        isUnlocked: widget.isUnlocked && (index == currentPage.round()),
+                        onTapToUnlock: widget.onTapToUnlock,
+                        onTapPendingPayment: () => widget.onTapPendingPayment?.call(card),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          }),
-        ),
-      ],
+            ),
+
+            SizedBox(height: context.space(10)),
+
+            // SUBTLE PAGE INDICATOR (Samsung Wallet Style)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.cards.length, (index) {
+                final isSelected = index == currentPage.round();
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: EdgeInsets.symmetric(horizontal: context.space(3)),
+                  width: isSelected ? context.space(18) : context.space(6),
+                  height: context.space(5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondaryLight.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(context.space(3)),
+                  ),
+                );
+              }),
+            ),
+          ],
+        );
+      },
     );
   }
 }

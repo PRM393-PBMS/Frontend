@@ -48,13 +48,15 @@ class ResponsiveText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = _resolveStyle(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = color ?? (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
     return Text(
       text,
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: maxLines != null ? overflow : TextOverflow.visible,
       style: style.copyWith(
-        color: color,
+        color: effectiveColor,
         fontWeight: fontWeight ?? style.fontWeight,
         letterSpacing: letterSpacing ?? style.letterSpacing,
         height: height ?? style.height,
@@ -330,59 +332,64 @@ class _ResponsiveTextFieldState extends State<ResponsiveTextField> {
                   ]
                 : null,
           ),
-          child: TextFormField(
-            controller: widget.controller,
-            focusNode: _focusNode,
-            obscureText: widget.obscureText,
-            keyboardType: widget.keyboardType,
-            textInputAction: widget.textInputAction,
-            validator: widget.validator,
-            onChanged: widget.onChanged,
-            onFieldSubmitted: widget.onFieldSubmitted,
-            enabled: widget.enabled,
-            maxLines: widget.maxLines,
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: context.sp(14),
-              color: AppColors.textPrimaryLight,
-            ),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              hintText: widget.hintText,
-              helperText: widget.helperText,
-              hintStyle: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textMutedLight,
-                fontSize: context.sp(13.5),
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.wp(4),
-                vertical: context.space(14),
-              ),
-              prefixIcon: widget.prefixIcon != null
-                  ? Icon(
-                      widget.prefixIcon,
-                      size: context.iconSize(20),
-                      color: _hasFocus ? AppColors.primary : AppColors.textSecondaryLight,
-                    )
-                  : null,
-              suffixIcon: widget.suffixIcon,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.space(14)),
-                borderSide: const BorderSide(color: AppColors.borderLight, width: 1.0),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.space(14)),
-                borderSide: const BorderSide(color: AppColors.borderLight, width: 1.0),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.space(14)),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.space(14)),
-                borderSide: const BorderSide(color: AppColors.error, width: 1.2),
-              ),
-            ),
+          child: Builder(
+            builder: (context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return TextFormField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                obscureText: widget.obscureText,
+                keyboardType: widget.keyboardType,
+                textInputAction: widget.textInputAction,
+                validator: widget.validator,
+                onChanged: widget.onChanged,
+                onFieldSubmitted: widget.onFieldSubmitted,
+                enabled: widget.enabled,
+                maxLines: widget.maxLines,
+                style: AppTypography.bodyMedium.copyWith(
+                  fontSize: context.sp(14),
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                  hintText: widget.hintText,
+                  helperText: widget.helperText,
+                  hintStyle: AppTypography.bodyMedium.copyWith(
+                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                    fontSize: context.sp(13.5),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: context.wp(4),
+                    vertical: context.space(14),
+                  ),
+                  prefixIcon: widget.prefixIcon != null
+                      ? Icon(
+                          widget.prefixIcon,
+                          size: context.iconSize(20),
+                          color: _hasFocus ? AppColors.primary : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                        )
+                      : null,
+                  suffixIcon: widget.suffixIcon,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(context.space(12)),
+                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(context.space(12)),
+                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(context.space(12)),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(context.space(12)),
+                    borderSide: const BorderSide(color: AppColors.error, width: 1.0),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -496,25 +503,34 @@ class ResponsiveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveRadius = borderRadius ?? BorderRadius.circular(context.space(20));
-    final effectivePadding = padding ?? EdgeInsets.all(context.space(18));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(context.space(14));
+    final effectivePadding = padding ?? EdgeInsets.all(context.space(16));
 
     final cardWidget = Container(
       decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.white,
+        color: backgroundColor ?? (isDark ? AppColors.cardDark : Colors.white),
         borderRadius: effectiveRadius,
         border: Border.all(
-          color: borderColor ?? AppColors.borderLight,
+          color: borderColor ?? (isDark ? AppColors.borderDark : AppColors.borderLight),
           width: 1.0,
         ),
         boxShadow: boxShadow ??
-            [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: context.space(16),
-                offset: Offset(0, context.space(4)),
-              ),
-            ],
+            (isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: context.space(14),
+                      offset: Offset(0, context.space(4)),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: context.space(14),
+                      offset: Offset(0, context.space(4)),
+                    ),
+                  ]),
       ),
       child: ClipRRect(
         borderRadius: effectiveRadius,

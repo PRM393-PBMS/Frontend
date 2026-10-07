@@ -73,4 +73,10 @@ class ApiEndpoints {
   static const String myIncidentReports = '/api/IncidentReport/my-reports';
   static const String uploadIncidentProof = '/api/IncidentReport/upload-proof';
   static String incidentById(String id) => '/api/IncidentReport/$id';
+
+  // ================= Notifications (/api/Notification) =================
+  static const String myNotifications = '/api/Notification/my';
+  static String markNotificationRead(String id) => '/api/Notification/$id/read';
+  static const String markAllNotificationsRead = '/api/Notification/read-all';
+  static String deleteNotification(String id) => '/api/Notification/$id';
 }

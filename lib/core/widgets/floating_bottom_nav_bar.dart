@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -337,33 +337,36 @@ class _GlassPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(sp(32)),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            height: sp(70),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(sp(32)),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.80),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: sp(26),
-                  offset: Offset(0, sp(6)),
+          child: Builder(
+            builder: (context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Container(
+                height: sp(70),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark.withValues(alpha: 0.92) : Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(sp(24)),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : Colors.white.withValues(alpha: 0.80),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                      blurRadius: sp(26),
+                      offset: Offset(0, sp(6)),
+                    ),
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: isDark ? 0.08 : 0.06),
+                      blurRadius: sp(36),
+                      offset: Offset(0, sp(2)),
+                    ),
+                  ],
                 ),
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  blurRadius: sp(40),
-                  offset: Offset(0, sp(2)),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Tab 0 & 1
-                Expanded(child: _NavItem(tab: tabs[0], tabIndex: 0, cur: currentIndex, onTap: onTabChanged)),
-                Expanded(child: _NavItem(tab: tabs[1], tabIndex: 1, cur: currentIndex, onTap: onTabChanged)),
+                child: Row(
+                  children: [
+                    // Tab 0 & 1
+                    Expanded(child: _NavItem(tab: tabs[0], tabIndex: 0, cur: currentIndex, onTap: onTabChanged)),
+                    Expanded(child: _NavItem(tab: tabs[1], tabIndex: 1, cur: currentIndex, onTap: onTabChanged)),
 
                 // Center Action Button (Hold to open Semicircle)
                 SizedBox(
@@ -423,10 +426,12 @@ class _GlassPill extends StatelessWidget {
                 Expanded(child: _NavItem(tab: tabs[3], tabIndex: 4, cur: currentIndex, onTap: onTabChanged)),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -450,24 +455,27 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = cur == tabIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveColor = isDark ? AppColors.textMutedDark : AppColors.textMutedLight;
     return GestureDetector(
       onTap: () => onTap(tabIndex),
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
-            padding: EdgeInsets.all(context.space(5)),
+            padding: EdgeInsets.all(context.space(4)),
             decoration: BoxDecoration(
-              color: active ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(context.space(11)),
+              color: active ? AppColors.primary.withValues(alpha: 0.14) : Colors.transparent,
+              borderRadius: BorderRadius.circular(context.space(10)),
             ),
             child: Icon(
               active ? tab.activeIcon : tab.icon,
               size: context.iconSize(22),
-              color: active ? AppColors.primary : AppColors.textMutedLight,
+              color: active ? AppColors.primary : inactiveColor,
             ),
           ),
           SizedBox(height: context.space(2)),
@@ -475,7 +483,8 @@ class _NavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             style: AppTypography.labelMedium.copyWith(
               fontSize: context.sp(10),
-              color: active ? AppColors.primary : AppColors.textMutedLight,
+              height: 1.15,
+              color: active ? AppColors.primary : inactiveColor,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
             child: Text(tab.label, maxLines: 1, overflow: TextOverflow.ellipsis),

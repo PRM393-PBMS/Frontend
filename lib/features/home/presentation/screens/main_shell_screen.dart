@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
+import 'package:prm393_frontend/core/theme/app_typography.dart';
+import 'package:prm393_frontend/core/theme/theme_controller.dart';
 import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
+import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/home/presentation/screens/home_screen.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/services_popup_sheet.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
 
-/// Thanh điều hướng dùng chung với Floating Glass Pill + Radial Arc Menu
+/// Dual-Responsive Master Shell (Web Desktop Navigation Rail & Mobile Compact Dock)
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key});
 
@@ -17,7 +21,6 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int _currentTab = 0;
 
-  // ---- Tab definitions (4 items, center button is separate) ----
   static const _tabs = [
     NavTab(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Trang chủ'),
     NavTab(icon: Icons.history_outlined, activeIcon: Icons.history_rounded, label: 'Lịch sử'),
@@ -25,14 +28,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
     NavTab(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Hồ sơ'),
   ];
 
-  // ---- Body pages per tab index (0, 1, 3, 4 — tab 2 is center CTA) ----
   Widget _bodyForTab(int idx) {
     switch (idx) {
-      case 0: return const HomeScreen();
-      case 1: return _PlaceholderPage(icon: Icons.history_rounded, label: 'Lịch sử giao dịch', color: AppColors.secondary);
-      case 3: return const HomeScreen(); // Fallback keep home active when services popup closes
-      case 4: return const ProfileScreen();
-      default: return const HomeScreen();
+      case 0:
+        return const HomeScreen();
+      case 1:
+        return const _PlaceholderPage(
+          icon: Icons.history_rounded,
+          label: 'Lịch sử giao dịch & Đỗ xe',
+          color: AppColors.secondary,
+        );
+      case 3:
+        return const HomeScreen();
+      case 4:
+        return const ProfileScreen();
+      default:
+        return const HomeScreen();
     }
   }
 
@@ -40,9 +51,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
     HapticFeedback.lightImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Tính năng chính: Đặt chỗ gửi xe'),
+        content: const Row(
+          children: [
+            Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
+            SizedBox(width: 10),
+            Text('Tính năng cốt lõi: Đặt chỗ gửi xe thông minh (Reserve Slot)'),
+          ],
+        ),
+        backgroundColor: AppColors.surfaceDark,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.borderDark),
+        ),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
       ),
     );
@@ -50,65 +71,414 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      // extendBody so ListView content scrolls behind the floating bar
-      extendBody: true,
-      body: _bodyForTab(_currentTab),
-      bottomNavigationBar: FloatingBottomNavBar(
-        currentIndex: _currentTab,
-        onTabChanged: (i) {
-          if (i == 3) {
-            // Nhấp vào Dịch vụ trên taskbar -> mở popup modal
-            ServicesPopupSheet.show(context);
-          } else {
-            setState(() => _currentTab = i);
-          }
-        },
-        tabs: _tabs,
-        centerIcon: Icons.add_rounded,
-        centerColor: AppColors.primary,
-        onCenterTap: _handleCenterTap,
-        radialOptions: [
-          RadialOption(
-            icon: Icons.calendar_month_rounded,
-            label: 'Đặt chỗ',
-            color: AppColors.primary,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/reservations'), behavior: SnackBarBehavior.floating),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.bgDark : AppColors.bgLight;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 960;
+
+        if (isDesktop) {
+          // ===================================================================
+          // DESKTOP / WEB PORTAL SPLIT ARCHITECTURE (260px Rail + Content)
+          // ===================================================================
+          return Scaffold(
+            backgroundColor: bgColor,
+            body: Row(
+              children: [
+                _buildDesktopSidebar(context),
+                Expanded(
+                  child: Container(
+                    color: bgColor,
+                    child: _bodyForTab(_currentTab),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // ===================================================================
+        // MOBILE / TABLET COMPACT ARCHITECTURE (Full Cockpit + Floating Pill)
+        // ===================================================================
+        return Scaffold(
+          backgroundColor: bgColor,
+          extendBody: true,
+          body: _bodyForTab(_currentTab),
+          bottomNavigationBar: FloatingBottomNavBar(
+            currentIndex: _currentTab,
+            onTabChanged: (i) {
+              if (i == 3) {
+                ServicesPopupSheet.show(context);
+              } else {
+                setState(() => _currentTab = i);
+              }
+            },
+            tabs: _tabs,
+            centerIcon: Icons.add_rounded,
+            centerColor: AppColors.primary,
+            onCenterTap: _handleCenterTap,
+            radialOptions: [
+              RadialOption(
+                icon: Icons.calendar_month_rounded,
+                label: 'Đặt chỗ',
+                color: AppColors.primary,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('→ POST /api/reservations'), behavior: SnackBarBehavior.floating),
+                ),
+              ),
+              RadialOption(
+                icon: Icons.qr_code_scanner_rounded,
+                label: 'Quét QR',
+                color: AppColors.secondary,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('→ POST /api/ParkingOperation/upload-and-decode-qr'), behavior: SnackBarBehavior.floating),
+                ),
+              ),
+              RadialOption(
+                icon: Icons.card_membership_rounded,
+                label: 'Vé tháng',
+                color: AppColors.accent,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('→ GET /api/MonthlySubscription/my'), behavior: SnackBarBehavior.floating),
+                ),
+              ),
+              RadialOption(
+                icon: Icons.report_problem_outlined,
+                label: 'Sự cố',
+                color: AppColors.warning,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('→ POST /api/IncidentReport'), behavior: SnackBarBehavior.floating),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ===========================================================================
+  // DESKTOP SIDEBAR NAVIGATION RAIL
+  // ===========================================================================
+  Widget _buildDesktopSidebar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final railBg = isDark ? AppColors.surfaceDark : Colors.white;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+
+    return Container(
+      width: 270,
+      decoration: BoxDecoration(
+        color: railBg,
+        border: Border(right: BorderSide(color: borderColor, width: 1.0)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+          // Brand Logo & System Telemetry
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.local_parking_rounded, color: Color(0xFF090D14), size: 22),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PBMS',
+                          style: AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        Text(
+                          'PARKING COCKPIT',
+                          style: AppTypography.badgeMono.copyWith(
+                            fontSize: 9.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.available.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.available.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.available,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'IOT SENSORS ONLINE',
+                        style: AppTypography.badgeMono.copyWith(
+                          color: AppColors.available,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          RadialOption(
-            icon: Icons.qr_code_scanner_rounded,
-            label: 'Quét QR',
-            color: AppColors.secondary,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/ParkingOperation/upload-and-decode-qr'), behavior: SnackBarBehavior.floating),
+
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+
+          // Navigation Links
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Column(
+              children: [
+                _buildSidebarNavItem(
+                  context,
+                  index: 0,
+                  icon: Icons.dashboard_outlined,
+                  activeIcon: Icons.dashboard_rounded,
+                  label: 'Trang chủ Cockpit',
+                ),
+                _buildSidebarNavItem(
+                  context,
+                  index: 1,
+                  icon: Icons.history_rounded,
+                  activeIcon: Icons.history_toggle_off_rounded,
+                  label: 'Lịch sử giao dịch',
+                ),
+                _buildSidebarNavItem(
+                  context,
+                  index: 3,
+                  icon: Icons.widgets_outlined,
+                  activeIcon: Icons.widgets_rounded,
+                  label: 'Dịch vụ bãi xe',
+                  onTapOverride: () => ServicesPopupSheet.show(context),
+                ),
+                _buildSidebarNavItem(
+                  context,
+                  index: 4,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Hồ sơ & Xe cá nhân',
+                ),
+              ],
             ),
           ),
-          RadialOption(
-            icon: Icons.card_membership_rounded,
-            label: 'Vé tháng',
-            color: AppColors.accent,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ GET /api/MonthlySubscription/my'), behavior: SnackBarBehavior.floating),
+
+          const Spacer(),
+
+          // Fast Action Buttons in Rail
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _handleCenterTap,
+                  icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                  label: const Text('Đặt chỗ gửi xe'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? AppColors.primary : const Color(0xFF090D14),
+                    foregroundColor: isDark ? const Color(0xFF090D14) : Colors.white,
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => ServicesPopupSheet.show(context),
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                  label: const Text('Quét mã ra / vào'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    side: BorderSide(color: borderColor),
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
             ),
           ),
-          RadialOption(
-            icon: Icons.report_problem_outlined,
-            label: 'Sự cố',
-            color: AppColors.warning,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('→ POST /api/IncidentReport'), behavior: SnackBarBehavior.floating),
-            ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+
+          // User Profile Dock in Sidebar Bottom
+          BlocBuilder<AuthBloc, dynamic>(
+            builder: (context, state) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: isDark
+                          ? AppColors.primary.withValues(alpha: 0.2)
+                          : const Color(0xFF090D14),
+                      child: Text(
+                        'L',
+                        style: TextStyle(
+                          color: isDark ? AppColors.primary : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Thành Long',
+                            style: AppTypography.titleSmall.copyWith(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'VIP Resident',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                        size: 20,
+                        color: isDark ? const Color(0xFFFFB020) : const Color(0xFF0F172A),
+                      ),
+                      tooltip: isDark ? 'Chuyển sang Tông màu sáng' : 'Chuyển sang Tông màu tối',
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        ThemeController.instance.toggleTheme();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
+      ),
+    ),
+  ),
+);
+        },
+      ),
+    );
+  }
+
+  Widget _buildSidebarNavItem(
+    BuildContext context, {
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    VoidCallback? onTapOverride,
+  }) {
+    final active = _currentTab == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTapOverride ?? () => setState(() => _currentTab = index),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: active
+                  ? (isDark ? AppColors.cardDark : const Color(0xFF090D14))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: active
+                    ? (isDark ? AppColors.borderDark : const Color(0xFF090D14))
+                    : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  active ? activeIcon : icon,
+                  size: 20,
+                  color: active
+                      ? (isDark ? AppColors.primary : Colors.white)
+                      : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: active
+                          ? (isDark ? AppColors.textPrimaryDark : Colors.white)
+                          : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                    ),
+                  ),
+                ),
+                if (active)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.primary : Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-// ---- Simple placeholder for unimplemented tabs ----
+// Simple placeholder for unimplemented tabs
 class _PlaceholderPage extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -118,29 +488,36 @@ class _PlaceholderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Padding(
-        padding: EdgeInsets.only(bottom: 84.0 + bottomPad),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 48, color: color),
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.25)),
               ),
-              const SizedBox(height: 16),
-              Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text('Tính năng đang phát triển', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMutedLight)),
-            ],
-          ),
+              child: Icon(icon, size: 48, color: color),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              label,
+              style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tính năng đang được hoàn thiện theo chuẩn Dark-Tech Mobility',
+              style: AppTypography.bodyMedium.copyWith(
+                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+              ),
+            ),
+          ],
         ),
       ),
     );
