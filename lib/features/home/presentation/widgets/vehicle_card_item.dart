@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:prm393_frontend/core/theme/app_typography.dart';
 import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 import '../models/vehicle_card_model.dart';
 
@@ -11,6 +12,7 @@ class VehicleCardItem extends StatefulWidget {
   final bool isCurrent;
   final bool isUnlocked;
   final VoidCallback? onTapToUnlock;
+  final VoidCallback? onTapPendingPayment;
 
   const VehicleCardItem({
     super.key,
@@ -18,6 +20,7 @@ class VehicleCardItem extends StatefulWidget {
     this.isCurrent = true,
     this.isUnlocked = false,
     this.onTapToUnlock,
+    this.onTapPendingPayment,
   });
 
   @override
@@ -99,6 +102,12 @@ class _VehicleCardItemState extends State<VehicleCardItem>
 
   void _toggleCardFlip() {
     HapticFeedback.mediumImpact();
+    // LOGIC: Nếu xe chưa thanh toán -> Kích hoạt màn hình thanh toán!
+    if (widget.card.paymentStatus == 'PendingPayment') {
+      widget.onTapPendingPayment?.call();
+      return;
+    }
+
     // LOGIC: Nếu thẻ chưa mở khoá -> KHÔNG THỂ LẬT ĐƯỢC -> Kích hoạt quét vân tay!
     if (!widget.isUnlocked) {
       widget.onTapToUnlock?.call();
@@ -144,7 +153,7 @@ class _VehicleCardItemState extends State<VehicleCardItem>
             child: Container(
               margin: EdgeInsets.symmetric(
                 horizontal: context.space(6),
-                vertical: context.space(4),
+                vertical: context.space(2),
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(context.space(22)),
@@ -202,7 +211,10 @@ class _VehicleCardItemState extends State<VehicleCardItem>
 
           // Main Card Content
           Padding(
-            padding: EdgeInsets.all(context.space(16)),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.space(16),
+              vertical: context.space(13),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -245,6 +257,28 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                           color: Colors.white.withValues(alpha: 0.85),
                           size: context.iconSize(18),
                         ),
+                        if (widget.card.paymentStatus == 'PendingPayment') ...[
+                          SizedBox(width: context.space(8)),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.space(6),
+                              vertical: context.space(2.5),
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B),
+                              borderRadius: BorderRadius.circular(context.space(5)),
+                            ),
+                            child: const Text(
+                              'CHỜ THANH TOÁN',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
 
@@ -313,11 +347,10 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                         ],
                         Text(
                           _displayLicensePlate,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
+                          style: AppTypography.licensePlateMono.copyWith(
+                            fontSize: context.sp(20),
+                            height: 1.15,
                             color: Colors.white,
-                            fontSize: context.sp(21),
-                            fontWeight: FontWeight.w900,
                             letterSpacing: widget.isUnlocked ? 2.0 : 3.0,
                             shadows: [
                               Shadow(
@@ -383,45 +416,86 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                     ),
 
                     // Quick Tap prompt badge
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.space(10),
-                        vertical: context.space(5.5),
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.isUnlocked
-                            ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(context.space(20)),
-                        border: Border.all(
-                          color: widget.isUnlocked
-                              ? const Color(0xFF10B981).withValues(alpha: 0.6)
-                              : Colors.white.withValues(alpha: 0.3),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            widget.isUnlocked
-                                ? Icons.qr_code_2_rounded
-                                : Icons.fingerprint_rounded,
-                            color: Colors.white,
-                            size: context.iconSize(14),
+                    if (widget.card.paymentStatus == 'PendingPayment')
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          widget.onTapPendingPayment?.call();
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.space(10),
+                            vertical: context.space(5.5),
                           ),
-                          SizedBox(width: context.space(5)),
-                          Text(
-                            widget.isUnlocked ? 'Lật xem QR' : 'Chạm để quét vân tay',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: context.sp(10),
-                              fontWeight: FontWeight.w700,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(context.space(20)),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B),
+                              width: 1,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.payment_rounded,
+                                color: const Color(0xFFFDE68A),
+                                size: context.iconSize(14),
+                              ),
+                              SizedBox(width: context.space(5)),
+                              Text(
+                                'Chạm để thanh toán',
+                                style: TextStyle(
+                                  color: const Color(0xFFFDE68A),
+                                  fontSize: context.sp(10),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.space(10),
+                          vertical: context.space(5.5),
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.isUnlocked
+                              ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                              : Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(context.space(20)),
+                          border: Border.all(
+                            color: widget.isUnlocked
+                                ? const Color(0xFF10B981).withValues(alpha: 0.6)
+                                : Colors.white.withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              widget.isUnlocked
+                                  ? Icons.qr_code_2_rounded
+                                  : Icons.fingerprint_rounded,
+                              color: Colors.white,
+                              size: context.iconSize(14),
+                            ),
+                            SizedBox(width: context.space(5)),
+                            Text(
+                              widget.isUnlocked ? 'Lật xem QR' : 'Chạm để quét vân tay',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: context.sp(10),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -470,12 +544,15 @@ class _VehicleCardItemState extends State<VehicleCardItem>
 
           // Content Layout
           Padding(
-            padding: EdgeInsets.all(context.space(12)),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.space(12),
+              vertical: context.space(9),
+            ),
             child: Row(
               children: [
                 // CỘT TRÁI: DYNAMIC QR CODE & PROGRESS COUNTDOWN
                 Container(
-                  padding: EdgeInsets.all(context.space(6)),
+                  padding: EdgeInsets.all(context.space(5)),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(context.space(12)),
@@ -493,7 +570,7 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                       QrImageView(
                         data: dynamicPayload,
                         version: QrVersions.auto,
-                        size: context.space(86),
+                        size: context.space(80),
                         padding: EdgeInsets.zero,
                         backgroundColor: Colors.white,
                         eyeStyle: const QrEyeStyle(
@@ -505,10 +582,10 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      SizedBox(height: context.space(4)),
+                      SizedBox(height: context.space(3)),
                       // Dynamic TOTP Countdown bar
                       SizedBox(
-                        width: context.space(86),
+                        width: context.space(80),
                         child: Column(
                           children: [
                             ClipRRect(

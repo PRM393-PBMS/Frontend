@@ -52,6 +52,7 @@ class ResponsiveUtils {
     double minScale = 0.85,
     double maxScale = 1.25,
   }) {
+    if (isDesktop(context)) return fontSize;
     final scale = (width(context) / designWidth).clamp(minScale, maxScale);
     return fontSize * scale;
   }
@@ -63,12 +64,14 @@ class ResponsiveUtils {
     double minScale = 0.9,
     double maxScale = 1.3,
   }) {
+    if (isDesktop(context)) return baseSize;
     final scale = (width(context) / designWidth).clamp(minScale, maxScale);
     return baseSize * scale;
   }
 
   /// Scale spacing/padding
   static double space(BuildContext context, double baseSpace) {
+    if (isDesktop(context)) return baseSpace;
     final scale = min(scaleWidth(context), scaleHeight(context)).clamp(0.85, 1.3);
     return baseSpace * scale;
   }

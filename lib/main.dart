@@ -8,6 +8,8 @@ import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 import 'features/auth/presentation/blocs/auth_event.dart';
+import 'features/home/data/datasources/parking_remote_datasource.dart';
+import 'features/home/data/repositories/parking_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +34,9 @@ void main() async {
     storageService: storageService,
   );
 
+  final parkingRemoteDataSource = ParkingRemoteDataSourceImpl(apiClient: apiClient);
+  final parkingRepository = ParkingRepositoryImpl(remoteDataSource: parkingRemoteDataSource);
+
   // 3. Khởi tạo Global BLoC
   authBloc = AuthBloc(authRepository: authRepository)..add(AuthCheckRequested());
 
@@ -41,6 +46,7 @@ void main() async {
         RepositoryProvider<SecureStorageService>.value(value: storageService),
         RepositoryProvider<ApiClient>.value(value: apiClient),
         RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<ParkingRepository>.value(value: parkingRepository),
       ],
       child: MultiBlocProvider(
         providers: [

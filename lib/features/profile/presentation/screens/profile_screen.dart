@@ -35,10 +35,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
       appBar: AppBar(
+        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
         title: const Text('Hồ sơ cá nhân'),
         actions: [
           IconButton(
@@ -77,26 +79,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(height: context.space(12)),
 
                 // ============================================================
-                // HERO PROFILE CARD (Modern Web Gradient)
+                // HERO PROFILE CARD (Titanium Architectural Pass)
                 // ============================================================
                 Container(
                   padding: EdgeInsets.all(context.space(20)),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF1E3A8A),
-                        Color(0xFF2563EB),
-                        Color(0xFF3B82F6)
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    gradient: AppColors.titaniumCardGradient,
+                    borderRadius: BorderRadius.circular(context.space(16)),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                      width: 1.0,
                     ),
-                    borderRadius: BorderRadius.circular(context.space(24)),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.28),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -462,6 +460,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String value,
     required String label,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ResponsiveCard(
       padding: EdgeInsets.all(context.space(12)),
       child: Column(
@@ -475,10 +474,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Icon(icon, color: color, size: context.iconSize(20)),
           ),
           SizedBox(height: context.space(8)),
-          ResponsiveText(
+          Text(
             value,
-            variant: ResponsiveTextVariant.titleLarge,
-            fontWeight: FontWeight.w800,
+            style: AppTypography.telemetryMono.copyWith(
+              fontSize: context.sp(18),
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+            ),
           ),
           SizedBox(height: context.space(2)),
           ResponsiveText(

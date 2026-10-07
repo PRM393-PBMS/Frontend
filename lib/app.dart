@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'core/config/app_config.dart';
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 
 class ParkingApp extends StatefulWidget {
@@ -25,13 +26,18 @@ class _ParkingAppState extends State<ParkingApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: AppConfig.appTitle,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
-      routerConfig: _router,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance.themeModeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp.router(
+          title: AppConfig.appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: currentMode,
+          routerConfig: _router,
+        );
+      },
     );
   }
 }

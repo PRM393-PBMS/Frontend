@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:prm393_frontend/core/theme/app_colors.dart';
+import 'package:prm393_frontend/core/theme/app_typography.dart';
 import 'package:prm393_frontend/core/utils/responsive_utils.dart';
 
 class WalletBanner extends StatefulWidget {
@@ -17,6 +19,8 @@ class _WalletBannerState extends State<WalletBanner> {
   Widget build(BuildContext context) {
     if (!_isVisible) return const SizedBox.shrink();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: context.space(16)),
       padding: EdgeInsets.symmetric(
@@ -24,38 +28,28 @@ class _WalletBannerState extends State<WalletBanner> {
         vertical: context.space(12),
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF3FF), // Soft Samsung Blue Tint
-        borderRadius: BorderRadius.circular(context.space(18)),
+        color: isDark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(context.space(12)),
         border: Border.all(
-          color: const Color(0xFFDCE6FC),
-          width: 1,
+          color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+          width: 1.0,
         ),
       ),
       child: Row(
         children: [
-          // 3D Leather Wallet Icon
+          // Telemetry Beacon Icon
           Container(
-            width: context.space(40),
-            height: context.space(40),
+            width: context.space(38),
+            height: context.space(38),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFB923C), Color(0xFFEA580C)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(context.space(12)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFEA580C).withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: AppColors.reserved.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(context.space(10)),
+              border: Border.all(color: AppColors.reserved.withValues(alpha: 0.35)),
             ),
             child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: Colors.white,
-              size: 22,
+              Icons.confirmation_number_outlined,
+              color: AppColors.reserved,
+              size: 20,
             ),
           ),
           SizedBox(width: context.space(12)),
@@ -65,21 +59,32 @@ class _WalletBannerState extends State<WalletBanner> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Gia hạn vé tháng ưu đãi',
-                  style: TextStyle(
-                    fontSize: context.sp(13),
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E293B),
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'ƯU ĐÃI VÉ THÁNG',
+                      style: AppTypography.badgeMono.copyWith(
+                        color: AppColors.reserved,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                        color: AppColors.reserved,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: context.space(2)),
+                const SizedBox(height: 2),
                 Text(
-                  'Gia hạn trước 30/09 để nhận ưu đãi giảm 15% phí đỗ xe đô thị...',
-                  style: TextStyle(
-                    fontSize: context.sp(11),
-                    color: const Color(0xFF475569),
-                    height: 1.25,
+                  'Gia hạn trước ngày 30 để nhận giảm 15% cước gửi xe cư dân PBMS.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                    fontSize: context.sp(11.5),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -90,24 +95,22 @@ class _WalletBannerState extends State<WalletBanner> {
 
           SizedBox(width: context.space(8)),
 
-          // Close 'X' Button
+          // Dismiss Button
           GestureDetector(
             onTap: () {
-              setState(() {
-                _isVisible = false;
-              });
+              setState(() => _isVisible = false);
               widget.onDismiss?.call();
             },
             child: Container(
-              padding: EdgeInsets.all(context.space(5)),
+              padding: EdgeInsets.all(context.space(6)),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFD1DCF8),
+                color: isDark ? AppColors.cardDark : Colors.grey.shade200,
               ),
               child: Icon(
                 Icons.close_rounded,
                 size: context.iconSize(14),
-                color: const Color(0xFF475569),
+                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
               ),
             ),
           ),

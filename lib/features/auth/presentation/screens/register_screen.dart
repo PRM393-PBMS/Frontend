@@ -94,42 +94,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.bgLight,
-        appBar: AppBar(
-          title: const ResponsiveText('Tạo tài khoản mới', variant: ResponsiveTextVariant.titleMedium),
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, size: context.iconSize(20)),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.wp(6),
-                vertical: context.space(20),
+      child: Builder(
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Scaffold(
+            backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+            appBar: AppBar(
+              title: const ResponsiveText('Tạo tài khoản mới', variant: ResponsiveTextVariant.titleMedium),
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: context.iconSize(20)),
+                onPressed: () => context.pop(),
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ResponsiveText(
-                        'Đăng ký PBMS',
-                        variant: ResponsiveTextVariant.displayMedium,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                      SizedBox(height: context.space(6)),
-                      ResponsiveText(
-                        'Nhập thông tin cá nhân để kích hoạt tài khoản bãi đỗ xe',
-                        variant: ResponsiveTextVariant.bodyMedium,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                      SizedBox(height: context.space(24)),
+            ),
+            body: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.wp(6),
+                    vertical: context.space(20),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ResponsiveText(
+                            'Đăng ký PBMS',
+                            variant: ResponsiveTextVariant.displayMedium,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          ),
+                          SizedBox(height: context.space(6)),
+                          ResponsiveText(
+                            'Nhập thông tin cá nhân để kích hoạt tài khoản bãi đỗ xe',
+                            variant: ResponsiveTextVariant.bodyMedium,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          ),
+                          SizedBox(height: context.space(24)),
 
                       ResponsiveCard(
                         padding: EdgeInsets.all(context.space(20)),
@@ -266,7 +269,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
+    },
+  ),
+);
   }
 }

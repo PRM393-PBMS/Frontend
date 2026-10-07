@@ -172,7 +172,7 @@ class ServicesPopupSheet extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: context.space(10),
               mainAxisSpacing: context.space(10),
-              childAspectRatio: 1.85,
+              childAspectRatio: 1.60,
             ),
             itemBuilder: (context, index) {
               final s = services[index];
