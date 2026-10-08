@@ -233,7 +233,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: context.space(18)),
+                SizedBox(height: context.space(14)),
+
+                // ============================================================
+                // 1-TAP LANGUAGE SELECTOR BAR (Tiếng Việt, English, 日本語)
+                // ============================================================
+                _buildLanguageSelectorBar(context, isDark),
+                SizedBox(height: context.space(14)),
 
                 // ============================================================
                 // MINI STATS ROW (Real Data Count)
@@ -553,6 +559,149 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // 1-TAP LANGUAGE SELECTOR BAR (🇻🇳 Tiếng Việt | 🇬🇧 English | 🇯🇵 日本語)
+  // ===========================================================================
+  Widget _buildLanguageSelectorBar(BuildContext context, bool isDark) {
+    final currentLang = LanguageController.instance.currentLanguage;
+
+    return Container(
+      padding: EdgeInsets.all(context.space(14)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(context.space(16)),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.language_rounded,
+                size: context.iconSize(16),
+                color: isDark ? AppColors.primary : const Color(0xFF0284C7),
+              ),
+              SizedBox(width: context.space(8)),
+              Text(
+                context.tr('lang_selector_banner_title'),
+                style: AppTypography.badgeMono.copyWith(
+                  fontSize: context.sp(10.5),
+                  color: isDark ? AppColors.primary : const Color(0xFF0284C7),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.space(10)),
+          Row(
+            children: AppLanguage.values.map((lang) {
+              final isSelected = lang == currentLang;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: context.space(3)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(context.space(12)),
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        LanguageController.instance.setLanguage(lang);
+                        setState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Text(lang.flag, style: const TextStyle(fontSize: 18)),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '${context.tr('lang_switched_notice')}${lang.name}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: EdgeInsets.symmetric(
+                          vertical: context.space(10),
+                          horizontal: context.space(6),
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (isDark
+                                  ? AppColors.primary.withValues(alpha: 0.2)
+                                  : const Color(0xFFE0F2FE))
+                              : (isDark
+                                  ? AppColors.cardDark
+                                  : const Color(0xFFF8FAFC)),
+                          borderRadius: BorderRadius.circular(context.space(12)),
+                          border: Border.all(
+                            color: isSelected
+                                ? (isDark ? AppColors.primary : const Color(0xFF0284C7))
+                                : (isDark ? AppColors.borderSubtleDark : const Color(0xFFCBD5E1)),
+                            width: isSelected ? 1.8 : 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              lang.flag,
+                              style: TextStyle(fontSize: context.sp(20)),
+                            ),
+                            SizedBox(height: context.space(4)),
+                            Text(
+                              lang.name,
+                              style: TextStyle(
+                                fontSize: context.sp(11.5),
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                color: isSelected
+                                    ? (isDark ? AppColors.primary : const Color(0xFF0284C7))
+                                    : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (isSelected) ...[
+                              SizedBox(height: context.space(3)),
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.primary : const Color(0xFF0284C7),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

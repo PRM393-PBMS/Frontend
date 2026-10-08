@@ -8,6 +8,7 @@ import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/home/presentation/screens/home_screen.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/services_popup_sheet.dart';
+import 'package:prm393_frontend/core/localization/app_language.dart';
 import 'package:prm393_frontend/core/localization/app_translations.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
 
@@ -209,56 +210,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PBMS',
-                          style: AppTypography.titleLarge.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        Text(
-                          'PARKING COCKPIT',
-                          style: AppTypography.badgeMono.copyWith(
-                            fontSize: 9.5,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'PBMS',
+                      style: AppTypography.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.available.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.available.withValues(alpha: 0.25)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.available,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'IOT SENSORS ONLINE',
-                        style: AppTypography.badgeMono.copyWith(
-                          color: AppColors.available,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -277,21 +236,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   index: 0,
                   icon: Icons.dashboard_outlined,
                   activeIcon: Icons.dashboard_rounded,
-                  label: 'Trang chủ Cockpit',
+                  label: context.tr('desktop_sidebar_cockpit'),
                 ),
                 _buildSidebarNavItem(
                   context,
                   index: 1,
                   icon: Icons.history_rounded,
                   activeIcon: Icons.history_toggle_off_rounded,
-                  label: 'Lịch sử giao dịch',
+                  label: context.tr('desktop_sidebar_history'),
                 ),
                 _buildSidebarNavItem(
                   context,
                   index: 3,
                   icon: Icons.widgets_outlined,
                   activeIcon: Icons.widgets_rounded,
-                  label: 'Dịch vụ bãi xe',
+                  label: context.tr('desktop_sidebar_services'),
                   onTapOverride: () => ServicesPopupSheet.show(context),
                 ),
                 _buildSidebarNavItem(
@@ -299,7 +258,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   index: 4,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
-                  label: 'Hồ sơ & Xe cá nhân',
+                  label: context.tr('desktop_sidebar_profile'),
                 ),
               ],
             ),
@@ -315,7 +274,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ElevatedButton.icon(
                   onPressed: _handleCenterTap,
                   icon: const Icon(Icons.calendar_month_rounded, size: 18),
-                  label: const Text('Đặt chỗ gửi xe'),
+                  label: Text(context.tr('desktop_reserve_slot')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDark ? AppColors.primary : const Color(0xFF090D14),
                     foregroundColor: isDark ? const Color(0xFF090D14) : Colors.white,
@@ -327,7 +286,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 OutlinedButton.icon(
                   onPressed: () => ServicesPopupSheet.show(context),
                   icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                  label: const Text('Quét mã ra / vào'),
+                  label: Text(context.tr('desktop_scan_qr')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                     side: BorderSide(color: borderColor),
@@ -381,6 +340,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      icon: Text(
+                        LanguageController.instance.currentLanguage.flag,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      tooltip: context.tr('item_language'),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        final cur = LanguageController.instance.currentLanguage;
+                        final next = cur == AppLanguage.vi
+                            ? AppLanguage.en
+                            : (cur == AppLanguage.en ? AppLanguage.ja : AppLanguage.vi);
+                        LanguageController.instance.setLanguage(next);
+                      },
                     ),
                     IconButton(
                       icon: Icon(

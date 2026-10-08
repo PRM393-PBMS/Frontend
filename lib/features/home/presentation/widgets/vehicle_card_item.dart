@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
 import 'package:prm393_frontend/core/utils/responsive_utils.dart';
+import 'package:prm393_frontend/core/localization/app_translations.dart';
 import '../models/vehicle_card_model.dart';
 
 class VehicleCardItem extends StatefulWidget {
@@ -268,9 +269,9 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                               color: const Color(0xFFF59E0B),
                               borderRadius: BorderRadius.circular(context.space(5)),
                             ),
-                            child: const Text(
-                              'CHỜ THANH TOÁN',
-                              style: TextStyle(
+                            child: Text(
+                              context.tr('card_pending_payment'),
+                              style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w900,
@@ -445,7 +446,7 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                               ),
                               SizedBox(width: context.space(5)),
                               Text(
-                                'Chạm để thanh toán',
+                                context.tr('card_tap_to_pay'),
                                 style: TextStyle(
                                   color: const Color(0xFFFDE68A),
                                   fontSize: context.sp(10),
@@ -486,7 +487,7 @@ class _VehicleCardItemState extends State<VehicleCardItem>
                             ),
                             SizedBox(width: context.space(5)),
                             Text(
-                              widget.isUnlocked ? 'Lật xem QR' : 'Chạm để quét vân tay',
+                              widget.isUnlocked ? context.tr('card_flip_qr') : context.tr('card_tap_fingerprint'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: context.sp(10),
