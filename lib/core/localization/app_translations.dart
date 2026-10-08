@@ -350,6 +350,265 @@ class AppTranslations {
       AppLanguage.en: 'Language switched to: ',
       AppLanguage.ja: '言語を切り替えました: ',
     },
+
+    // =========================================================================
+    // HOME SCREEN & COCKPIT TELEMETRY
+    // =========================================================================
+    'home_cockpit_title': {
+      AppLanguage.vi: 'PBMS Cockpit',
+      AppLanguage.en: 'PBMS Cockpit',
+      AppLanguage.ja: 'PBMS コックピット',
+    },
+    'home_active': {
+      AppLanguage.vi: 'HOẠT ĐỘNG',
+      AppLanguage.en: 'ACTIVE',
+      AppLanguage.ja: '利用中',
+    },
+    'home_ready': {
+      AppLanguage.vi: 'SẴN SÀNG',
+      AppLanguage.en: 'READY',
+      AppLanguage.ja: '待機中',
+    },
+    'session_active_status': {
+      AppLanguage.vi: 'PHIÊN ĐỖ ĐANG HOẠT ĐỘNG',
+      AppLanguage.en: 'ACTIVE PARKING SESSION',
+      AppLanguage.ja: '利用中の駐車セッション',
+    },
+    'session_awaiting_veh': {
+      AppLanguage.vi: 'CHỜ ĐĂNG KÝ XE',
+      AppLanguage.en: 'AWAITING VEHICLE',
+      AppLanguage.ja: '車両登録待ち',
+    },
+    'session_pending_payment': {
+      AppLanguage.vi: 'CHỜ THANH TOÁN KÍCH HOẠT',
+      AppLanguage.en: 'AWAITING PAYMENT ACTIVATION',
+      AppLanguage.ja: '利用料金決済待ち',
+    },
+    'session_system_ready': {
+      AppLanguage.vi: 'HỆ THỐNG SẴN SÀNG',
+      AppLanguage.en: 'SYSTEM READY',
+      AppLanguage.ja: 'システム準備完了',
+    },
+    'metric_license_plate': {
+      AppLanguage.vi: 'BIỂN SỐ XE',
+      AppLanguage.en: 'LICENSE PLATE',
+      AppLanguage.ja: '車両ナンバー',
+    },
+    'metric_duration': {
+      AppLanguage.vi: 'THỜI GIAN',
+      AppLanguage.en: 'DURATION',
+      AppLanguage.ja: '駐車時間',
+    },
+    'metric_estimated_fee': {
+      AppLanguage.vi: 'TẠM TÍNH',
+      AppLanguage.en: 'EST. FEE',
+      AppLanguage.ja: '概算料金',
+    },
+    'btn_locate_car': {
+      AppLanguage.vi: 'Định vị xe',
+      AppLanguage.en: 'Locate Car',
+      AppLanguage.ja: '車両位置',
+    },
+    'btn_parking_map': {
+      AppLanguage.vi: 'Sơ đồ bãi đỗ',
+      AppLanguage.en: 'Floor Map',
+      AppLanguage.ja: '駐車場マップ',
+    },
+    'btn_pay_exit': {
+      AppLanguage.vi: 'Thanh toán ra',
+      AppLanguage.en: 'Pay & Exit',
+      AppLanguage.ja: '精算・出庫',
+    },
+    'btn_register_vehicle_now': {
+      AppLanguage.vi: 'Đăng ký xe ngay',
+      AppLanguage.en: 'Register Vehicle',
+      AppLanguage.ja: '車両を登録',
+    },
+    'btn_pay_activate': {
+      AppLanguage.vi: 'Thanh toán kích hoạt',
+      AppLanguage.en: 'Pay to Activate',
+      AppLanguage.ja: '決済して有効化',
+    },
+    'btn_qr_entry': {
+      AppLanguage.vi: 'Mã QR vào bãi',
+      AppLanguage.en: 'Entry QR Pass',
+      AppLanguage.ja: '入庫QRコード',
+    },
+    'btn_unlock_pass': {
+      AppLanguage.vi: 'Mở vé vào bãi',
+      AppLanguage.en: 'Unlock Pass',
+      AppLanguage.ja: 'チケット解除',
+    },
+    'filter_all': {
+      AppLanguage.vi: 'Tất cả',
+      AppLanguage.en: 'All',
+      AppLanguage.ja: 'すべて',
+    },
+    'filter_cars': {
+      AppLanguage.vi: 'Ô tô',
+      AppLanguage.en: 'Cars',
+      AppLanguage.ja: '普通車',
+    },
+    'filter_bikes': {
+      AppLanguage.vi: 'Xe máy',
+      AppLanguage.en: 'Bikes',
+      AppLanguage.ja: '二輪車',
+    },
+    'filter_monthly': {
+      AppLanguage.vi: 'Vé tháng',
+      AppLanguage.en: 'Monthly Pass',
+      AppLanguage.ja: '定期券',
+    },
+    'filter_daily': {
+      AppLanguage.vi: 'Vé lượt',
+      AppLanguage.en: 'Single Entry',
+      AppLanguage.ja: '一般利用',
+    },
+    'indicator_tap_to_unlock': {
+      AppLanguage.vi: 'Chạm vào thẻ xe để xác thực mở khoá',
+      AppLanguage.en: 'Tap vehicle pass to authenticate & unlock',
+      AppLanguage.ja: 'カードをタップして認証解除',
+    },
+    'indicator_unlocked': {
+      AppLanguage.vi: 'Thẻ đã mở khoá • Chạm để lật mã QR',
+      AppLanguage.en: 'Pass Unlocked • Tap to flip QR',
+      AppLanguage.ja: '認証完了 • タップしてQRコード表示',
+    },
+    'btn_lock': {
+      AppLanguage.vi: 'Khoá lại',
+      AppLanguage.en: 'Lock',
+      AppLanguage.ja: 'ロック',
+    },
+    'lang_selector_banner_title': {
+      AppLanguage.vi: 'GIAO DIỆN NGÔN NGỮ (LANGUAGE INTERFACE)',
+      AppLanguage.en: 'LANGUAGE INTERFACE (NGÔN NGỮ HỆ THỐNG)',
+      AppLanguage.ja: 'システム表示言語 (LANGUAGE INTERFACE)',
+    },
+    'facility_capacity_title': {
+      AppLanguage.vi: 'SỨC CHỨA BÃI ĐỖ',
+      AppLanguage.en: 'PARKING CAPACITY',
+      AppLanguage.ja: '駐車場空き状況',
+    },
+    'available_percent': {
+      AppLanguage.vi: 'KHẢ DỤNG',
+      AppLanguage.en: 'AVAILABLE',
+      AppLanguage.ja: '空車',
+    },
+    'recent_activity_title': {
+      AppLanguage.vi: 'LỊCH SỬ VÀO / RA GẦN NHẤT',
+      AppLanguage.en: 'RECENT ENTRY & EXIT LOGS',
+      AppLanguage.ja: '最近の入出庫履歴',
+    },
+    'empty_vehicles_title': {
+      AppLanguage.vi: 'Chưa có phương tiện nào',
+      AppLanguage.en: 'No Vehicles Registered',
+      AppLanguage.ja: '登録車両がありません',
+    },
+    'empty_vehicles_desc': {
+      AppLanguage.vi: 'Đăng ký biển số xe để kích hoạt thẻ vé thông minh và nhận diện barrier tự động.',
+      AppLanguage.en: 'Register your license plate to activate smart pass and barrier recognition.',
+      AppLanguage.ja: 'ナンバープレートを登録してスマートパスと自動ゲートを有効化します。',
+    },
+    'btn_register_now': {
+      AppLanguage.vi: 'Đăng ký phương tiện ngay',
+      AppLanguage.en: 'Register Vehicle Now',
+      AppLanguage.ja: '今すぐ車両を登録',
+    },
+    'register_vehicle_pill': {
+      AppLanguage.vi: 'Đăng ký xe',
+      AppLanguage.en: 'Add Vehicle',
+      AppLanguage.ja: '車両登録',
+    },
+    'card_pending_payment': {
+      AppLanguage.vi: 'CHỜ THANH TOÁN',
+      AppLanguage.en: 'PENDING PAYMENT',
+      AppLanguage.ja: '決済待ち',
+    },
+    'card_tap_to_unlock': {
+      AppLanguage.vi: 'CHẠM ĐỂ MỞ',
+      AppLanguage.en: 'TAP TO UNLOCK',
+      AppLanguage.ja: 'タップして解除',
+    },
+    'card_unlocked': {
+      AppLanguage.vi: 'ĐÃ MỞ KHOÁ',
+      AppLanguage.en: 'UNLOCKED',
+      AppLanguage.ja: '認証済み',
+    },
+    'card_tap_to_pay': {
+      AppLanguage.vi: 'Chạm để thanh toán',
+      AppLanguage.en: 'Tap to Pay',
+      AppLanguage.ja: 'タップして決済',
+    },
+    'desktop_sidebar_cockpit': {
+      AppLanguage.vi: 'Trang chủ Cockpit',
+      AppLanguage.en: 'Cockpit Dashboard',
+      AppLanguage.ja: 'コックピット',
+    },
+    'desktop_sidebar_history': {
+      AppLanguage.vi: 'Lịch sử giao dịch',
+      AppLanguage.en: 'Transaction History',
+      AppLanguage.ja: '利用履歴',
+    },
+    'desktop_sidebar_services': {
+      AppLanguage.vi: 'Dịch vụ bãi xe',
+      AppLanguage.en: 'Parking Services',
+      AppLanguage.ja: 'パーキングサービス',
+    },
+    'desktop_sidebar_profile': {
+      AppLanguage.vi: 'Hồ sơ & Xe cá nhân',
+      AppLanguage.en: 'Profile & Vehicles',
+      AppLanguage.ja: 'プロフィール・車両',
+    },
+    'desktop_reserve_slot': {
+      AppLanguage.vi: 'Đặt chỗ gửi xe',
+      AppLanguage.en: 'Reserve Slot',
+      AppLanguage.ja: '駐車枠予約',
+    },
+    'desktop_scan_qr': {
+      AppLanguage.vi: 'Quét mã ra / vào',
+      AppLanguage.en: 'Scan Entry / Exit',
+      AppLanguage.ja: 'QRコードスキャン',
+    },
+    'floor_b1_cars': {
+      AppLanguage.vi: 'TẦNG HẦM B1 (Ô TÔ)',
+      AppLanguage.en: 'BASEMENT B1 (CARS)',
+      AppLanguage.ja: '地下1階 B1 (普通車)',
+    },
+    'floor_b2_bikes': {
+      AppLanguage.vi: 'TẦNG HẦM B2 (XE MÁY)',
+      AppLanguage.en: 'BASEMENT B2 (BIKES)',
+      AppLanguage.ja: '地下2階 B2 (二輪車)',
+    },
+    'floor_ev_charging': {
+      AppLanguage.vi: 'KHU SẠC XE ĐIỆN (EV)',
+      AppLanguage.en: 'EV CHARGING HUB',
+      AppLanguage.ja: 'EV充電ステーション',
+    },
+    'slots_count_unit': {
+      AppLanguage.vi: 'chỗ',
+      AppLanguage.en: 'slots',
+      AppLanguage.ja: '台',
+    },
+    'dock_cards': {
+      AppLanguage.vi: 'Thẻ đỗ xe',
+      AppLanguage.en: 'Pass Cards',
+      AppLanguage.ja: '駐車カード',
+    },
+    'dock_list': {
+      AppLanguage.vi: 'Danh sách xe',
+      AppLanguage.en: 'Vehicle List',
+      AppLanguage.ja: '車両一覧',
+    },
+    'card_flip_qr': {
+      AppLanguage.vi: 'Lật xem QR',
+      AppLanguage.en: 'Flip to view QR',
+      AppLanguage.ja: 'QRコード表示',
+    },
+    'card_tap_fingerprint': {
+      AppLanguage.vi: 'Chạm để quét vân tay',
+      AppLanguage.en: 'Tap to scan fingerprint',
+      AppLanguage.ja: '指紋認証で解除',
+    },
   };
 
   /// Lấy chuỗi bản dịch theo key và ngôn ngữ hiện tại

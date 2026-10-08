@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/theme/app_typography.dart';
 import 'package:prm393_frontend/core/utils/responsive_utils.dart';
+import 'package:prm393_frontend/core/localization/app_translations.dart';
 
 enum WalletDockMode { quickAccess, allCards }
 
@@ -44,13 +45,13 @@ class WalletQuickDock extends StatelessWidget {
             context,
             mode: WalletDockMode.quickAccess,
             icon: Icons.credit_card_rounded,
-            label: 'Thẻ đỗ xe',
+            label: context.tr('dock_cards'),
           ),
           _buildDockButton(
             context,
             mode: WalletDockMode.allCards,
             icon: Icons.layers_outlined,
-            label: 'Danh sách xe',
+            label: context.tr('dock_list'),
           ),
         ],
       ),
