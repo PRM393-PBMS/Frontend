@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/responsive_utils.dart';
+import 'package:prm393_frontend/core/localization/app_translations.dart';
 import '../models/vehicle_card_model.dart';
 import 'vehicle_card_item.dart';
 
@@ -91,7 +92,7 @@ class VehicleCarouselState extends State<VehicleCarousel> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Chưa có phương tiện nào',
+              context.tr('empty_vehicles_title'),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: context.sp(15),
@@ -100,7 +101,7 @@ class VehicleCarouselState extends State<VehicleCarousel> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Đăng ký biển số xe để kích hoạt thẻ vé thông minh và nhận diện barrier tự động.',
+              context.tr('empty_vehicles_desc'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
@@ -112,7 +113,7 @@ class VehicleCarouselState extends State<VehicleCarousel> {
               ElevatedButton.icon(
                 onPressed: widget.onAddVehicle,
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Đăng ký phương tiện ngay'),
+                label: Text(context.tr('btn_register_now')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: const Color(0xFF090D14),

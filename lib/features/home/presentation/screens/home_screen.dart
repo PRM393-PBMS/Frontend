@@ -15,6 +15,8 @@ import 'package:prm393_frontend/features/home/data/models/notification_model.dar
 import 'package:prm393_frontend/features/home/data/models/parking_session_model.dart';
 import 'package:prm393_frontend/features/home/data/repositories/parking_repository.dart';
 import 'package:prm393_frontend/core/services/vehicle_storage_service.dart';
+import 'package:prm393_frontend/core/localization/app_language.dart';
+import 'package:prm393_frontend/core/localization/app_translations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/vehicle_card_model.dart';
@@ -42,25 +44,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Selected category filter
   int _selectedCategoryIndex = 0;
-  final List<Map<String, dynamic>> _categories = [
+  List<Map<String, dynamic>> _getCategories(BuildContext context) => [
     {
-      'label': 'Tất cả',
+      'label': context.tr('filter_all'),
       'icon': Icons.all_inclusive_rounded,
     },
     {
-      'label': 'Ô tô',
+      'label': context.tr('filter_cars'),
       'icon': Icons.directions_car_rounded,
     },
     {
-      'label': 'Xe máy',
+      'label': context.tr('filter_bikes'),
       'icon': Icons.two_wheeler_rounded,
     },
     {
-      'label': 'Vé tháng',
+      'label': context.tr('filter_monthly'),
       'icon': Icons.card_membership_rounded,
     },
     {
-      'label': 'Vé lượt',
+      'label': context.tr('filter_daily'),
       'icon': Icons.confirmation_number_outlined,
     },
   ];
@@ -401,49 +403,55 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           : null,
-      title: Row(
-        children: [
-          Text(
-            'PBMS Cockpit',
-            style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w900,
-              color: fgColor,
-              letterSpacing: -0.5,
-            ),
-          ),
-          SizedBox(width: context.space(8)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      title: Text(
+        'PBMS',
+        style: AppTypography.titleLarge.copyWith(
+          fontWeight: FontWeight.w900,
+          color: fgColor,
+          letterSpacing: -0.5,
+        ),
+      ),
+      actions: [
+        // 0. NÚT CHUYỂN ĐỔI NGÔN NGỮ NHANH (QUICK LANGUAGE SWITCH BUTTON)
+        InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _showQuickLanguageModal(context);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.available.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: AppColors.available.withValues(alpha: 0.3)),
+              color: isDark ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFFE0F2FE),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.primary.withValues(alpha: 0.4) : const Color(0xFFBAE6FD),
+                width: 1.0,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: const BoxDecoration(
-                    color: AppColors.available,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
                 Text(
-                  _activeSession != null ? 'ACTIVE' : 'READY',
+                  LanguageController.instance.currentLanguage.flag,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  LanguageController.instance.currentLanguage.code.toUpperCase(),
                   style: AppTypography.badgeMono.copyWith(
-                    color: AppColors.available,
-                    fontSize: 9.5,
+                    color: isDark ? AppColors.primary : const Color(0xFF0369A1),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-      actions: [
+        ),
+        const SizedBox(width: 4),
+
         // 1. BIỂU TƯỢNG THÔNG BÁO (NOTIFICATION BELL VỚI BADGE SỐ ĐẾM)
         IconButton(
           icon: Badge(
@@ -461,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   : fgColor,
             ),
           ),
-          tooltip: 'Thông báo hệ thống ($unreadCount chưa đọc)',
+          tooltip: context.tr('item_push_notifications'),
           onPressed: () {
             HapticFeedback.lightImpact();
             final repo = context.read<ParkingRepository>();
@@ -477,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // 2. BIỂU TƯỢNG 3 CHẤM (MORE OPTIONS)
         IconButton(
           icon: Icon(Icons.more_horiz_rounded, size: context.iconSize(24)),
-          tooltip: 'Tuỳ chọn',
+          tooltip: context.tr('sec_settings'),
           color: fgColor,
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -559,12 +567,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(width: context.space(8)),
                   Text(
                     hasActiveSession
-                        ? 'PHIÊN ĐỖ ĐANG HOẠT ĐỘNG'
+                        ? context.tr('session_active_status')
                         : (!hasVehicle
-                            ? 'CHỜ ĐĂNG KÝ XE'
+                            ? context.tr('session_awaiting_veh')
                             : (_currentVehicle.paymentStatus == 'PendingPayment'
-                                ? 'CHỜ THANH TOÁN KÍCH HOẠT'
-                                : 'HỆ THỐNG SẴN SÀNG')),
+                                ? context.tr('session_pending_payment')
+                                : context.tr('session_system_ready'))),
                     style: AppTypography.badgeMono.copyWith(
                       color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                       fontSize: context.sp(11),
@@ -618,7 +626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'BIỂN SỐ XE',
+                          context.tr('metric_license_plate'),
                           style: AppTypography.badgeMono.copyWith(
                             fontSize: context.sp(9.5),
                             color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
@@ -650,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'THỜI GIAN',
+                          context.tr('metric_duration'),
                           style: AppTypography.badgeMono.copyWith(
                             fontSize: context.sp(9.5),
                             color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
@@ -681,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'TẠM TÍNH',
+                          context.tr('metric_estimated_fee'),
                           style: AppTypography.badgeMono.copyWith(
                             fontSize: context.sp(9.5),
                             color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
@@ -723,11 +731,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     hasActiveSession ? Icons.explore_outlined : Icons.map_outlined,
                     size: context.iconSize(16),
                   ),
-                  label: Text(hasActiveSession ? 'Định vị xe' : 'Sơ đồ bãi đỗ'),
+                  label: Flexible(
+                    child: Text(
+                      hasActiveSession ? context.tr('btn_locate_car') : context.tr('btn_parking_map'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                     side: BorderSide(color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1)),
-                    padding: EdgeInsets.symmetric(vertical: context.space(11)),
+                    padding: EdgeInsets.symmetric(vertical: context.space(11), horizontal: context.space(8)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.space(10))),
                   ),
                 ),
@@ -735,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: context.space(10)),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     HapticFeedback.mediumImpact();
                     if (hasActiveSession) {
                       _handleCheckoutSession(context, _activeSession!);
@@ -744,7 +758,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     } else if (_currentVehicle.paymentStatus == 'PendingPayment') {
                       _openPaymentForVehicle(_currentVehicle);
                     } else {
-                      _triggerBiometricAuth();
+                      if (!_isCardUnlocked) {
+                        final ok = await _triggerBiometricAuth();
+                        if (ok && context.mounted) {
+                          _showVehicleQREntryModal(context, _currentVehicle);
+                        }
+                      } else {
+                        _showVehicleQREntryModal(context, _currentVehicle);
+                      }
                     }
                   },
                   icon: Icon(
@@ -754,24 +775,30 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? Icons.add_circle_outline_rounded
                             : (_currentVehicle.paymentStatus == 'PendingPayment'
                                 ? Icons.payment_rounded
-                                : Icons.fingerprint_rounded)),
+                                : (_isCardUnlocked ? Icons.qr_code_rounded : Icons.fingerprint_rounded))),
                     size: context.iconSize(16),
                   ),
-                  label: Text(
-                    hasActiveSession
-                        ? 'Thanh toán ra'
-                        : (!hasVehicle
-                            ? 'Đăng ký xe ngay'
-                            : (_currentVehicle.paymentStatus == 'PendingPayment'
-                                ? 'Thanh toán kích hoạt'
-                                : 'Lật vé vào bãi')),
+                  label: Flexible(
+                    child: Text(
+                      hasActiveSession
+                          ? context.tr('btn_pay_exit')
+                          : (!hasVehicle
+                              ? context.tr('btn_register_vehicle_now')
+                              : (_currentVehicle.paymentStatus == 'PendingPayment'
+                                  ? context.tr('btn_pay_activate')
+                                  : (_isCardUnlocked ? context.tr('btn_qr_entry') : context.tr('btn_unlock_pass')))),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _currentVehicle.paymentStatus == 'PendingPayment' && !hasActiveSession
                         ? const Color(0xFFF59E0B)
                         : (isDark ? AppColors.primary : const Color(0xFF090D14)),
-                    foregroundColor: const Color(0xFF090D14),
-                    padding: EdgeInsets.symmetric(vertical: context.space(11)),
+                    foregroundColor: _currentVehicle.paymentStatus == 'PendingPayment' && !hasActiveSession
+                        ? Colors.white
+                        : (isDark ? const Color(0xFF090D14) : Colors.white),
+                    padding: EdgeInsets.symmetric(vertical: context.space(11), horizontal: context.space(8)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.space(10))),
                   ),
                 ),
@@ -788,120 +815,76 @@ class _HomeScreenState extends State<HomeScreen> {
   // ===========================================================================
   Widget _buildCategoryPills(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final categories = _getCategories(context);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.space(16)),
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: context.space(38),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: _categories.length,
-                separatorBuilder: (_, __) => SizedBox(width: context.space(8)),
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  final isSelected = _selectedCategoryIndex == index;
+      child: SizedBox(
+        height: context.space(38),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: categories.length,
+          separatorBuilder: (_, __) => SizedBox(width: context.space(8)),
+          itemBuilder: (context, index) {
+            final cat = categories[index];
+            final isSelected = _selectedCategoryIndex == index;
 
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _selectedCategoryIndex = index;
-                        _activeCardIndex = 0;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.space(14),
-                        vertical: context.space(6),
-                      ),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedCategoryIndex = index;
+                  _activeCardIndex = 0;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.space(14),
+                  vertical: context.space(6),
+                ),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isDark ? AppColors.primary : const Color(0xFF090D14))
+                      : (isDark ? AppColors.surfaceDark : Colors.white),
+                  borderRadius: BorderRadius.circular(context.space(21)),
+                  border: Border.all(
+                    color: isSelected
+                        ? (isDark ? AppColors.primary : const Color(0xFF090D14))
+                        : (isDark ? AppColors.borderDark : const Color(0xFFCBD5E1)),
+                    width: 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      cat['icon'] as IconData,
+                      size: context.iconSize(14),
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF090D14) : Colors.white)
+                          : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                    ),
+                    SizedBox(width: context.space(6)),
+                    Text(
+                      cat['label'] as String,
+                      style: AppTypography.labelMedium.copyWith(
+                        fontSize: context.sp(11.5),
+                        height: 1.15,
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                         color: isSelected
-                            ? (isDark ? AppColors.primary : const Color(0xFF090D14))
-                            : (isDark ? AppColors.surfaceDark : Colors.white),
-                        borderRadius: BorderRadius.circular(context.space(21)),
-                        border: Border.all(
-                          color: isSelected
-                              ? (isDark ? AppColors.primary : const Color(0xFF090D14))
-                              : (isDark ? AppColors.borderDark : const Color(0xFFCBD5E1)),
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            cat['icon'] as IconData,
-                            size: context.iconSize(14),
-                            color: isSelected
-                                ? (isDark ? const Color(0xFF090D14) : Colors.white)
-                                : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                          ),
-                          SizedBox(width: context.space(6)),
-                          Text(
-                            cat['label'] as String,
-                            style: AppTypography.labelMedium.copyWith(
-                              fontSize: context.sp(11.5),
-                              height: 1.15,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                              color: isSelected
-                                  ? (isDark ? const Color(0xFF090D14) : Colors.white)
-                                  : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                            ),
-                          ),
-                        ],
+                            ? (isDark ? const Color(0xFF090D14) : Colors.white)
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-          ),
-          SizedBox(width: context.space(8)),
-          InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _showAddVehicleBottomSheet(context);
-            },
-            borderRadius: BorderRadius.circular(context.space(21)),
-            child: Container(
-              height: context.space(38),
-              padding: EdgeInsets.symmetric(horizontal: context.space(12)),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.primary.withValues(alpha: 0.16) : const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(context.space(21)),
-                border: Border.all(
-                  color: isDark ? AppColors.primary.withValues(alpha: 0.45) : const Color(0xFF93C5FD),
-                  width: 1.0,
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.add_circle_outline_rounded,
-                    size: context.iconSize(15),
-                    color: isDark ? AppColors.primary : const Color(0xFF0284C7),
-                  ),
-                  SizedBox(width: context.space(5)),
-                  Text(
-                    'Đăng ký xe',
-                    style: AppTypography.labelMedium.copyWith(
-                      fontSize: context.sp(11.5),
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? AppColors.primary : const Color(0xFF0284C7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -953,11 +936,11 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'SỨC CHỨA BÃI ĐỖ',
+                context.tr('facility_capacity_title'),
                 style: AppTypography.badgeMono.copyWith(color: AppColors.primary),
               ),
               Text(
-                '$percentAvail% KHẢ DỤNG',
+                '$percentAvail% ${context.tr('available_percent')}',
                 style: AppTypography.badgeMono.copyWith(color: AppColors.available),
               ),
             ],
@@ -981,11 +964,11 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             })
           else ...[
-            _buildFloorRow('TẦNG HẦM B1 (Ô TÔ)', 42, 50, AppColors.available),
+            _buildFloorRow(context.tr('floor_b1_cars'), 42, 50, AppColors.available),
             const SizedBox(height: 12),
-            _buildFloorRow('TẦNG HẦM B2 (XE MÁY)', 88, 120, AppColors.available),
+            _buildFloorRow(context.tr('floor_b2_bikes'), 88, 120, AppColors.available),
             const SizedBox(height: 12),
-            _buildFloorRow('KHU SẠC XE ĐIỆN (EV)', 8, 10, AppColors.reserved),
+            _buildFloorRow(context.tr('floor_ev_charging'), 8, 10, AppColors.reserved),
           ],
         ],
       ),
@@ -1002,7 +985,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(title, style: AppTypography.bodySmall.copyWith(fontSize: 11)),
             Text(
-              '$occupied / $total chỗ',
+              '$occupied / $total ${context.tr('slots_count_unit')}',
               style: AppTypography.telemetryMono.copyWith(fontSize: 11),
             ),
           ],
@@ -1034,7 +1017,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'LỊCH SỬ VÀO / RA GẦN NHẤT',
+            context.tr('recent_activity_title'),
             style: AppTypography.badgeMono.copyWith(
               color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
             ),
@@ -1087,6 +1070,177 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ===========================================================================
+  // QUICK LANGUAGE MODAL (Tiếng Việt, English, 日本語)
+  // ===========================================================================
+  void _showQuickLanguageModal(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentLang = LanguageController.instance.currentLanguage;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Title Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.translate_rounded,
+                      color: isDark ? AppColors.primary : const Color(0xFF0284C7),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('modal_lang_title'),
+                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          context.tr('modal_lang_desc'),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+
+              // 3 Language Options: Tiếng Việt, English, 日本語
+              ...AppLanguage.values.map((lang) {
+                final isSelected = lang == currentLang;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark
+                            ? AppColors.primary.withValues(alpha: 0.14)
+                            : const Color(0xFFEFF6FF))
+                        : (isDark ? AppColors.cardDark : const Color(0xFFF8FAFC)),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? (isDark ? AppColors.primary : const Color(0xFF0284C7))
+                          : (isDark ? AppColors.borderSubtleDark : const Color(0xFFE2E8F0)),
+                      width: isSelected ? 1.6 : 1.0,
+                    ),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Text(
+                      lang.flag,
+                      style: const TextStyle(fontSize: 26),
+                    ),
+                    title: Text(
+                      lang.name,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        color: isSelected
+                            ? (isDark ? AppColors.primary : const Color(0xFF0284C7))
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      lang == AppLanguage.vi
+                          ? 'Ngôn ngữ Tiếng Việt chuẩn PBMS'
+                          : (lang == AppLanguage.en
+                              ? 'Global English interface'
+                              : '日本語インターフェース'),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.primary : const Color(0xFF0284C7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      LanguageController.instance.setLanguage(lang);
+                      Navigator.of(ctx).pop();
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Text(lang.flag, style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 10),
+                              Text(
+                                '${context.tr('lang_switched_notice')}${lang.name}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1530,6 +1684,148 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showVehicleQREntryModal(BuildContext context, VehicleCardModel vehicle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final now = DateTime.now();
+    final dynamicPayload = 'PBMS-GATE-IN|${vehicle.licensePlate}|${vehicle.nfcTagId}|${now.millisecondsSinceEpoch ~/ 30000}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Thẻ vé điện tử vào bãi', style: AppTypography.titleLarge),
+                        Text(
+                          'Quét tại Camera Barrier hoặc chạm cảm biến NFC',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Thẻ hiển thị QR Code động
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.borderSubtleDark : const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      vehicle.licensePlate,
+                      style: AppTypography.licensePlateMono.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${vehicle.vehicleName} • ${vehicle.ticketType}',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: dynamicPayload,
+                        version: QrVersions.auto,
+                        size: 180,
+                        backgroundColor: Colors.white,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.nfc_rounded, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Mã NFC PBMS: ${vehicle.nfcTagId}',
+                          style: AppTypography.badgeMono.copyWith(fontSize: 10.5, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Đóng'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleCheckoutSession(BuildContext context, ParkingSessionModel session) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final repo = context.read<ParkingRepository>();
@@ -1866,7 +2162,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _triggerBiometricAuth({VehicleCardModel? vehicle}) async {
+  Future<bool> _triggerBiometricAuth({VehicleCardModel? vehicle}) async {
     final target = vehicle ?? _currentVehicle;
     final canAuth = await BiometricService.instance.canAuthenticate();
     bool success = false;
@@ -1876,14 +2172,14 @@ class _HomeScreenState extends State<HomeScreen> {
         reason: 'Xác thực vân tay mở khoá thẻ xe ${target.licensePlate}',
       );
     } else {
-      if (!mounted) return;
+      if (!mounted) return false;
       success = await UltrasonicFingerprintDialog.authenticate(
         context,
         vehiclePlate: target.licensePlate,
       );
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
     if (success) {
       setState(() => _isCardUnlocked = true);
       HapticFeedback.heavyImpact();
@@ -1909,6 +2205,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+      return true;
     }
+    return false;
   }
 }
