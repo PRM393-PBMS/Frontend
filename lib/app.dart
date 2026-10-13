@@ -8,7 +8,9 @@ import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 
 class ParkingApp extends StatefulWidget {
-  const ParkingApp({super.key});
+  final bool showOnboarding;
+  
+  const ParkingApp({super.key, required this.showOnboarding});
 
   @override
   State<ParkingApp> createState() => _ParkingAppState();
@@ -21,7 +23,7 @@ class _ParkingAppState extends State<ParkingApp> {
   void initState() {
     super.initState();
     final authBloc = context.read<AuthBloc>();
-    _router = AppRouter.createRouter(authBloc);
+    _router = AppRouter.createRouter(authBloc, widget.showOnboarding);
   }
 
   @override

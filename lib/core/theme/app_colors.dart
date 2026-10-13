@@ -1,67 +1,64 @@
 import 'package:flutter/material.dart';
 
-/// Precision Architectural & Dark-Tech Mobility Color System
+/// Bảng màu chuẩn của PRM393 Parking Design System
 class AppColors {
   AppColors._();
 
-  // Primary Branding (Electric Ice / Precision Cyan)
-  static const Color primary = Color(0xFF00E5FF); // Electric Precision Cyan
-  static const Color primaryDark = Color(0xFF0284C7); // Deep Tech Blue
-  static const Color primaryLight = Color(0xFF7DD3FC); // Soft Cyan Highlight
+  // Primary Branding
+  static const Color primary = Color(0xFF2563EB); // Modern Royal Blue
+  static const Color primaryDark = Color(0xFF1D4ED8);
+  static const Color primaryLight = Color(0xFF60A5FA);
 
   // Secondary & Accents
-  static const Color secondary = Color(0xFF38BDF8); // Sky Ice
-  static const Color accent = Color(0xFF6366F1); // Indigo Telemetry
+  static const Color secondary = Color(0xFF0EA5E9); // Sky Blue
+  static const Color accent = Color(0xFF6366F1); // Indigo
 
-  // Precision Telemetry & Semantic Status
-  static const Color available = Color(0xFF00E599); // Phosphor Mint: Chỗ trống / Đã thanh toán
-  static const Color occupied = Color(0xFFFF4757);  // Crimson Warning: Đã có xe / Quá giờ
-  static const Color reserved = Color(0xFFFFB020);  // Amber Beacon: Đã đặt trước
-  static const Color maintenance = Color(0xFF64748B); // Slate Muted: Bảo trì
+  // Semantic Status (Dành riêng cho trạng thái chỗ đỗ xe & thanh toán)
+  static const Color available = Color(0xFF10B981); // Xanh lá: Chỗ trống / Đã thanh toán
+  static const Color occupied = Color(0xFFEF4444);  // Đỏ: Đã có xe / Quá giờ
+  static const Color reserved = Color(0xFFF59E0B);  // Vàng cam: Đã đặt trước
+  static const Color maintenance = Color(0xFF6B7280); // Xám: Bảo trì
 
-  static const Color success = Color(0xFF00E599);
-  static const Color warning = Color(0xFFFFB020);
-  static const Color error = Color(0xFFFF4757);
-  static const Color info = Color(0xFF38BDF8);
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = Color(0xFF3B82F6);
 
-  // Surfaces & Backgrounds - Precision Dark-Tech (Flagship)
-  static const Color bgDark = Color(0xFF090D14); // Deep Obsidian
-  static const Color surfaceDark = Color(0xFF0F172A); // Architectural Charcoal
-  static const Color cardDark = Color(0xFF162032); // Milled Slate Surface
-  static const Color cardElevatedDark = Color(0xFF1E2B42); // Elevated Interactive Card
-  static const Color borderDark = Color(0xFF1F2E45); // Milled Hairline Border
-  static const Color borderSubtleDark = Color(0xFF172336);
-  static const Color textPrimaryDark = Color(0xFFF1F5F9); // Crisp Off-White
-  static const Color textSecondaryDark = Color(0xFF94A3B8); // Muted Slate
-  static const Color textMutedDark = Color(0xFF64748B); // Low-contrast Metadata
-
-  // Surfaces & Backgrounds - Architectural Light Mode
-  static const Color bgLight = Color(0xFFF4F6F9); // Crisp Milled Gray
+  // Neutral Colors (Light Mode)
+  static const Color bgLight = Color(0xFFF8FAFC);
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color cardLight = Color(0xFFFFFFFF);
   static const Color borderLight = Color(0xFFE2E8F0);
-  static const Color textPrimaryLight = Color(0xFF090D14);
-  static const Color textSecondaryLight = Color(0xFF475569);
+  static const Color textPrimaryLight = Color(0xFF0F172A);
+  static const Color textSecondaryLight = Color(0xFF64748B);
   static const Color textMutedLight = Color(0xFF94A3B8);
 
-  // Titanium & Metallic Material Accents
-  static const LinearGradient titaniumCardGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF222F43),
-      Color(0xFF131B28),
-      Color(0xFF0B1019),
-    ],
-  );
+  // Neutral Colors (Dark Mode)
+  static const Color bgDark = Color(0xFF0B0F19);
+  static const Color surfaceDark = Color(0xFF1E293B);
+  static const Color cardDark = Color(0xFF1E293B);
+  static const Color borderDark = Color(0xFF334155);
+  static const Color textPrimaryDark = Color(0xFFF8FAFC);
+  static const Color textSecondaryDark = Color(0xFF94A3B8);
+  static const Color textMutedDark = Color(0xFF64748B);
 
-  static const LinearGradient metallicCardGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF2B3A52),
-      Color(0xFF182233),
-      Color(0xFF0F1522),
-    ],
-  );
+  // Material 3 tokens (onboarding / auth surfaces)
+  static const Color m3Primary = Color(0xFF0058BC);
+  static const Color m3OnPrimary = Color(0xFFFFFFFF);
+  static const Color m3PrimaryFixed = Color(0xFFD8E2FF);
+  static const Color m3OnPrimaryFixed = Color(0xFF001A41);
+  static const Color m3PrimaryFixedDim = Color(0xFFADC6FF);
+  static const Color m3Secondary = Color(0xFF006E28);
+  static const Color m3SecondaryContainer = Color(0xFF6FFB85);
+  static const Color m3SecondaryFixed = Color(0xFF72FE88);
+  static const Color m3TertiaryContainer = Color(0xFFAC6300);
+  static const Color m3Surface = Color(0xFFFCF8FB);
+  static const Color m3SurfaceContainerLow = Color(0xFFF6F3F5);
+  static const Color m3SurfaceContainer = Color(0xFFF0EDEF);
+  static const Color m3SurfaceContainerHighest = Color(0xFFE4E2E4);
+  static const Color m3OnSurface = Color(0xFF1B1B1D);
+  static const Color m3OnSurfaceVariant = Color(0xFF414755);
+  static const Color m3OutlineVariant = Color(0xFFC1C6D7);
+  static const Color m3InverseSurface = Color(0xFF303032);
+  static const Color m3InverseOnSurface = Color(0xFFF3F0F2);
 }

@@ -11,8 +11,12 @@ import 'features/auth/presentation/blocs/auth_event.dart';
 import 'features/home/data/datasources/parking_remote_datasource.dart';
 import 'features/home/data/repositories/parking_repository.dart';
 
+import 'core/storage/preferences_helper.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  final showOnboarding = await PreferencesHelper.shouldShowOnboarding();
 
   // 1. Khởi tạo Local Services & Network Core
   final storageService = SecureStorageService();
@@ -52,7 +56,7 @@ void main() async {
         providers: [
           BlocProvider<AuthBloc>.value(value: authBloc),
         ],
-        child: const ParkingApp(),
+        child: ParkingApp(showOnboarding: showOnboarding),
       ),
     ),
   );
