@@ -32,8 +32,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final data = response.result;
       if (data == null) {
-        throw const ServerException(
-            message: 'Không nhận được dữ liệu phiên đăng nhập.');
+        throw const ServerException(message: '');
       }
 
       await _storageService.saveAccessToken(data.accessToken);

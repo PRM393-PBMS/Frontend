@@ -178,11 +178,9 @@ class AuthInterceptor extends Interceptor {
 
       final data = response.data;
 
-      if (data is! Map<String, dynamic> ||
-          data['isSuccess'] != true) {
+      if (data is! Map<String, dynamic> || data['isSuccess'] != true) {
         if (data is Map<String, dynamic> &&
-            (data['statusCode'] == 401 ||
-                data['statusCode'] == 403)) {
+            (data['statusCode'] == 401 || data['statusCode'] == 403)) {
           await _expireSession();
           return null;
         }
@@ -196,9 +194,8 @@ class AuthInterceptor extends Interceptor {
       }
 
       final result = data['result'];
-      final token = result is Map<String, dynamic>
-          ? result['accessToken']
-          : null;
+      final token =
+          result is Map<String, dynamic> ? result['accessToken'] : null;
 
       if (token is! String || token.isEmpty) {
         throw DioException(
@@ -210,8 +207,7 @@ class AuthInterceptor extends Interceptor {
       }
 
       // Không khôi phục token nếu người dùng đã đổi/xóa phiên.
-      final currentRefreshToken =
-          await storageService.getRefreshToken();
+      final currentRefreshToken = await storageService.getRefreshToken();
 
       if (currentRefreshToken != refreshToken) {
         return null;

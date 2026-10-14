@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'core/config/app_config.dart';
+import 'package:intl/intl.dart';
+
+import 'core/l10n/locale_controller.dart';
 import 'core/routes/app_router.dart';
+import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
-
-import 'core/localization/app_language.dart';
+import 'l10n/app_localizations.dart';
 
 class ParkingApp extends StatefulWidget {
-  const ParkingApp({super.key});
+  final bool showOnboarding;
+
+  const ParkingApp({super.key, required this.showOnboarding});
 
   @override
   State<ParkingApp> createState() => _ParkingAppState();
@@ -22,28 +26,31 @@ class _ParkingAppState extends State<ParkingApp> {
   @override
   void initState() {
     super.initState();
-    final authBloc = context.read<AuthBloc>();
-    _router = AppRouter.createRouter(authBloc);
+    _router =
+        AppRouter.createRouter(context.read<AuthBloc>(), widget.showOnboarding);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeController.instance.themeModeNotifier,
-      builder: (context, currentMode, _) {
-        return ValueListenableBuilder<AppLanguage>(
-          valueListenable: LanguageController.instance.languageNotifier,
-          builder: (context, currentLang, _) {
-            return MaterialApp.router(
-              title: AppConfig.appTitle,
-              debugShowCheckedModeBanner: false,
-              locale: Locale(currentLang.code),
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: currentMode,
-              routerConfig: _router,
-            );
-          },
+    return ValueListenableBuilder<Locale>(
+      valueListenable: LocaleController.instance.localeNotifier,
+      builder: (context, locale, _) {
+        Intl.defaultLocale = locale.languageCode;
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: ThemeController.instance.themeModeNotifier,
+          builder: (context, mode, _) => MaterialApp.router(
+            onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: mode,
+            routerConfig: _router,
+            builder: (context, child) =>
+                AppLockGate(child: child ?? const SizedBox.shrink()),
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+          ),
         );
       },
     );

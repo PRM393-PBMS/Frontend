@@ -11,26 +11,27 @@ class AppException implements Exception {
   });
 
   @override
-  String toString() => 'AppException(statusCode: $statusCode, message: $message)';
+  String toString() =>
+      'AppException(statusCode: $statusCode, message: $message)';
 }
 
 class NetworkException extends AppException {
   const NetworkException({
-    super.message = 'Không có kết nối mạng. Vui lòng kiểm tra lại.',
+    super.message = '',
     super.statusCode,
   });
 }
 
 class UnauthorizedException extends AppException {
   const UnauthorizedException({
-    super.message = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+    super.message = '',
     super.statusCode = 401,
   });
 }
 
 class ForbiddenException extends AppException {
   const ForbiddenException({
-    super.message = 'Tài khoản không có quyền truy cập hoặc đã bị khóa.',
+    super.message = '',
     super.statusCode = 403,
   });
 }
@@ -52,14 +53,14 @@ class ConflictException extends AppException {
 
 class NotFoundException extends AppException {
   const NotFoundException({
-    super.message = 'Không tìm thấy dữ liệu yêu cầu.',
+    super.message = '',
     super.statusCode = 404,
   });
 }
 
 class ServerException extends AppException {
   const ServerException({
-    super.message = 'Hệ thống máy chủ đang bận. Vui lòng thử lại sau.',
+    super.message = '',
     super.statusCode = 500,
   });
 }

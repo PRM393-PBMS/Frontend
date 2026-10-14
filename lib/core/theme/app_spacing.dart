@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 
-/// Spacing và Border Radius tiêu chuẩn
+/// Spacing và hệ bo góc.
+///
+/// Quy tắc bo góc (áp dụng toàn app): control (nút, ô nhập, chip) = 12,
+/// bề mặt (thẻ, sheet) = 14, huy hiệu trạng thái = 8.
 class AppSpacing {
   AppSpacing._();
 
-  static const double xs = 4.0;
-  static const double sm = 8.0;
-  static const double md = 12.0;
-  static const double lg = 16.0;
-  static const double xl = 20.0;
-  static const double xxl = 24.0;
-  static const double xxxl = 32.0;
-  static const double pagePadding = 16.0;
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double xxxl = 32;
+  static const double page = 16;
 
-  // Border Radius
-  static const double radiusSm = 8.0;
-  static const double radiusMd = 12.0;
-  static const double radiusLg = 16.0;
-  static const double radiusXl = 24.0;
-  static const double radiusFull = 999.0;
+  /// Bề rộng tối đa của nội dung trên tablet / web.
+  static const double maxContentWidth = 640;
 
-  static final BorderRadius roundedSm = BorderRadius.circular(radiusSm);
-  static final BorderRadius roundedMd = BorderRadius.circular(radiusMd);
-  static final BorderRadius roundedLg = BorderRadius.circular(radiusLg);
-  static final BorderRadius roundedXl = BorderRadius.circular(radiusXl);
+  static const double radiusBadge = 8;
+  static const double radiusControl = 12;
+  static const double radiusSurface = 14;
+
+  static final BorderRadius badge = BorderRadius.circular(radiusBadge);
+  static final BorderRadius control = BorderRadius.circular(radiusControl);
+  static final BorderRadius surface = BorderRadius.circular(radiusSurface);
 }
