@@ -1,19 +1,12 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-/// Interceptor ghi log request / response một cách rõ ràng trong môi trường Debug
+/// Ghi log request / response gọn gàng trong Debug mode. Không in header (chứa token).
 class LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('┌──────────────────────────────────────────────────────────');
-      debugPrint('│ [DIO-REQUEST] 🚀 ${options.method.toUpperCase()} ${options.uri}');
-      debugPrint('│ Headers: ${jsonEncode(options.headers)}');
-      if (options.data != null) {
-        debugPrint('│ Body: ${options.data is FormData ? '[FormData]' : jsonEncode(options.data)}');
-      }
-      debugPrint('└──────────────────────────────────────────────────────────');
+      debugPrint('[HTTP] ${options.method.toUpperCase()} ${options.uri}');
     }
     super.onRequest(options, handler);
   }
@@ -21,10 +14,8 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('┌──────────────────────────────────────────────────────────');
-      debugPrint('│ [DIO-RESPONSE] ✅ ${response.statusCode} ${response.requestOptions.uri}');
-      debugPrint('│ Data: ${jsonEncode(response.data)}');
-      debugPrint('└──────────────────────────────────────────────────────────');
+      debugPrint(
+          '[HTTP] ${response.statusCode} ${response.requestOptions.uri}');
     }
     super.onResponse(response, handler);
   }
@@ -32,11 +23,10 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('┌──────────────────────────────────────────────────────────');
-      debugPrint('│ [DIO-ERROR] ❌ ${err.response?.statusCode} ${err.requestOptions.uri}');
-      debugPrint('│ Message: ${err.message}');
-      debugPrint('│ Response Data: ${err.response?.data}');
-      debugPrint('└──────────────────────────────────────────────────────────');
+      debugPrint(
+        '[HTTP] ERROR ${err.response?.statusCode ?? err.type.name} '
+        '${err.requestOptions.uri} ${err.response?.data ?? err.message}',
+      );
     }
     super.onError(err, handler);
   }

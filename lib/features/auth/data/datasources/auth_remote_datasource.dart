@@ -13,7 +13,8 @@ abstract class AuthRemoteDataSource {
 
   // Đăng ký & OTP
   Future<ApiResponse<void>> sendRegisterOtp(RegisterRequestDto dto);
-  Future<ApiResponse<Map<String, dynamic>>> verifyRegisterOtp(VerifyRegisterOtpDto dto);
+  Future<ApiResponse<Map<String, dynamic>>> verifyRegisterOtp(
+      VerifyRegisterOtpDto dto);
 
   // Quên mật khẩu & Reset
   Future<ApiResponse<void>> requestResetPassword(RequestResetPasswordDto dto);
@@ -31,7 +32,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     return await _apiClient.post<AuthTokensModel>(
       ApiEndpoints.login,
       data: dto.toJson(),
-      fromJsonT: (json) => AuthTokensModel.fromJson(json as Map<String, dynamic>),
+      fromJsonT: (json) =>
+          AuthTokensModel.fromJson(json as Map<String, dynamic>),
     );
   }
 

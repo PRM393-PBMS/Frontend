@@ -8,6 +8,7 @@ class UserEntity extends Equatable {
   final String? phoneNumber;
   final String roleName;
   final String? avatarUrl;
+  final String? walletId;
 
   const UserEntity({
     required this.id,
@@ -17,14 +18,23 @@ class UserEntity extends Equatable {
     this.phoneNumber,
     required this.roleName,
     this.avatarUrl,
+    this.walletId,
   });
 
-  bool get isManager =>
-      roleName.toLowerCase() == 'manager' || roleName.toLowerCase() == 'admin';
+  String get _role => roleName.trim().toLowerCase();
 
-  bool get isStaff => roleName.toLowerCase() == 'staff';
+  /// Nhân viên vận hành cổng (backend cho phép cả Staff và Manager).
+  bool get isStaff => _role == 'staff' || _role == 'manager';
 
-  bool get isCustomer => !isManager && !isStaff;
+  /// Tài xế / khách hàng (backend dùng roleName "User" hoặc "Customer").
+  bool get isCustomer => _role == 'user' || _role == 'customer';
+
+  /// Vai trò ứng dụng di động chưa hỗ trợ (vd. Admin chỉ dùng trang quản trị).
+  bool get isSupported => isStaff || isCustomer;
+
+  String get displayName => (fullName != null && fullName!.trim().isNotEmpty)
+      ? fullName!.trim()
+      : userName;
 
   @override
   List<Object?> get props => [
@@ -35,5 +45,6 @@ class UserEntity extends Equatable {
         phoneNumber,
         roleName,
         avatarUrl,
+        walletId,
       ];
 }

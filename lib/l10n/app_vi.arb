@@ -1,0 +1,1148 @@
+{
+  "@@locale": "vi",
+  "appName": "PBMS Parking",
+  "commonBack": "Quay lại",
+  "commonRetry": "Thử lại",
+  "commonAll": "Tất cả",
+  "commonDone": "Xong",
+  "commonEdit": "Sửa",
+  "commonYes": "Có",
+  "commonNo": "Không",
+  "commonNone": "Chưa có",
+  "commonLoading": "Đang tải",
+  "commonUnknown": "Không rõ",
+  "commonLogout": "Đăng xuất",
+  "loadFailedTitle": "Không tải được dữ liệu",
+  "showPassword": "Hiện mật khẩu",
+  "hidePassword": "Ẩn mật khẩu",
+  "imagePickTitle": "Chọn ảnh",
+  "imageTakePhoto": "Chụp ảnh",
+  "imageFromLibrary": "Chọn từ thư viện",
+  "ticketQrSemantics": "Mã QR vé gửi xe",
+  "ticketCopied": "Đã sao chép mã vé",
+  "ticketCode": "Mã vé {code}",
+  "@ticketCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "versionLabel": "Phiên bản {version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "errorGeneric": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+  "errorNetwork": "Không thể kết nối máy chủ. Kiểm tra mạng và thử lại.",
+  "errorStatus": "Đã xảy ra lỗi ({code}).",
+  "@errorStatus": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+  "timeToday": "Hôm nay {time}",
+  "@timeToday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "timeTomorrow": "Ngày mai {time}",
+  "@timeTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "timeYesterday": "Hôm qua {time}",
+  "@timeYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "timeOnDate": "{time}, {date}",
+  "@timeOnDate": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "durationDaysHours": "{days} ngày {hours} giờ",
+  "@durationDaysHours": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "durationHoursMinutes": "{hours} giờ {minutes} phút",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "durationMinutes": "{minutes} phút",
+  "@durationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "agoJustNow": "Vừa xong",
+  "agoMinutes": "{n} phút trước",
+  "@agoMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoHours": "{n} giờ trước",
+  "@agoHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoDays": "{n} ngày trước",
+  "@agoDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dateRange": "{from} đến {to}",
+  "@dateRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "vRequired": "Vui lòng nhập {field}",
+  "@vRequired": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "vEmailRequired": "Vui lòng nhập email",
+  "vEmailInvalid": "Email chưa đúng định dạng",
+  "vMaxLength": "{field} tối đa {max} ký tự",
+  "@vMaxLength": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "vPhoneRequired": "Vui lòng nhập số điện thoại",
+  "vPhoneInvalid": "Số điện thoại di động Việt Nam chưa hợp lệ",
+  "vUserNameRequired": "Vui lòng nhập tên đăng nhập",
+  "vFullNameRequired": "Vui lòng nhập họ và tên",
+  "vPasswordRequired": "Vui lòng nhập mật khẩu",
+  "vConfirmRequired": "Vui lòng nhập lại mật khẩu",
+  "vConfirmMismatch": "Mật khẩu nhập lại không khớp",
+  "vOtpInvalid": "Mã OTP gồm 6 chữ số",
+  "vPlateRequired": "Vui lòng nhập biển số",
+  "vPlateInvalid": "Biển số gồm 4-15 chữ cái và chữ số",
+  "vPlateSame": "Biển số mới phải khác biển số hiện tại",
+  "fieldEmail": "Email",
+  "fieldUserName": "Tên đăng nhập",
+  "fieldFullName": "Họ và tên",
+  "fieldPhone": "Số điện thoại",
+  "fieldEmailLabel": "email",
+  "fieldFullNameLabel": "Họ và tên",
+  "fieldUserNameLabel": "Tên đăng nhập",
+  "fieldPassword": "Mật khẩu",
+  "fieldPasswordConfirm": "Nhập lại mật khẩu",
+  "fieldNewPassword": "Mật khẩu mới",
+  "fieldNewPasswordConfirm": "Nhập lại mật khẩu mới",
+  "fieldOtp": "Mã OTP",
+  "fieldPlate": "Biển số xe",
+  "fieldVehicleType": "Loại xe",
+  "stReservationPending": "Chờ đặt cọc",
+  "stReservationConfirmed": "Đã xác nhận",
+  "stReservationModified": "Đã đổi giờ",
+  "stReservationCheckedIn": "Đã vào bãi",
+  "stReservationCompleted": "Hoàn tất",
+  "stCancelled": "Đã hủy",
+  "stReservationNoShow": "Quá giờ, không đến",
+  "stSessionActive": "Đang gửi",
+  "stSessionCompleted": "Đã lấy xe",
+  "stSessionException": "Ngoại lệ",
+  "stPassActive": "Đang hiệu lực",
+  "stPendingPayment": "Chờ thanh toán",
+  "stPassExpired": "Hết hạn",
+  "stPaid": "Đã thanh toán",
+  "stIncidentOpen": "Mới gửi",
+  "stIncidentInProgress": "Đang xử lý",
+  "stIncidentResolved": "Đã xử lý",
+  "stChangePending": "Chờ duyệt",
+  "stChangeApproved": "Đã duyệt",
+  "stChangeRejected": "Bị từ chối",
+  "stNoPass": "Chưa có vé tháng",
+  "payMethodPayOS": "Chuyển khoản PayOS",
+  "payMethodCash": "Tiền mặt",
+  "payTypeDeposit": "Đặt cọc giữ chỗ",
+  "payTypeCheckout": "Phí gửi xe",
+  "payTypeSubscription": "Phí vé tháng",
+  "payTypeRenewal": "Gia hạn vé tháng",
+  "roleStaff": "Nhân viên vận hành",
+  "roleManager": "Quản lý bãi xe",
+  "roleAdmin": "Quản trị viên",
+  "roleCustomer": "Khách hàng",
+  "customerGuest": "Vãng lai",
+  "customerResident": "Vé tháng",
+  "customerReservation": "Đặt trước",
+  "customerGuestFull": "Khách vãng lai",
+  "customerResidentFull": "Khách vé tháng",
+  "customerReservationFull": "Khách đặt trước",
+  "navHome": "Trang chủ",
+  "navHistory": "Lịch sử",
+  "navPasses": "Vé tháng",
+  "navAccount": "Tài khoản",
+  "navCheckIn": "Vào bãi",
+  "navCheckOut": "Ra bãi",
+  "navSessions": "Phiên gửi",
+  "navIncidents": "Sự cố",
+  "unsupportedTitle": "Vai trò chưa được hỗ trợ",
+  "unsupportedMessage": "Tài khoản {email} có vai trò \"{role}\". Ứng dụng dành cho khách hàng và nhân viên vận hành cổng. Vui lòng dùng trang quản trị.",
+  "@unsupportedMessage": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "notFoundTitle": "Không tìm thấy trang",
+  "notFoundMessage": "Đường dẫn này không tồn tại hoặc đã bị thay đổi.",
+  "notFoundAction": "Về trang chính",
+  "lockReason": "Xác thực để mở khóa PBMS Parking",
+  "lockFailed": "Chưa xác thực được. Thử lại hoặc đăng xuất để đăng nhập bằng mật khẩu.",
+  "lockTitle": "Ứng dụng đang khóa",
+  "lockMessage": "Xin chào {name}. Dùng vân tay hoặc khuôn mặt đã đăng ký trên thiết bị để tiếp tục.",
+  "@lockMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lockSemantics": "Mở khóa bằng sinh trắc học",
+  "lockUnlock": "Mở khóa",
+  "splashTagline": "Gửi xe, đặt chỗ và vé tháng tại một nơi.",
+  "splashChecking": "Đang kiểm tra phiên đăng nhập",
+  "loginTitle": "Đăng nhập",
+  "loginSubtitle": "Dùng email đã đăng ký để quản lý lượt gửi xe, đặt chỗ và vé tháng.",
+  "loginForgot": "Quên mật khẩu?",
+  "loginSubmit": "Đăng nhập",
+  "loginNoAccount": "Chưa có tài khoản?",
+  "loginRegister": "Đăng ký",
+  "loginFailed": "Đăng nhập không thành công. Vui lòng kiểm tra lại.",
+  "loginRegistered": "Đăng ký thành công. Vui lòng đăng nhập.",
+  "loginPasswordReset": "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.",
+  "registerTitle": "Tạo tài khoản",
+  "registerSubtitle": "Mã xác thực 6 số sẽ được gửi tới email của bạn.",
+  "registerSubmit": "Gửi mã xác thực",
+  "otpSendFailed": "Không thể gửi mã OTP. Vui lòng thử lại sau.",
+  "otpVerifyFailed": "Xác thực OTP thất bại. Vui lòng thử lại.",
+  "otpTitleRegister": "Xác thực email",
+  "otpTitleReset": "Đặt lại mật khẩu",
+  "otpSubtitle": "Nhập mã 6 số vừa gửi tới {email}. Mã có hiệu lực trong 10 phút.",
+  "@otpSubtitle": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "otpSubmitRegister": "Hoàn tất đăng ký",
+  "otpSubmitReset": "Đặt lại mật khẩu",
+  "otpResend": "Gửi lại mã",
+  "otpEditAndResend": "Sửa thông tin và gửi lại mã",
+  "otpResent": "Nếu email đã đăng ký, mã OTP đặt lại mật khẩu đã được gửi.",
+  "resetRequestFailed": "Yêu cầu đặt lại mật khẩu thất bại.",
+  "resetFailed": "Đặt lại mật khẩu thất bại. Kiểm tra mã OTP.",
+  "forgotTitle": "Quên mật khẩu",
+  "forgotSubtitle": "Nhập email đã đăng ký. Chúng tôi sẽ gửi mã OTP để bạn đặt mật khẩu mới.",
+  "forgotSubmit": "Gửi mã OTP",
+  "onbSkip": "Bỏ qua",
+  "onbNext": "Tiếp tục",
+  "onbStart": "Bắt đầu",
+  "onb1Title": "Xem chỗ trống trước khi đến",
+  "onb1Body": "Số chỗ còn trống theo từng tầng và loại xe, cập nhật từ hệ thống bãi.",
+  "onb2Title": "Đặt chỗ ô tô, vào cổng bằng mã QR",
+  "onb2Body": "Đặt trước tối đa 5 tiếng, đặt cọc qua PayOS và đưa mã vé cho nhân viên tại cổng.",
+  "onb3Title": "Vé tháng và phí gửi xe rõ ràng",
+  "onb3Body": "Đăng ký, gia hạn vé tháng và xem phí tạm tính của lượt gửi ngay trên điện thoại.",
+  "notifTooltip": "Thông báo",
+  "notifTitle": "Thông báo",
+  "notifMarkAll": "Đánh dấu đã đọc",
+  "notifEmptyTitle": "Chưa có thông báo",
+  "notifEmptyMessage": "Thông báo về đặt chỗ, vé tháng và sự cố sẽ hiện ở đây.",
+  "homeMorning": "Chào buổi sáng",
+  "homeAfternoon": "Chào buổi chiều",
+  "homeEvening": "Chào buổi tối",
+  "homeServices": "Dịch vụ",
+  "homeBookCar": "Đặt chỗ ô tô",
+  "homeBookCarSub": "Giữ chỗ trước tối đa 5 tiếng, đặt cọc qua PayOS",
+  "homeMyBookings": "Đặt chỗ của tôi",
+  "homeMyBookingsSub": "Xem vé, đổi giờ hoặc hủy đặt chỗ",
+  "homeAvailability": "Chỗ trống theo tầng",
+  "homeAvailabilitySub": "Tình trạng bãi và bảng giá hiện hành",
+  "homeReport": "Báo cáo sự cố",
+  "homeReportSub": "Gửi phản ánh kèm ảnh và theo dõi xử lý",
+  "homeParkedFor": "Đã gửi {duration}",
+  "@homeParkedFor": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEnteredAt": "Vào lúc {time} qua {gate}",
+  "@homeEnteredAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "gate": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEnteredSlot": ", ô {slot}",
+  "@homeEnteredSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "homePayToExit": "Thanh toán phí để ra bãi",
+  "homeViewTicket": "Xem vé và phí tạm tính",
+  "homeFreeNow": "Chỗ trống hiện tại",
+  "homeNoAvailability": "Chưa có dữ liệu chỗ trống",
+  "homeNoSlots": "Bãi chưa cấu hình ô đỗ.",
+  "homeOfSpaces": "/ {total} chỗ",
+  "@homeOfSpaces": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTypeFree": "{type}: {count} trống",
+  "@homeTypeFree": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "homeByFloor": "Xem theo tầng",
+  "homeBookingAt": "Đặt chỗ {time}",
+  "@homeBookingAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeFinishDeposit": "Hoàn tất đặt cọc để giữ chỗ",
+  "homeArriveWindow": "Có mặt trong khoảng 30 phút trước hoặc sau giờ hẹn",
+  "availTitle": "Chỗ trống",
+  "availEmptyTitle": "Chưa có dữ liệu ô đỗ",
+  "availEmptyMessage": "Bãi xe chưa cấu hình tầng và ô đỗ. Vui lòng quay lại sau.",
+  "availResidentFloor": "Tầng cư dân / vé tháng",
+  "availOfFree": " / {total} trống",
+  "@availOfFree": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "availPricing": "Bảng giá gửi xe",
+  "priceFirstHours": "{hours} giờ đầu",
+  "@priceFirstHours": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "priceExtraHour": "Mỗi giờ tiếp theo",
+  "priceNight": "Phụ thu qua đêm (22:00-06:00)",
+  "resNewTitle": "Đặt chỗ ô tô",
+  "resNewIntro": "Đặt trước áp dụng cho ô tô, tối đa 5 tiếng trước giờ vào. Bạn được vào bãi trong khoảng 30 phút trước hoặc sau giờ hẹn.",
+  "resCarFree": "Chỗ ô tô vãng lai còn trống",
+  "resSpaces": "{count} chỗ",
+  "@resSpaces": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "resDepositEstimate": "Tiền cọc dự kiến",
+  "resPerPricing": "Theo bảng giá",
+  "resPrice": "Giá gửi",
+  "resPriceValue": "{base} / {hours} giờ đầu, {extra} / giờ sau",
+  "@resPriceValue": {
+    "placeholders": {
+      "base": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "String"
+      },
+      "extra": {
+        "type": "String"
+      }
+    }
+  },
+  "resEntryTime": "Giờ vào bãi",
+  "resRefreshSlots": "Làm mới khung giờ",
+  "resPickTime": "Vui lòng chọn giờ vào bãi.",
+  "resSlotPassed": "Khung giờ đã qua. Vui lòng chọn lại.",
+  "resChooseTime": "Chọn giờ vào bãi",
+  "resBookAt": "Đặt chỗ lúc {time}",
+  "@resBookAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resNoSlots": "Không còn khung giờ hợp lệ.",
+  "resDepositTitle": "Đặt cọc giữ chỗ",
+  "resDepositDesc": "Giữ chỗ ô tô lúc {time}. Tiền cọc được trừ vào phí gửi xe khi ra bãi.",
+  "@resDepositDesc": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resDepositDescShort": "Giữ chỗ ô tô lúc {time}.",
+  "@resDepositDescShort": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resListTitle": "Đặt chỗ của tôi",
+  "resNew": "Đặt chỗ mới",
+  "resEmptyTitle": "Chưa có đặt chỗ",
+  "resEmptyMessage": "Đặt trước chỗ ô tô tối đa 5 tiếng và vào bãi bằng mã QR.",
+  "resUpcoming": "Sắp tới",
+  "resPast": "Đã qua",
+  "resTileMeta": "{type}, đặt {ago}",
+  "@resTileMeta": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "resDetailTitle": "Chi tiết đặt chỗ",
+  "resConfirmed": "Đã xác nhận đặt chỗ",
+  "resCancelTitle": "Hủy đặt chỗ?",
+  "resCancelPending": "Đặt chỗ chưa đặt cọc sẽ bị hủy.",
+  "resCancelPaid": "Đặt chỗ đã đặt cọc sẽ bị hủy và không thể khôi phục.",
+  "resCancelAction": "Hủy đặt chỗ",
+  "resCancelled": "Đã hủy đặt chỗ",
+  "resRescheduled": "Đã đổi giờ sang {time}",
+  "@resRescheduled": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resEntryWindow": "Vào bãi từ {from} đến {to}",
+  "@resEntryWindow": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "resShowAtEntry": "Đưa mã này cho nhân viên tại cổng vào",
+  "resBookedAt": "Ngày đặt",
+  "resReschedule": "Đổi giờ",
+  "resRescheduleUsed": "Đã dùng lượt đổi",
+  "resRescheduleLeft": "Còn 1 lượt",
+  "resPendingNote": "Đặt chỗ chỉ được giữ sau khi đặt cọc thành công. Đơn quá giờ hẹn 30 phút sẽ tự hủy.",
+  "resPayDeposit": "Thanh toán đặt cọc",
+  "resChangeTime": "Đổi giờ vào",
+  "resChangeRule": "Chỉ đổi giờ được trước giờ hẹn ít nhất 15 phút.",
+  "resNewTime": "Chọn giờ vào mới",
+  "resOneChange": "Mỗi đặt chỗ chỉ được đổi giờ 1 lần.",
+  "resConfirmChange": "Xác nhận đổi giờ",
+  "payInvalidLink": "Liên kết thanh toán không hợp lệ.",
+  "payCantOpen": "Không mở được trang thanh toán trên thiết bị này.",
+  "payNotYet": "Chưa nhận được thanh toán. Hoàn tất trên trang PayOS rồi kiểm tra lại.",
+  "paySuccessTitle": "Thanh toán thành công",
+  "paySuccessMessage": "Hệ thống đã ghi nhận khoản thanh toán của bạn.",
+  "payFailedTitle": "Thanh toán không thành công",
+  "payFailedMessage": "Giao dịch đã bị hủy hoặc thất bại. Bạn có thể tạo lại liên kết thanh toán.",
+  "payAmount": "Số tiền",
+  "payOrderCode": "Mã đơn hàng",
+  "payWaiting": "Đang chờ PayOS xác nhận. Màn hình sẽ tự cập nhật.",
+  "payHint": "Thanh toán qua ứng dụng ngân hàng bằng VietQR trên trang PayOS.",
+  "payReopen": "Mở lại trang thanh toán",
+  "payWithPayOS": "Thanh toán qua PayOS",
+  "payCheckStatus": "Kiểm tra trạng thái",
+  "payLater": "Thanh toán sau",
+  "paySuccessShort": "Thanh toán thành công",
+  "histTitle": "Lịch sử gửi xe",
+  "histEmptyTitle": "Chưa có lượt gửi xe",
+  "histEmptyMessage": "Lượt gửi xe gắn với tài khoản (vé tháng hoặc đặt trước) sẽ hiện ở đây sau khi bạn vào bãi.",
+  "histActive": "Đang gửi",
+  "histDone": "Đã hoàn tất",
+  "sessTileActive": "Vào {time}, đã gửi {duration}",
+  "@sessTileActive": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "sessSlot": "Ô {slot}",
+  "@sessSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "feeRunning": "Phí tạm tính",
+  "feeFree": "Miễn phí",
+  "feeCovered": "Đã bao gồm trong vé tháng của biển số này.",
+  "feeDuration": "Thời gian gửi",
+  "feeHoursValue": "{hours} giờ",
+  "@feeHoursValue": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "feeBilledHours": "Số giờ tính phí",
+  "feeExtraHours": "{hours} giờ thêm",
+  "@feeExtraHours": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "feeNight": "Phụ thu qua đêm x{count}",
+  "@feeNight": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "feeDeposit": "Trừ tiền cọc",
+  "sessNotFound": "Không tìm thấy lượt gửi xe này trong tài khoản.",
+  "sessPayTitle": "Thanh toán phí gửi xe",
+  "sessPayDesc": "Lượt gửi xe được hoàn tất ngay khi PayOS xác nhận thanh toán.",
+  "sessPaid": "Đã thanh toán phí gửi xe",
+  "sessTitle": "Lượt gửi xe",
+  "sessTotal": "Tổng thời gian {duration}",
+  "@sessTotal": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "sessShowAtExit": "Đưa mã này cho nhân viên tại cổng ra",
+  "sessNeedPay": "Cần thanh toán để ra bãi",
+  "sessNeedPayDetail": "{amount} bằng {method}.",
+  "@sessNeedPayDetail": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "method": {
+        "type": "String"
+      }
+    }
+  },
+  "sessPayCash": "Vui lòng trả tiền mặt cho nhân viên tại cổng.",
+  "sessEntry": "Giờ vào",
+  "sessEntryGate": "Cổng vào",
+  "sessSpot": "Vị trí đỗ",
+  "sessExit": "Giờ ra",
+  "sessExitGate": "Cổng ra",
+  "sessMode": "Hình thức",
+  "sessModeBooked": "Đặt chỗ trước",
+  "sessModeDirect": "Gửi trực tiếp",
+  "sessPaidAmount": "Đã thanh toán",
+  "sessMethod": "Phương thức",
+  "sessReport": "Báo sự cố cho lượt gửi này",
+  "passesTitle": "Xe và vé tháng",
+  "passesRegister": "Đăng ký vé",
+  "passesEmptyTitle": "Chưa có xe nào",
+  "passesEmptyMessage": "Đăng ký vé tháng cho biển số của bạn để ra vào bãi không cần trả phí theo lượt.",
+  "passesRegisterPass": "Đăng ký vé tháng",
+  "passesPlateRequests": "Yêu cầu đổi biển số",
+  "passesPendingRequests": "{count} yêu cầu đang chờ duyệt",
+  "@passesPendingRequests": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "passesTrackRequests": "Theo dõi yêu cầu đổi xe cho vé tháng",
+  "passesAll": "Tất cả vé tháng",
+  "passDaysLeft": "Còn {days} ngày",
+  "@passDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "passExpiresOn": "Hết hạn {date}",
+  "@passExpiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "passFixedSlot": "Vị trí cố định {slot}",
+  "@passFixedSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "passPayToActivate": "Thanh toán để kích hoạt vé",
+  "passLastParked": "Gửi gần nhất {time}. Đăng ký vé tháng",
+  "@passLastParked": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "passRenewOrRegister": "Gia hạn hoặc đăng ký lại",
+  "passTitle": "Vé tháng",
+  "passDaysLeftUntil": "Còn {days} ngày, hết hạn {date}",
+  "@passDaysLeftUntil": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "passStart": "Bắt đầu",
+  "passEnd": "Kết thúc",
+  "passFixedSlotLabel": "Vị trí cố định",
+  "passPrice": "Giá gói",
+  "passPay": "Thanh toán {amount}",
+  "@passPay": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "passRenew": "Gia hạn",
+  "passChangePlate": "Đổi biển số",
+  "passCancel": "Hủy vé tháng",
+  "passRenewals": "Lịch sử gia hạn",
+  "passPayTitle": "Thanh toán vé tháng",
+  "passPayDesc": "{package} cho biển số {plate}.",
+  "@passPayDesc": {
+    "placeholders": {
+      "package": {
+        "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "passRegisterPayDesc": "{package} cho biển số {plate}. Vé được kích hoạt ngay khi thanh toán thành công.",
+  "@passRegisterPayDesc": {
+    "placeholders": {
+      "package": {
+        "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "passRenewTitle": "Gia hạn vé tháng",
+  "passRenewDesc": "{package} cho biển số {plate}. Thời hạn được cộng tiếp từ ngày hết hạn hiện tại (hoặc từ hôm nay nếu vé đã hết hạn).",
+  "@passRenewDesc": {
+    "placeholders": {
+      "package": {
+        "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "passCancelTitle": "Hủy vé tháng?",
+  "passCancelMessage": "Vé của biển số {plate} sẽ ngừng hiệu lực.",
+  "@passCancelMessage": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "passCancelMessageSlot": "Vé của biển số {plate} sẽ ngừng hiệu lực và vị trí {slot} được trả lại.",
+  "@passCancelMessageSlot": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      },
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "passCancelAction": "Hủy vé",
+  "passCancelled": "Đã hủy vé tháng",
+  "passPlateRequested": "Đã gửi yêu cầu đổi biển số",
+  "passRenewPick": "Chọn gói gia hạn",
+  "passRenewNoneTitle": "Không có gói phù hợp",
+  "passRenewNoneMessage": "Hiện không có gói đang mở bán cho loại xe này.",
+  "passMonths": "{months} tháng",
+  "@passMonths": {
+    "placeholders": {
+      "months": {
+        "type": "int"
+      }
+    }
+  },
+  "passFixedSlotTag": "vị trí cố định",
+  "regTitle": "Đăng ký vé tháng",
+  "regPickPackage": "Vui lòng chọn gói vé tháng.",
+  "regNeedSlot": "Gói này yêu cầu chọn vị trí đỗ cố định.",
+  "regEmptyTitle": "Chưa có gói vé tháng",
+  "regEmptyMessage": "Bãi xe hiện chưa mở bán gói vé tháng nào.",
+  "regPlateHelper": "Nhập liền, không cần dấu gạch hoặc chấm.",
+  "regFixedSlot": "Vị trí đỗ cố định",
+  "regNoSlot": "Tầng cư dân hiện không còn vị trí trống cho loại xe này.",
+  "regChoosePackage": "Chọn gói vé tháng",
+  "plateSheetCurrent": "Biển số hiện tại {plate}. Yêu cầu cần quản lý bãi duyệt.",
+  "@plateSheetCurrent": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "plateNew": "Biển số mới",
+  "plateReason": "Lý do (không bắt buộc)",
+  "plateReasonField": "Lý do",
+  "plateSend": "Gửi yêu cầu",
+  "plateEditTitle": "Sửa yêu cầu đổi biển số",
+  "plateUpdated": "Đã cập nhật yêu cầu",
+  "plateWithdrawTitle": "Rút yêu cầu?",
+  "plateWithdrawMessage": "Yêu cầu đổi sang biển số {plate} sẽ bị xóa.",
+  "@plateWithdrawMessage": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "plateWithdraw": "Rút yêu cầu",
+  "plateWithdrawn": "Đã rút yêu cầu",
+  "plateEmptyTitle": "Chưa có yêu cầu",
+  "plateEmptyMessage": "Mở một vé tháng đang hiệu lực và chọn \"Đổi biển số\" để gửi yêu cầu.",
+  "plateSentAt": "Gửi {time}",
+  "@plateSentAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "plateReasonValue": "Lý do: {reason}",
+  "@plateReasonValue": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "plateRejectedValue": "Từ chối: {reason}",
+  "@plateRejectedValue": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "incSuggestCollision": "Va chạm, trầy xước",
+  "incSuggestFee": "Sai phí gửi xe",
+  "incSuggestLost": "Mất đồ",
+  "incSuggestNoSpace": "Không tìm thấy chỗ đỗ",
+  "incPhotoTitle": "Ảnh minh chứng",
+  "incSent": "Đã gửi báo cáo sự cố",
+  "incNewTitle": "Báo sự cố",
+  "incType": "Loại sự cố",
+  "incTypeField": "loại sự cố",
+  "incDescription": "Mô tả chi tiết",
+  "incDescriptionHint": "Thời điểm, vị trí, điều đã xảy ra",
+  "incDescriptionField": "mô tả",
+  "incSession": "Lượt gửi xe liên quan",
+  "incNoSession": "Không gắn lượt gửi",
+  "incSelectedSession": "Lượt gửi đã chọn",
+  "incAddPhoto": "Thêm ảnh",
+  "incRemovePhoto": "Bỏ ảnh",
+  "incSubmit": "Gửi báo cáo",
+  "incListTitle": "Sự cố đã báo",
+  "incReport": "Báo sự cố",
+  "incEmptyTitle": "Chưa có báo cáo",
+  "incEmptyMessage": "Gặp vấn đề trong bãi (va chạm, sai phí, mất đồ)? Gửi báo cáo kèm ảnh để nhân viên xử lý.",
+  "incAssigned": "Bạn đã nhận xử lý sự cố này",
+  "incResolvedToast": "Đã đánh dấu đã xử lý",
+  "incDetailTitle": "Chi tiết sự cố",
+  "incImageFailed": "Không tải được ảnh",
+  "incReporter": "Người báo",
+  "incLinkedSession": "Gắn lượt gửi xe",
+  "incHandler": "Người xử lý",
+  "incUnassigned": "Chưa phân công",
+  "incResolvedAt": "Xử lý lúc",
+  "incResult": "Kết quả xử lý",
+  "incTake": "Nhận xử lý",
+  "incTakeOver": "Chuyển cho tôi xử lý",
+  "incMarkResolved": "Đánh dấu đã xử lý",
+  "incNotes": "Ghi chú xử lý",
+  "incNotesHint": "Đã kiểm tra camera, đã liên hệ khách...",
+  "incNotesField": "ghi chú xử lý",
+  "incConfirmResolved": "Xác nhận đã xử lý",
+  "incReporterValue": "Người báo: {name}",
+  "@incReporterValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "incHandlerValue": "Xử lý: {name}",
+  "@incHandlerValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accTitle": "Tài khoản",
+  "accBioReasonEnable": "Xác thực để bật khóa ứng dụng bằng sinh trắc học",
+  "accBioEnabled": "Đã bật mở khóa bằng sinh trắc học",
+  "accBioFailed": "Chưa xác thực được nên chưa bật tính năng",
+  "accLogoutTitle": "Đăng xuất?",
+  "accLogoutMessage": "Bạn sẽ cần đăng nhập lại để sử dụng ứng dụng.",
+  "accProfileSecurity": "Hồ sơ và bảo mật",
+  "accEditProfile": "Sửa thông tin cá nhân",
+  "accChangePassword": "Đổi mật khẩu",
+  "accBioTitle": "Mở khóa bằng sinh trắc học",
+  "accBioOn": "Yêu cầu vân tay hoặc Face ID mỗi khi mở ứng dụng",
+  "accBioUnavailable": "Thiết bị chưa hỗ trợ hoặc chưa đăng ký vân tay / khuôn mặt",
+  "accAppearance": "Giao diện",
+  "accThemeSystem": "Theo máy",
+  "accThemeLight": "Sáng",
+  "accThemeDark": "Tối",
+  "accLanguage": "Ngôn ngữ",
+  "accAvailability": "Chỗ trống theo tầng",
+  "profileUpdated": "Đã cập nhật thông tin",
+  "profileTitle": "Thông tin cá nhân",
+  "profileEmailHelper": "Email dùng để đăng nhập và nhận mã OTP.",
+  "profileSave": "Lưu thay đổi",
+  "pwdChanged": "Đã đổi mật khẩu",
+  "pwdTitle": "Đổi mật khẩu",
+  "pwdNote": "Mật khẩu mới áp dụng cho lần đăng nhập tiếp theo trên mọi thiết bị.",
+  "pwdSubmit": "Đổi mật khẩu",
+  "gateEntry": "Cổng vào",
+  "gateExit": "Cổng ra",
+  "gateReload": "Tải lại danh sách cổng",
+  "gateNoneEntry": "Bãi chưa cấu hình cổng vào.",
+  "gateNoneExit": "Bãi chưa cấu hình cổng ra.",
+  "gatePick": "Chọn cổng",
+  "ciPlatePhoto": "Ảnh biển số",
+  "ciRecognizedPct": "Nhận diện {pct}%. Kiểm tra lại trước khi xác nhận.",
+  "@ciRecognizedPct": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "ciRecognized": "Đã nhận diện. Kiểm tra lại trước khi xác nhận.",
+  "ciNotRecognized": "Không nhận diện được biển số. Vui lòng nhập tay.",
+  "ciQrPhoto": "Ảnh mã QR đặt chỗ",
+  "ciNotBookingQr": "Mã QR này không phải mã đặt chỗ.",
+  "ciPickGate": "Vui lòng chọn cổng vào.",
+  "ciPickType": "Vui lòng chọn loại xe.",
+  "ciSuccess": "{type}: check-in thành công",
+  "@ciSuccess": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "ciTitle": "Xe vào bãi",
+  "ciScanPlate": "Chụp và nhận diện biển số",
+  "ciBookingCode": "Mã đặt chỗ",
+  "ciBookingHint": "Quét QR trên ứng dụng của khách",
+  "ciBookingField": "mã đặt chỗ",
+  "ciScanQr": "Quét mã QR",
+  "ciBookingWindow": "Chỉ check-in trong khoảng 30 phút trước hoặc sau giờ hẹn.",
+  "ciResidentNote": "Hệ thống tự kiểm tra vé tháng còn hiệu lực theo biển số.",
+  "ciSubmit": "Xác nhận cho xe vào",
+  "ciGuideToSlot": "Hướng dẫn xe tới ô {slot}",
+  "@ciGuideToSlot": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "ciEntered": "Xe đã vào bãi",
+  "ciEnteredAt": "{type}, vào lúc {time}",
+  "@ciEnteredAt": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ciTicketNote": "Khách chụp lại mã này để dùng khi ra bãi",
+  "ciNext": "Lượt xe tiếp theo",
+  "coTicketPhoto": "Ảnh mã QR vé gửi xe",
+  "coNotActiveQr": "Mã QR không thuộc lượt gửi xe nào đang hoạt động.",
+  "coPickGate": "Vui lòng chọn cổng ra.",
+  "coScanFirst": "Vui lòng quét mã QR vé của khách.",
+  "coPayOSReceived": "Đã nhận thanh toán PayOS",
+  "coPaymentCancelled": "Thanh toán đã bị hủy",
+  "coCancelTitle": "Hủy yêu cầu ra bãi?",
+  "coCancelMessage": "Lượt gửi xe sẽ trở lại trạng thái đang gửi.",
+  "coCancelAction": "Hủy yêu cầu",
+  "coCancelled": "Đã hủy yêu cầu ra bãi",
+  "coTitle": "Xe ra bãi",
+  "coByTicket": "Quét vé QR",
+  "coByPlate": "Theo biển số",
+  "coScanPrompt": "Chụp mã QR trên vé của khách",
+  "coRescan": "Chạm để quét lại",
+  "coAutoFind": "Hệ thống tự tìm lượt gửi xe",
+  "coMethod": "Hình thức thu phí",
+  "coPassFree": "Xe có vé tháng hợp lệ được miễn phí tự động.",
+  "coSubmit": "Tính phí và cho xe ra",
+  "coFailedNote": "Thanh toán đã bị hủy. Lượt gửi xe vẫn đang hoạt động.",
+  "coDone": "Đã hoàn tất, cho xe ra bãi.",
+  "coToCollect": "Cần thu",
+  "coNoFee": "Không phát sinh phí (đã bao gồm trong vé tháng).",
+  "coScanToPay": "Khách quét mã để thanh toán {amount}",
+  "@coScanToPay": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "coWaitingPayOS": "Đang chờ PayOS xác nhận",
+  "coCashCollected": "Đã thu {amount} tiền mặt",
+  "@coCashCollected": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "coCancelExit": "Hủy yêu cầu ra bãi",
+  "coNext": "Xe tiếp theo",
+  "ssTitle": "Phiên gửi xe",
+  "ssSearch": "Tìm theo biển số",
+  "ssActive": "Đang gửi",
+  "ssNoMatchTitle": "Không tìm thấy biển số",
+  "ssEmptyTitle": "Không có phiên nào",
+  "ssNoMatchMessage": "Kiểm tra lại biển số hoặc chọn \"Tất cả\".",
+  "ssEmptyMessage": "Các xe đang gửi trong bãi sẽ hiện ở đây.",
+  "ssCount": "{count} phiên",
+  "@ssCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ssDetailTitle": "Chi tiết phiên",
+  "ssDriver": "Tài xế",
+  "ssPlateOut": "Biển số lúc ra",
+  "ssPayment": "Thanh toán",
+  "ssImageFailed": "Không tải được ảnh cổng",
+  "siTitle": "Sự cố",
+  "siOpen": "Cần xử lý",
+  "siMine": "Của tôi",
+  "siEmptyTitle": "Không có sự cố",
+  "siEmptyMessage": "Không có báo cáo nào trong mục này.",
+  "walletTitle": "Ví PBMS",
+  "walletBalance": "Số dư khả dụng",
+  "walletTopUp": "Nạp tiền",
+  "walletTopUpTitle": "Nạp tiền vào ví",
+  "walletTopUpDesc": "Số dư được cộng ngay khi PayOS xác nhận thanh toán.",
+  "walletAmount": "Số tiền nạp",
+  "walletAmountHint": "Từ {min} đến {max}",
+  "@walletAmountHint": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "vAmountRange": "Số tiền phải là số nguyên từ {min} đến {max}",
+  "@vAmountRange": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "walletTopUpSubmit": "Nạp {amount}",
+  "@walletTopUpSubmit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletHistory": "Lịch sử giao dịch",
+  "walletFilterTopUps": "Nạp",
+  "walletFilterSpends": "Chi",
+  "walletEmptyTitle": "Chưa có giao dịch",
+  "walletEmptyMessage": "Nạp tiền để thanh toán vé tháng ngay, không cần chuyển khoản mỗi lần.",
+  "walletPendingNote": "Lượt nạp chỉ hiện trong lịch sử sau khi PayOS xác nhận.",
+  "walletTxTopUp": "Nạp ví qua PayOS",
+  "walletTxSpend": "Mua {package}",
+  "@walletTxSpend": {
+    "placeholders": {
+      "package": {
+        "type": "String"
+      }
+    }
+  },
+  "walletTxSpendGeneric": "Thanh toán vé tháng bằng ví",
+  "walletBalanceAfter": "Số dư sau: {amount}",
+  "@walletBalanceAfter": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletToppedUp": "Đã nạp tiền vào ví",
+  "payMethodTitle": "Phương thức thanh toán",
+  "payMethodWallet": "Ví PBMS",
+  "payMethodWalletBalance": "Số dư {amount}",
+  "@payMethodWalletBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payMethodWalletShort": "Số dư không đủ, thiếu {amount}",
+  "@payMethodWalletShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payMethodPayOSHint": "Chuyển khoản qua VietQR",
+  "passPaidByWallet": "Đã thanh toán bằng ví. Vé tháng đã được kích hoạt.",
+  "passPayChoose": "Chọn cách thanh toán",
+  "passPayConfirm": "Thanh toán {amount}",
+  "@passPayConfirm": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "accAvatarChange": "Đổi ảnh đại diện",
+  "accAvatarUpdated": "Đã cập nhật ảnh đại diện",
+  "accAvatarTooLarge": "Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn."
+}

@@ -1,243 +1,181 @@
+import '../../../../core/l10n/locale_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:prm393_frontend/core/routes/route_names.dart';
-import 'package:prm393_frontend/core/theme/app_colors.dart';
-import 'package:prm393_frontend/core/theme/app_typography.dart';
-import 'package:prm393_frontend/core/theme/responsive_components.dart';
-import 'package:prm393_frontend/core/utils/responsive_utils.dart';
+
+import '../../../../core/routes/route_names.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/state_views.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
+import '../widgets/auth_layout.dart';
 
+/// Nhập OTP: hoàn tất đăng ký, hoặc đặt lại mật khẩu (kèm mật khẩu mới).
 class VerifyOtpScreen extends StatefulWidget {
   final String email;
   final bool isResetPassword;
-  final String? newPassword;
-  final String? confirmPassword;
 
-  const VerifyOtpScreen({
-    super.key,
-    required this.email,
-    this.isResetPassword = false,
-    this.newPassword,
-    this.confirmPassword,
-  });
+  const VerifyOtpScreen(
+      {super.key, required this.email, required this.isResetPassword});
 
   @override
   State<VerifyOtpScreen> createState() => _VerifyOtpScreenState();
 }
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
-  final _otpController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _otp = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _submitted = false;
 
   @override
   void dispose() {
-    _otpController.dispose();
+    _otp.dispose();
+    _password.dispose();
+    _confirm.dispose();
     super.dispose();
   }
 
-  void _onVerifyPressed() {
-    final otp = _otpController.text.trim();
-    if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đủ 6 chữ số mã OTP'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    _submitted = true;
+    final bloc = context.read<AuthBloc>();
     if (widget.isResetPassword) {
-      context.read<AuthBloc>().add(
-            AuthVerifyResetPasswordSubmitted(
-              email: widget.email,
-              otp: otp,
-              newPassword: widget.newPassword ?? '',
-              confirmPassword: widget.confirmPassword ?? '',
-            ),
-          );
+      bloc.add(AuthVerifyResetPasswordSubmitted(
+        email: widget.email,
+        otp: _otp.text.trim(),
+        newPassword: _password.text,
+        confirmPassword: _confirm.text,
+      ));
     } else {
-      context.read<AuthBloc>().add(
-            AuthVerifyRegisterOtpSubmitted(
-              email: widget.email,
-              otp: otp,
-            ),
-          );
+      bloc.add(AuthVerifyRegisterOtpSubmitted(
+          email: widget.email, otp: _otp.text.trim()));
+    }
+  }
+
+  void _resend() {
+    if (widget.isResetPassword) {
+      context
+          .read<AuthBloc>()
+          .add(AuthRequestResetPasswordSubmitted(email: widget.email));
+    } else {
+      // Gửi lại OTP đăng ký cần đủ thông tin form, nên quay lại màn đăng ký.
+      context.pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
+    final p = context.palette;
+    return BlocConsumer<AuthBloc, AuthState>(
+      listenWhen: (prev, cur) => prev.status != cur.status,
       listener: (context, state) {
-        if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          context.read<AuthBloc>().add(AuthClearMessageRequested());
-        }
-
-        // Đăng ký thành công hoặc reset mật khẩu thành công -> quay về màn hình Đăng nhập
+        if (!_submitted || state.status != AuthStatus.unauthenticated) return;
         if (state.registeredSuccess || state.resetPasswordSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.successMessage ?? 'Thành công!'),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          context.goNamed(RouteNames.login);
+          _submitted = false;
+          context.go(RouteNames.login);
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.bgLight,
-        appBar: AppBar(
-          title: const Text('Xác thực OTP'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.mark_email_read_outlined,
-                          size: 38,
-                          color: AppColors.primary,
-                        ),
-                      ),
+      builder: (context, state) {
+        final showResent = !_submitted &&
+            widget.isResetPassword &&
+            state.successMessage != null &&
+            state.status == AuthStatus.unauthenticated;
+        return AuthLayout(
+          showBack: true,
+          title: widget.isResetPassword
+              ? context.l10n.otpTitleReset
+              : context.l10n.otpTitleRegister,
+          subtitle: context.l10n.otpSubtitle(widget.email),
+          children: [
+            if (state.status == AuthStatus.failure) ...[
+              InlineMessage((state.errorMessage ?? '').isEmpty
+                  ? (widget.isResetPassword
+                      ? context.l10n.resetFailed
+                      : context.l10n.otpVerifyFailed)
+                  : state.errorMessage!),
+              const SizedBox(height: AppSpacing.lg),
+            ] else if (showResent) ...[
+              InlineMessage(context.l10n.otpResent, isError: false),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  AppTextField(
+                    label: context.l10n.fieldOtp,
+                    controller: _otp,
+                    hint: '000000',
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    textInputAction: widget.isResetPassword
+                        ? TextInputAction.next
+                        : TextInputAction.done,
+                    style: AppTypography.mono.copyWith(
+                      fontSize: 22,
+                      letterSpacing: 8,
+                      color: p.textPrimary,
                     ),
-                    const SizedBox(height: 24),
-
-                    Text(
-                      'Kiểm tra hòm thư của bạn',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.displayMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryLight,
-                      ),
+                    validator: (v) => Validators.otp(context.l10n, v),
+                    onSubmitted:
+                        widget.isResetPassword ? null : (_) => _submit(),
+                  ),
+                  if (widget.isResetPassword) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    AppTextField(
+                      label: context.l10n.fieldNewPassword,
+                      controller: _password,
+                      obscure: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                      textInputAction: TextInputAction.next,
+                      validator: (v) => Validators.password(context.l10n, v),
                     ),
-                    const SizedBox(height: 8),
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondaryLight,
-                        ),
-                        children: [
-                          const TextSpan(text: 'Mã xác thực OTP gồm 6 chữ số đã được gửi đến:\n'),
-                          TextSpan(
-                            text: widget.email,
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: context.space(32)),
-
-                    ResponsiveCard(
-                      padding: EdgeInsets.all(context.space(24)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ResponsiveText(
-                            'Nhập mã OTP 6 số',
-                            variant: ResponsiveTextVariant.labelLarge,
-                            color: AppColors.textPrimaryLight,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          SizedBox(height: context.space(12)),
-                          TextFormField(
-                            controller: _otpController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.displayMedium.copyWith(
-                              letterSpacing: 12.0,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                              fontSize: context.sp(26),
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText: '000000',
-                              hintStyle: TextStyle(
-                                letterSpacing: 12.0,
-                                color: Colors.black26,
-                                fontSize: context.sp(26),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: context.space(14),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: context.space(28)),
-
-                          BlocBuilder<AuthBloc, AuthState>(
-                            builder: (context, state) {
-                              return ResponsiveButton(
-                                label: 'Kích hoạt tài khoản',
-                                isLoading: state.isLoading,
-                                onPressed: _onVerifyPressed,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: context.space(24)),
-
-                    Center(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Chưa nhận được mã? Gửi lại'),
-                        onPressed: () {
-                          if (widget.isResetPassword) {
-                            context.read<AuthBloc>().add(
-                                  AuthRequestResetPasswordSubmitted(email: widget.email),
-                                );
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Vui lòng đợi vài giây và kiểm tra lại hộp thư'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppTextField(
+                      label: context.l10n.fieldNewPasswordConfirm,
+                      controller: _confirm,
+                      obscure: true,
+                      textInputAction: TextInputAction.done,
+                      validator: (v) => Validators.confirmPassword(
+                          context.l10n, v, _password.text),
+                      onSubmitted: (_) => _submit(),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
-          ),
-        ),
-      ),
+            const SizedBox(height: AppSpacing.xxl),
+            AppButton(
+              label: widget.isResetPassword
+                  ? context.l10n.otpSubmitReset
+                  : context.l10n.otpSubmitRegister,
+              loading: state.isLoading,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: AppButton.text(
+                label: widget.isResetPassword
+                    ? context.l10n.otpResend
+                    : context.l10n.otpEditAndResend,
+                onPressed: state.isLoading ? null : _resend,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -34,7 +34,8 @@ class ApiResponse<T> {
       'statusCode': statusCode,
       'message': message,
       'isSuccess': isSuccess,
-      'result': result != null && toJsonT != null ? toJsonT(result as T) : result,
+      'result':
+          result != null && toJsonT != null ? toJsonT(result as T) : result,
     };
   }
 

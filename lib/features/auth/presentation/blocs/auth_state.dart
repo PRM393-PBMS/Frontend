@@ -24,7 +24,8 @@ class AuthState extends Equatable {
     this.pendingEmail,
   });
 
-  bool get isAuthenticated => status == AuthStatus.authenticated && user != null;
+  bool get isAuthenticated =>
+      status == AuthStatus.authenticated && user != null;
   bool get isLoading => status == AuthStatus.loading;
 
   AuthState copyWith({

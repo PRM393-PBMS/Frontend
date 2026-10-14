@@ -1,5 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
+
 import '../config/app_config.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage_service.dart';
@@ -7,7 +11,20 @@ import 'api_response.dart';
 import 'auth_interceptor.dart';
 import 'logging_interceptor.dart';
 
-/// Base API Client bọc Dio, hỗ trợ xử lý lỗi thống nhất và parse theo Envelope PBMS
+/// File ảnh chuẩn bị upload (dùng bytes để chạy được cả mobile lẫn web).
+class UploadFile {
+  final Uint8List bytes;
+  final String fileName;
+  final String mimeType;
+
+  const UploadFile({
+    required this.bytes,
+    required this.fileName,
+    this.mimeType = 'image/jpeg',
+  });
+}
+
+/// Base API Client bọc Dio, xử lý lỗi thống nhất và parse Envelope PBMS.
 class ApiClient {
   late final Dio _dio;
 
@@ -23,9 +40,8 @@ class ApiClient {
             connectTimeout: AppConfig.connectTimeout,
             receiveTimeout: AppConfig.receiveTimeout,
             sendTimeout: AppConfig.sendTimeout,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            contentType: Headers.jsonContentType,
+            headers: {'Accept': 'application/json'},
           ),
         );
 
@@ -44,133 +60,112 @@ class ApiClient {
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
     T Function(dynamic json)? fromJsonT,
-  }) async {
-    try {
-      final response = await _dio.get(
-        path,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-      return _handleResponse<T>(response, fromJsonT);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
+  }) =>
+      _send<T>(
+          () => _dio.get(path, queryParameters: queryParameters), fromJsonT);
 
   Future<ApiResponse<T>> post<T>(
     String path, {
     dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
     T Function(dynamic json)? fromJsonT,
-  }) async {
-    try {
-      final response = await _dio.post(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-      return _handleResponse<T>(response, fromJsonT);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
+  }) =>
+      _send<T>(() => _dio.post(path, data: data), fromJsonT);
 
   Future<ApiResponse<T>> put<T>(
     String path, {
     dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
     T Function(dynamic json)? fromJsonT,
-  }) async {
-    try {
-      final response = await _dio.put(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-      return _handleResponse<T>(response, fromJsonT);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
-
-  Future<ApiResponse<T>> patch<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-    T Function(dynamic json)? fromJsonT,
-  }) async {
-    try {
-      final response = await _dio.patch(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-      return _handleResponse<T>(response, fromJsonT);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
+  }) =>
+      _send<T>(() => _dio.put(path, data: data), fromJsonT);
 
   Future<ApiResponse<T>> delete<T>(
     String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
     T Function(dynamic json)? fromJsonT,
+  }) =>
+      _send<T>(() => _dio.delete(path), fromJsonT);
+
+  /// GET danh sách. Backend PBMS trả 404 khi danh sách rỗng, nên 404 được hiểu là `[]`.
+  Future<List<T>> getList<T>(
+    String path,
+    T Function(Map<String, dynamic> json) parse, {
+    Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final response = await _dio.delete(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
+      final response =
+          await get<dynamic>(path, queryParameters: queryParameters);
+      return parseList(response.result, parse);
+    } on NotFoundException {
+      return <T>[];
+    }
+  }
+
+  static List<T> parseList<T>(
+      dynamic raw, T Function(Map<String, dynamic> json) parse) {
+    if (raw is! List) return <T>[];
+    return raw.whereType<Map<String, dynamic>>().map(parse).toList();
+  }
+
+  /// Upload multipart field `file`. Một số endpoint upload trả JSON thô (không bọc envelope),
+  /// nên hàm trả về body gốc. [acceptStatuses] cho phép đọc body ở mã lỗi nghiệp vụ (vd. 422).
+  Future<dynamic> upload(
+    String path,
+    UploadFile file, {
+    Set<int> acceptStatuses = const {},
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        file.bytes,
+        filename: file.fileName,
+        contentType: MediaType.parse(file.mimeType),
+      ),
+    });
+    try {
+      final response = await _dio.post(path, data: form);
+      final data = response.data;
+      if (data is Map<String, dynamic> && data.containsKey('isSuccess')) {
+        return _handleResponse<dynamic>(response, null).result;
+      }
+      return data;
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      if (status != null && acceptStatuses.contains(status)) {
+        return e.response?.data;
+      }
+      throw _handleDioError(e);
+    }
+  }
+
+  Future<ApiResponse<T>> _send<T>(
+    Future<Response<dynamic>> Function() request,
+    T Function(dynamic json)? fromJsonT,
+  ) async {
+    try {
+      final response = await request();
       return _handleResponse<T>(response, fromJsonT);
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
   }
 
-  /// Xử lý dữ liệu trả về theo Envelope PBMS
   ApiResponse<T> _handleResponse<T>(
     Response response,
     T Function(dynamic json)? fromJsonT,
   ) {
     final dynamic data = response.data;
 
-    if (data is Map<String, dynamic>) {
+    if (data is Map<String, dynamic> && data.containsKey('isSuccess')) {
       final envelope = ApiResponse<T>.fromJson(data, fromJsonT);
-
-      // Nếu backend trả về isSuccess = false dù HTTP status là 200/400
-      if (!envelope.isSuccess && envelope.statusCode >= 400) {
+      if (!envelope.isSuccess) {
         throw _mapStatusCodeToException(
-          envelope.statusCode,
-          envelope.message ?? 'Yêu cầu không thành công',
+          envelope.statusCode >= 400 ? envelope.statusCode : 400,
+          envelope.message ?? '',
           envelope.result,
         );
       }
       return envelope;
     }
 
-    // Trường hợp trả về raw object không bọc envelope (như upload raw URL)
     return ApiResponse<T>(
       statusCode: response.statusCode ?? 200,
       isSuccess: true,
@@ -179,7 +174,6 @@ class ApiClient {
     );
   }
 
-  /// Chuyển đổi DioException thành Domain AppException tương ứng
   AppException _handleDioError(DioException error) {
     if (error.error is SocketException ||
         error.type == DioExceptionType.connectionTimeout ||
@@ -187,22 +181,21 @@ class ApiClient {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError ||
         (error.message != null && error.message!.contains('XMLHttpRequest'))) {
-      return const NetworkException(
-        message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc kết nối server.',
-      );
+      return const NetworkException();
     }
 
     final response = error.response;
     if (response != null) {
       final statusCode = response.statusCode ?? 500;
       final dynamic data = response.data;
-      String errorMessage = 'Đã xảy ra lỗi ($statusCode)';
+      String errorMessage = '';
 
       if (data is Map<String, dynamic>) {
-        if (data['message'] is String) {
-          errorMessage = data['message'];
-        } else if (data['message'] is List) {
-          errorMessage = (data['message'] as List).join('\n');
+        final message = data['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          errorMessage = message;
+        } else if (message is List) {
+          errorMessage = message.join('\n');
         }
       }
 
@@ -210,7 +203,7 @@ class ApiClient {
     }
 
     return AppException(
-      message: error.message ?? 'Lỗi kết nối máy chủ không xác định',
+      message: '',
     );
   }
 
@@ -221,7 +214,9 @@ class ApiClient {
   ) {
     switch (statusCode) {
       case 400:
-        return ValidationException(message: message, details: details);
+      case 422:
+        return ValidationException(
+            message: message, statusCode: statusCode, details: details);
       case 401:
         return UnauthorizedException(message: message);
       case 403:
@@ -230,7 +225,6 @@ class ApiClient {
         return NotFoundException(message: message);
       case 409:
         return ConflictException(message: message);
-      case 500:
       default:
         return ServerException(message: message, statusCode: statusCode);
     }

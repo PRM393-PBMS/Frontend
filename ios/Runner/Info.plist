@@ -3,13 +3,17 @@
 <plist version="1.0">
 <dict>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Ứng dụng cần chọn ảnh để cập nhật ảnh đại diện.</string>
+    <string>Ứng dụng cần chọn ảnh để đính kèm bằng chứng sự cố và ảnh biển số.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Ứng dụng cần camera để chụp biển số, mã QR vé và ảnh sự cố.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Dùng Face ID để mở khóa ứng dụng PBMS Parking.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Prm393 Frontend</string>
+	<string>PBMS Parking</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,6 +32,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Vị trí của bạn được dùng để tìm và sắp xếp các bãi đỗ xe gần bạn.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

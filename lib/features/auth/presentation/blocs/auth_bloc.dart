@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/failure.dart';
-import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -14,19 +13,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginSubmitted>(_onAuthLoginSubmitted);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
-    on<AuthDemoLoginRequested>((event, emit) {
-      emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        user: const UserEntity(
-          id: '29b15059-9b8f-4679-801b-f31684af6e49',
-          userName: 'ThanhLong',
-          email: 'longnguyenthanh07102005@gmail.com',
-          fullName: 'Nguyễn Thành Long',
-          phoneNumber: '0987654321',
-          roleName: 'Customer',
-        ),
-      ));
-    });
     on<AuthSendRegisterOtpSubmitted>(_onAuthSendRegisterOtpSubmitted);
     on<AuthVerifyRegisterOtpSubmitted>(_onAuthVerifyRegisterOtpSubmitted);
     on<AuthRequestResetPasswordSubmitted>(_onAuthRequestResetPasswordSubmitted);
@@ -87,7 +73,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: 'Đăng nhập không thành công. Vui lòng kiểm tra lại.',
+        errorMessage: '',
       ));
     }
   }
@@ -122,7 +108,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         otpSent: true,
         pendingEmail: event.email,
-        successMessage: 'Mã xác thực OTP đã được gửi về email ${event.email}',
+        successMessage: 'otpSent',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(
@@ -132,7 +118,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: 'Không thể gửi mã OTP. Vui lòng thử lại sau.',
+        errorMessage: '',
       ));
     }
   }
@@ -154,7 +140,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         registeredSuccess: true,
         otpSent: false,
-        successMessage: 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.',
+        successMessage: 'ok',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(
@@ -164,7 +150,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: 'Xác thực OTP thất bại. Vui lòng thử lại.',
+        errorMessage: '',
       ));
     }
   }
@@ -183,8 +169,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         otpSent: true,
         pendingEmail: event.email,
-        successMessage:
-            'Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi!',
+        successMessage: 'ok',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(
@@ -194,7 +179,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: 'Yêu cầu đặt lại mật khẩu thất bại.',
+        errorMessage: '',
       ));
     }
   }
@@ -218,8 +203,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.unauthenticated,
         resetPasswordSuccess: true,
         otpSent: false,
-        successMessage:
-            'Đặt lại mật khẩu thành công! Hãy đăng nhập bằng mật khẩu mới.',
+        successMessage: 'ok',
       ));
     } on Failure catch (failure) {
       emit(state.copyWith(
@@ -229,7 +213,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: 'Đặt lại mật khẩu thất bại. Kiểm tra mã OTP.',
+        errorMessage: '',
       ));
     }
   }

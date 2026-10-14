@@ -13,14 +13,14 @@ abstract class Failure extends Equatable {
 
 class ServerFailure extends Failure {
   const ServerFailure({
-    super.message = 'Máy chủ xảy ra sự cố. Vui lòng thử lại sau.',
+    super.message = '',
     super.statusCode = 500,
   });
 }
 
 class NetworkFailure extends Failure {
   const NetworkFailure({
-    super.message = 'Mất kết nối Internet. Vui lòng kiểm tra WiFi/4G.',
+    super.message = '',
     super.statusCode,
   });
 }
@@ -41,6 +41,6 @@ class ValidationFailure extends Failure {
 
 class CacheFailure extends Failure {
   const CacheFailure({
-    super.message = 'Lỗi truy xuất bộ nhớ cục bộ.',
+    super.message = '',
   });
 }
