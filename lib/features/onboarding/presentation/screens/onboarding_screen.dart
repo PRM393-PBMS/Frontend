@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:prm393_frontend/core/routes/route_names.dart';
-import 'package:prm393_frontend/core/storage/preferences_helper.dart';
+
+import '../../../../core/routes/route_names.dart';
+import '../../../../core/storage/preferences_helper.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../auth/presentation/widgets/auth_visuals.dart';
 import '../widgets/onboarding_slide.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -12,175 +16,107 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
+  final _controller = PageController();
+  int _page = 0;
 
-  static const _heroImage =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBcBr4h8KuaIDqw9BzmKTLbcNwVrwtrzTKx1bFt0Uud5pCYl4oW0yMF56Xh7yB2Vh820R-WQn9lhywqw4R5JMRlD-4SDv8w2n1y7qj-OfmgaOiPkxOQtmOql0V3iW2L2YjUNc2eIUaTw-dyBPgV5RhH0qtJs05mPNwQhQ3zffXX5bIjBADh1IROW0vpY0WqZo6k0nOvncTYX5fmxmEtPCZqH761Pv__VHs_ULz8wf2Dtcmjwr9t82yd';
-
-  final List<OnboardingSlideData> _slides = const [
+  static const _slides = [
     OnboardingSlideData(
-      title: 'Đỗ xe thông minh, trọn vẹn thảnh thơi',
-      description:
-          'Tìm và đặt trước vị trí đỗ xe còn trống theo thời gian thực. Dẫn đường chuẩn xác, thanh toán tiện lợi cùng ưu đãi mỗi ngày.',
-      imageUrl: _heroImage,
-      sensorTag: 'Vị trí #402 • Đã giữ chỗ',
+      title: 'Biết còn chỗ trước khi tới',
+      description: 'Số ô trống theo từng tầng cập nhật trực tiếp từ bãi, không phải vòng xe tìm chỗ.',
+      visual: OnboardingVisual.capacity,
     ),
     OnboardingSlideData(
-      title: 'Đến đúng chỗ, không mất thời gian',
-      description:
-          'Xem chỗ trống được cập nhật liên tục và đi theo chỉ dẫn đến bãi đỗ đã chọn.',
-      imageUrl: _heroImage,
-      sensorTag: 'Bãi xe cập nhật trực tiếp',
+      title: 'Giữ chỗ, quét mã qua cổng',
+      description: 'Đặt trước tối đa 5 giờ cho ô tô. Tới nơi đưa mã QR vào đầu đọc, barie tự mở.',
+      visual: OnboardingVisual.ticket,
     ),
     OnboardingSlideData(
-      title: 'Thanh toán gọn nhẹ, ưu đãi mỗi ngày',
-      description:
-          'Sử dụng mã QR để ra vào thuận tiện, theo dõi chi phí và nhận ưu đãi dành riêng cho hội viên.',
-      imageUrl: _heroImage,
-      sensorTag: 'Mã QR • Ưu đãi hội viên',
+      title: 'Phí rõ ràng từng dòng',
+      description: 'Xem phí tạm tính bất cứ lúc nào, tiền cọc tự trừ. Thanh toán qua PayOS hoặc tại cổng.',
+      visual: OnboardingVisual.fee,
     ),
   ];
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _finishOnboarding() async {
+  Future<void> _finish() async {
     await PreferencesHelper.markOnboardingCompleted();
-    if (!mounted) return;
-    context.go(RouteNames.loginPath);
+    if (mounted) context.go(RouteNames.loginPath);
   }
 
-  void _onGetStarted() {
-    if (_currentPage < _slides.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
+  void _next() {
+    if (_page == _slides.length - 1) {
+      _finish();
     } else {
-      _finishOnboarding();
+      _controller.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final last = _page == _slides.length - 1;
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAFC),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              _TopBar(onSkip: _finishOnboarding),
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _slides.length,
-                  onPageChanged: (index) =>
-                      setState(() => _currentPage = index),
-                  itemBuilder: (context, index) {
-                    return OnboardingSlide(
-                      data: _slides[index],
-                      activeIndex: index,
-                      pageCount: _slides.length,
-                    );
-                  },
-                ),
-              ),
-              _PrimaryButton(
-                label: _currentPage == _slides.length - 1
-                    ? 'Bắt đầu ngay'
-                    : _currentPage == 0
-                        ? 'Bắt đầu ngay'
-                        : 'Tiếp tục',
-                onPressed: _onGetStarted,
-              ),
-              const SizedBox(height: 14),
-              Text.rich(
-                TextSpan(
-                  text: 'Tiếp tục đồng nghĩa với việc bạn đồng ý với ',
-                  style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                  children: [
-                    TextSpan(
-                      text: 'Điều khoản dịch vụ',
-                      style: const TextStyle(
-                        color: Color(0xFF087B8C),
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  final VoidCallback onSkip;
-
-  const _TopBar({required this.onSkip});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          TextButton(
-            onPressed: onSkip,
-            style: TextButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              foregroundColor: const Color(0xFF64748B),
-            ),
-            child: const Text('Bỏ qua', style: TextStyle(fontSize: 14)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-
-  const _PrimaryButton({required this.label, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF087B8C),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor: const Color(0x1A0F172A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
           children: [
-            Text(label,
-                style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+              child: Row(
+                children: [
+                  const BrandMark(size: 36),
+                  const Spacer(),
+                  if (!last) TextButton(onPressed: _finish, child: const Text('Bỏ qua')),
+                ],
+              ),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _slides.length,
+                onPageChanged: (i) => setState(() => _page = i),
+                itemBuilder: (_, i) => OnboardingSlide(data: _slides[i]),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: Row(
+                children: [
+                  Semantics(
+                    label: 'Trang ${_page + 1} trên ${_slides.length}',
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _slides.length; i++)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.only(right: 6),
+                            width: i == _page ? 22 : 8,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: i == _page ? p.accent : p.line,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: _next,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(140, 52),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+                    ),
+                    child: Text(last ? 'Bắt đầu' : 'Tiếp'),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

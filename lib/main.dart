@@ -1,47 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 import 'app.dart';
 import 'core/network/api_client.dart';
+import 'core/storage/preferences_helper.dart';
 import 'core/storage/secure_storage_service.dart';
+import 'core/theme/theme_controller.dart';
+import 'data/pbms_repository.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 import 'features/auth/presentation/blocs/auth_event.dart';
-import 'features/home/data/datasources/parking_remote_datasource.dart';
-import 'features/home/data/repositories/parking_repository.dart';
 
-import 'core/storage/preferences_helper.dart';
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await Future.wait([
+    initializeDateFormatting('vi'),
+    ThemeController.instance.load(),
+  ]);
   final showOnboarding = await PreferencesHelper.shouldShowOnboarding();
 
-  // 1. Khởi tạo Local Services & Network Core
   final storageService = SecureStorageService();
-
   late final AuthBloc authBloc;
 
   final apiClient = ApiClient(
     storageService: storageService,
-    onSessionExpired: () {
-      // Khi refresh token thất bại, tự động phát event đăng xuất
-      authBloc.add(AuthLogoutRequested());
-    },
+    // Refresh token thất bại → đăng xuất để quay về màn đăng nhập.
+    onSessionExpired: () => authBloc.add(AuthLogoutRequested()),
   );
 
-  // 2. Data Sources & Repositories
-  final authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient: apiClient);
   final authRepository = AuthRepositoryImpl(
-    remoteDataSource: authRemoteDataSource,
+    remoteDataSource: AuthRemoteDataSourceImpl(apiClient: apiClient),
     storageService: storageService,
   );
+  final pbmsRepository = PbmsRepository(apiClient: apiClient);
 
-  final parkingRemoteDataSource = ParkingRemoteDataSourceImpl(apiClient: apiClient);
-  final parkingRepository = ParkingRepositoryImpl(remoteDataSource: parkingRemoteDataSource);
-
-  // 3. Khởi tạo Global BLoC
   authBloc = AuthBloc(authRepository: authRepository)..add(AuthCheckRequested());
 
   runApp(
@@ -50,12 +46,10 @@ void main() async {
         RepositoryProvider<SecureStorageService>.value(value: storageService),
         RepositoryProvider<ApiClient>.value(value: apiClient),
         RepositoryProvider<AuthRepository>.value(value: authRepository),
-        RepositoryProvider<ParkingRepository>.value(value: parkingRepository),
+        RepositoryProvider<PbmsRepository>.value(value: pbmsRepository),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider<AuthBloc>.value(value: authBloc),
-        ],
+      child: BlocProvider<AuthBloc>.value(
+        value: authBloc,
         child: ParkingApp(showOnboarding: showOnboarding),
       ),
     ),
