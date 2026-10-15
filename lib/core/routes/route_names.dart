@@ -8,12 +8,6 @@ class RouteNames {
   static const String onboarding = 'onboarding';
   static const String onboardingPath = '/onboarding';
 
-  static const String map = 'map';
-  static const String mapPath = '/map';
-
-  static const String bookingConfirmation = 'bookingConfirmation';
-  static const String bookingConfirmationPath = '/booking-confirmation';
-
   static const String login = 'login';
   static const String loginPath = '/login';
 
@@ -29,18 +23,9 @@ class RouteNames {
   static const String home = 'home';
   static const String homePath = '/home';
 
-  static const String reservations = 'reservations';
-  static const String reservationsPath = '/reservations';
-
-  static const String mySessions = 'mySessions';
-  static const String mySessionsPath = '/my-sessions';
-
-  static const String subscriptions = 'subscriptions';
-  static const String subscriptionsPath = '/subscriptions';
+  static const String notifications = 'notifications';
+  static const String notificationsPath = '/notifications';
 
   static const String incidents = 'incidents';
   static const String incidentsPath = '/incidents';
-
-  static const String profile = 'profile';
-  static const String profilePath = '/profile';
 }

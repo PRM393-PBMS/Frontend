@@ -1,292 +1,238 @@
 import 'package:flutter/material.dart';
 
-class AuthScreenHeader extends StatelessWidget {
-  final bool isRegister;
-  final String title;
-  final String subtitle;
-  final VoidCallback onSelectRegister;
-  final VoidCallback onSelectLogin;
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 
-  const AuthScreenHeader({
-    super.key,
-    required this.isRegister,
-    required this.title,
-    required this.subtitle,
-    required this.onSelectRegister,
-    required this.onSelectLogin,
-  });
+/// Biểu tượng thương hiệu: ô vuông carbon với chữ P như biển báo bãi đỗ.
+class BrandMark extends StatelessWidget {
+  final double size;
 
-  static const _brand = Color(0xFF087B8C);
-  static const _ink = Color(0xFF111C2D);
-  static const _muted = Color(0xFF3E484B);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        SizedBox(
-          width: 64,
-          height: 64,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_brand, Color(0xFF8AD2DE)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x2600616E),
-                      blurRadius: 14,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.local_parking_rounded,
-                  size: 31,
-                  color: Colors.white,
-                ),
-              ),
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  width: 19,
-                  height: 19,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFA3EBF7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 12,
-                    color: _brand,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 13),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 25,
-            height: 1.2,
-            fontWeight: FontWeight.w700,
-            color: _ink,
-          ),
-        ),
-        const SizedBox(height: 5),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 290),
-          child: Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: _muted,
-            ),
-          ),
-        ),
-        const SizedBox(height: 19),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7EEFF),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _AuthTab(
-                    label: 'Đăng ký',
-                    selected: isRegister,
-                    onPressed: onSelectRegister,
-                  ),
-                ),
-                Expanded(
-                  child: _AuthTab(
-                    label: 'Đăng nhập',
-                    selected: !isRegister,
-                    onPressed: onSelectLogin,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AuthTab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  const _AuthTab({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-  });
+  const BrandMark({super.key, this.size = 48});
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      selected: selected,
-      label: label,
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          minimumSize: const Size.fromHeight(36),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          backgroundColor:
-              selected ? const Color(0xFF00616E) : Colors.transparent,
-          foregroundColor: selected ? Colors.white : const Color(0xFF3E484B),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      label: 'PBMS Parking',
+      excludeSemantics: true,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(size * 0.24),
+          border: Border.all(color: AppColors.panelLine),
         ),
-        child: Text(label),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              'P',
+              style: AppTypography.mono(
+                size: size * 0.56,
+                weight: FontWeight.w800,
+                color: AppColors.panelText,
+              ),
+            ),
+            Positioned(
+              bottom: size * 0.14,
+              child: Container(
+                width: size * 0.36,
+                height: size * 0.07,
+                decoration: BoxDecoration(
+                  color: AppColors.cobaltBright,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+/// Khung chung cho các màn xác thực.
+class AuthScaffold extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+  final bool showBack;
+  final VoidCallback? onBack;
+
+  const AuthScaffold({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.children,
+    this.showBack = false,
+    this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: showBack
+          ? AppBar(
+              leading: IconButton(
+                tooltip: 'Quay lại',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: onBack ?? () => Navigator.maybePop(context),
+              ),
+            )
+          : null,
+      body: SafeArea(
+        top: !showBack,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(20, showBack ? 0 : 28, 20, 28),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!showBack) ...[
+                    const Align(alignment: Alignment.centerLeft, child: BrandMark()),
+                    const SizedBox(height: AppSpacing.xxl),
+                  ],
+                  Text(title, style: t.displaySmall),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(subtitle, style: t.bodyLarge?.copyWith(color: p.textSecondary)),
+                  const SizedBox(height: AppSpacing.xxl),
+                  ...children,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ô nhập dùng chung cho form xác thực.
 class AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String hint;
+  final String? hint;
   final IconData icon;
-  final TextInputType keyboardType;
-  final TextInputAction textInputAction;
   final bool obscureText;
   final Widget? suffix;
-  final Widget? prefix;
+  final TextInputType? keyboardType;
+  final TextInputAction textInputAction;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
+  final Iterable<String>? autofillHints;
+  final bool mono;
 
   const AuthTextField({
     super.key,
     required this.controller,
     required this.label,
-    required this.hint,
     required this.icon,
-    this.keyboardType = TextInputType.text,
-    this.textInputAction = TextInputAction.next,
+    this.hint,
     this.obscureText = false,
     this.suffix,
-    this.prefix,
+    this.keyboardType,
+    this.textInputAction = TextInputAction.next,
     this.validator,
     this.onChanged,
+    this.autofillHints,
+    this.mono = false,
   });
-
-  static const _brand = Color(0xFF00616E);
-  static const _ink = Color(0xFF111C2D);
-  static const _muted = Color(0xFF64748B);
-  static const _border = Color(0xFFBEC8CB);
 
   @override
   Widget build(BuildContext context) {
-    final outline = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _border),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text.rich(
-          TextSpan(
-            text: label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: _muted,
-            ),
-            children: const [
-              TextSpan(text: ' *', style: TextStyle(color: Color(0xFFBA1A1A))),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        Semantics(
-          label: label,
-          child: TextFormField(
-            controller: controller,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            obscureText: obscureText,
-            validator: validator,
-            onChanged: onChanged,
-            style: const TextStyle(fontSize: 14, color: _ink),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle:
-                  const TextStyle(fontSize: 13, color: Color(0xFF6E797C)),
-              prefixIcon: Icon(icon, size: 20, color: _brand),
-              prefix: prefix,
-              suffixIcon: suffix,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              border: outline,
-              enabledBorder: outline,
-              focusedBorder: outline.copyWith(
-                borderSide: const BorderSide(color: _brand, width: 1.6),
-              ),
-              errorBorder: outline.copyWith(
-                borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
-              ),
-              focusedErrorBorder: outline.copyWith(
-                borderSide:
-                    const BorderSide(color: Color(0xFFBA1A1A), width: 1.6),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      validator: validator,
+      onChanged: onChanged,
+      autofillHints: autofillHints,
+      style: mono ? AppTypography.mono(size: 15, color: context.palette.text) : null,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        suffixIcon: suffix,
+      ),
     );
   }
 }
 
-class AuthDivider extends StatelessWidget {
-  final String label;
+/// Nút ẩn/hiện mật khẩu.
+class ObscureToggle extends StatelessWidget {
+  final bool obscured;
+  final VoidCallback onPressed;
 
-  const AuthDivider({super.key, this.label = 'HOẶC'});
+  const ObscureToggle({super.key, required this.obscured, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Color(0xFFDEE8FF))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: Color(0xFFDEE8FF))),
-      ],
+    return IconButton(
+      tooltip: obscured ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+      onPressed: onPressed,
+      icon: Icon(obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined),
     );
   }
+}
+
+/// Nút hành động chính có trạng thái đang xử lý.
+class AuthSubmitButton extends StatelessWidget {
+  final String label;
+  final String busyLabel;
+  final bool busy;
+  final VoidCallback onPressed;
+
+  const AuthSubmitButton({
+    super.key,
+    required this.label,
+    required this.busyLabel,
+    required this.busy,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: busy ? null : onPressed,
+      child: busy
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: context.palette.textMuted),
+                ),
+                const SizedBox(width: 10),
+                Text(busyLabel),
+              ],
+            )
+          : Text(label),
+    );
+  }
+}
+
+/// Báo lỗi/thành công từ AuthBloc qua snackbar.
+void showAuthMessage(BuildContext context, String message, {bool error = true}) {
+  final p = context.palette;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+      content: Row(
+        children: [
+          Icon(
+            error ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+            color: error ? p.danger : p.ok,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
+      ),
+    ));
 }

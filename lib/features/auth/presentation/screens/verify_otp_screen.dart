@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:prm393_frontend/core/routes/route_names.dart';
-import 'package:prm393_frontend/core/theme/app_colors.dart';
-import 'package:prm393_frontend/core/theme/app_typography.dart';
-import 'package:prm393_frontend/core/theme/responsive_components.dart';
-import 'package:prm393_frontend/core/utils/responsive_utils.dart';
+
+import '../../../../core/routes/route_names.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
+import '../widgets/auth_visuals.dart';
 
 class VerifyOtpScreen extends StatefulWidget {
   final String email;
@@ -29,214 +33,133 @@ class VerifyOtpScreen extends StatefulWidget {
 }
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
-  final _otpController = TextEditingController();
+  final _otp = TextEditingController();
+  String? _error;
+  int _cooldown = 60;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
+  }
+
+  void _startCooldown() {
+    _timer?.cancel();
+    setState(() => _cooldown = 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _cooldown--);
+      if (_cooldown <= 0) t.cancel();
+    });
+  }
 
   @override
   void dispose() {
-    _otpController.dispose();
+    _timer?.cancel();
+    _otp.dispose();
     super.dispose();
   }
 
-  void _onVerifyPressed() {
-    final otp = _otpController.text.trim();
-    if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đủ 6 chữ số mã OTP'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  void _verify() {
+    final otp = _otp.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
+      setState(() => _error = 'Nhập đủ 6 chữ số trong email');
       return;
     }
-
+    setState(() => _error = null);
+    final bloc = context.read<AuthBloc>();
     if (widget.isResetPassword) {
-      context.read<AuthBloc>().add(
-            AuthVerifyResetPasswordSubmitted(
-              email: widget.email,
-              otp: otp,
-              newPassword: widget.newPassword ?? '',
-              confirmPassword: widget.confirmPassword ?? '',
-            ),
-          );
+      bloc.add(AuthVerifyResetPasswordSubmitted(
+        email: widget.email,
+        otp: otp,
+        newPassword: widget.newPassword ?? '',
+        confirmPassword: widget.confirmPassword ?? '',
+      ));
     } else {
-      context.read<AuthBloc>().add(
-            AuthVerifyRegisterOtpSubmitted(
-              email: widget.email,
-              otp: otp,
-            ),
-          );
+      bloc.add(AuthVerifyRegisterOtpSubmitted(email: widget.email, otp: otp));
+    }
+  }
+
+  void _resend() {
+    // Gửi lại mã đặt lại mật khẩu; đăng ký cần gửi lại toàn bộ biểu mẫu nên quay về bước trước.
+    if (widget.isResetPassword) {
+      context.read<AuthBloc>().add(AuthRequestResetPasswordSubmitted(email: widget.email));
+      _startCooldown();
+    } else {
+      context.pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          context.read<AuthBloc>().add(AuthClearMessageRequested());
-        }
-
-        // Đăng ký thành công hoặc reset mật khẩu thành công -> quay về màn hình Đăng nhập
-        if (state.registeredSuccess || state.resetPasswordSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.successMessage ?? 'Thành công!'),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          context.goNamed(RouteNames.login);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.bgLight,
-        appBar: AppBar(
-          title: const Text('Xác thực OTP'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: () => context.pop(),
-          ),
+    final p = context.palette;
+    final t = Theme.of(context).textTheme;
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (a, b) => b.errorMessage != null && a.errorMessage != b.errorMessage,
+          listener: (context, state) {
+            setState(() => _error = state.errorMessage);
+            context.read<AuthBloc>().add(AuthClearMessageRequested());
+          },
         ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.mark_email_read_outlined,
-                          size: 38,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    Text(
-                      'Kiểm tra hòm thư của bạn',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.displayMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondaryLight,
-                        ),
-                        children: [
-                          const TextSpan(text: 'Mã xác thực OTP gồm 6 chữ số đã được gửi đến:\n'),
-                          TextSpan(
-                            text: widget.email,
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: context.space(32)),
-
-                    ResponsiveCard(
-                      padding: EdgeInsets.all(context.space(24)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ResponsiveText(
-                            'Nhập mã OTP 6 số',
-                            variant: ResponsiveTextVariant.labelLarge,
-                            color: AppColors.textPrimaryLight,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          SizedBox(height: context.space(12)),
-                          TextFormField(
-                            controller: _otpController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.displayMedium.copyWith(
-                              letterSpacing: 12.0,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                              fontSize: context.sp(26),
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText: '000000',
-                              hintStyle: TextStyle(
-                                letterSpacing: 12.0,
-                                color: Colors.black26,
-                                fontSize: context.sp(26),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: context.space(14),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: context.space(28)),
-
-                          BlocBuilder<AuthBloc, AuthState>(
-                            builder: (context, state) {
-                              return ResponsiveButton(
-                                label: 'Kích hoạt tài khoản',
-                                isLoading: state.isLoading,
-                                onPressed: _onVerifyPressed,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: context.space(24)),
-
-                    Center(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Chưa nhận được mã? Gửi lại'),
-                        onPressed: () {
-                          if (widget.isResetPassword) {
-                            context.read<AuthBloc>().add(
-                                  AuthRequestResetPasswordSubmitted(email: widget.email),
-                                );
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Vui lòng đợi vài giây và kiểm tra lại hộp thư'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (a, b) =>
+              (!a.registeredSuccess && b.registeredSuccess) ||
+              (!a.resetPasswordSuccess && b.resetPasswordSuccess),
+          listener: (context, state) {
+            showAuthMessage(context, state.successMessage ?? 'Xác thực thành công', error: false);
+            context.goNamed(RouteNames.login);
+          },
+        ),
+      ],
+      child: AuthScaffold(
+        showBack: true,
+        title: 'Nhập mã xác thực',
+        subtitle: 'Mã 6 số đã gửi tới ${widget.email}. Kiểm tra cả thư mục Spam.',
+        children: [
+          TextField(
+            controller: _otp,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 6,
+            autofillHints: const [AutofillHints.oneTimeCode],
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (v) {
+              if (_error != null) setState(() => _error = null);
+              if (v.length == 6) _verify();
+            },
+            style: AppTypography.mono(size: 32, weight: FontWeight.w700, color: p.text, letterSpacing: 14),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: '••••••',
+              hintStyle: AppTypography.mono(size: 32, color: p.textMuted, letterSpacing: 14),
+              errorText: _error,
+              contentPadding: const EdgeInsets.symmetric(vertical: 20),
             ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.xl),
+          BlocBuilder<AuthBloc, AuthState>(
+            buildWhen: (a, b) => a.isLoading != b.isLoading,
+            builder: (context, state) => AuthSubmitButton(
+              label: widget.isResetPassword ? 'Đặt mật khẩu mới' : 'Xác nhận tài khoản',
+              busyLabel: 'Đang xác thực',
+              busy: state.isLoading,
+              onPressed: _verify,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: _cooldown > 0
+                ? Text('Gửi lại mã sau ${_cooldown}s', style: t.bodyMedium?.copyWith(color: p.textMuted))
+                : TextButton(
+                    onPressed: _resend,
+                    child: Text(widget.isResetPassword ? 'Gửi lại mã' : 'Sửa thông tin và gửi lại'),
+                  ),
+          ),
+        ],
       ),
     );
   }

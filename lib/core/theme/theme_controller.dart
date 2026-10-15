@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Bộ điều khiển chuyển đổi giao diện Sáng / Tối (Light & Dark Theme Controller)
+import '../constants/storage_keys.dart';
+
+/// Chế độ giao diện: mặc định theo hệ thống, người dùng có thể ghim Sáng/Tối.
 class ThemeController {
   ThemeController._();
   static final ThemeController instance = ThemeController._();
 
-  /// Mặc định kích hoạt Tông màu sáng (Light Mode)
-  final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
+  final ValueNotifier<ThemeMode> themeModeNotifier =
+      ValueNotifier<ThemeMode>(ThemeMode.system);
 
   ThemeMode get currentMode => themeModeNotifier.value;
 
-  bool get isDarkMode => themeModeNotifier.value == ThemeMode.dark;
-
-  void toggleTheme() {
-    if (themeModeNotifier.value == ThemeMode.dark) {
-      themeModeNotifier.value = ThemeMode.light;
-    } else {
-      themeModeNotifier.value = ThemeMode.dark;
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(StorageKeys.themeMode);
+      themeModeNotifier.value = ThemeMode.values.firstWhere(
+        (m) => m.name == raw,
+        orElse: () => ThemeMode.system,
+      );
+    } catch (_) {
+      themeModeNotifier.value = ThemeMode.system;
     }
   }
 
-  void setThemeMode(ThemeMode mode) {
+  Future<void> setThemeMode(ThemeMode mode) async {
     themeModeNotifier.value = mode;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(StorageKeys.themeMode, mode.name);
+    } catch (_) {}
   }
 }
