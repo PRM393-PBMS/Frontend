@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -165,13 +166,13 @@ class PbmsRepository {
         _obj(await _get(ApiEndpoints.subscriptionById(subscriptionId)), 'vé tháng'),
       );
 
-  Future<PaymentLinkModel> registerSubscription({
+  Future<RegistrationResultModel> registerSubscription({
     required String packageId,
     required String vehicleTypeId,
     required String licensePlate,
     String? fixedSlotId,
   }) async =>
-      PaymentLinkModel.fromJson(_obj(
+      RegistrationResultModel.fromJson(_obj(
         await _post(ApiEndpoints.registerSubscription, {
           'packageId': packageId,
           'vehicleTypeId': vehicleTypeId,
@@ -233,6 +234,35 @@ class PbmsRepository {
   Future<void> withdrawVehicleChangeRequest(String requestId) async {
     await _api.delete<dynamic>(ApiEndpoints.vehicleChangeRequestById(requestId));
   }
+
+  // ----------------------------------------------------------- contracts
+
+  Future<ContractModel> getContractForSubscription(String subscriptionId) async =>
+      ContractModel.fromJson(
+        _obj(await _get(ApiEndpoints.contractForSubscription(subscriptionId)), 'hợp đồng'),
+      );
+
+  /// Ký hợp đồng. `signaturePng` là ảnh PNG chữ ký tay.
+  Future<SignContractResultModel> signContract({
+    required String contractId,
+    required String signerName,
+    required String contentHash,
+    required Uint8List signaturePng,
+  }) async =>
+      SignContractResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.signContract(contractId), {
+          'agreed': true,
+          'signerName': signerName,
+          'contentHash': contentHash,
+          'signatureImage': 'data:image/png;base64,${base64Encode(signaturePng)}',
+        }),
+        'ký hợp đồng',
+      ));
+
+  Future<ContractVerificationModel> verifyContract(String contractId) async =>
+      ContractVerificationModel.fromJson(
+        _obj(await _get(ApiEndpoints.verifyContract(contractId)), 'kiểm tra hợp đồng'),
+      );
 
   // ----------------------------------------------------------- incidents
 
