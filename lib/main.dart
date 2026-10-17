@@ -19,8 +19,9 @@ void main() async {
   await initializeDateFormatting('vi');
 
   final showOnboarding = await PreferencesHelper.shouldShowOnboarding();
-  final appLock = AppLockController();
-  await appLock.init();
+  // ChangeNotifier không được cấp qua RepositoryProvider (Provider từ chối kiểu
+  // Listenable), nên dùng instance dùng chung.
+  await AppLockController.instance.init();
 
   // 1. Khởi tạo Local Services & Network Core
   final storageService = SecureStorageService();
@@ -54,7 +55,6 @@ void main() async {
         RepositoryProvider<ApiClient>.value(value: apiClient),
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<PbmsRepository>.value(value: pbmsRepository),
-        RepositoryProvider<AppLockController>.value(value: appLock),
       ],
       child: MultiBlocProvider(
         providers: [
