@@ -17,6 +17,7 @@ import 'package:prm393_frontend/features/home/presentation/widgets/notifications
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
+import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
 /// Lượt gửi đang diễn ra hoặc đặt chỗ sắp tới, ưu tiên xe đang trong bãi.
 typedef _Activity = ({
@@ -446,7 +447,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   Widget _buildActiveSession(
       ParkingSessionModel s, PricingPolicyModel? pricing) {
-    final ticket = s.ticket;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => SessionDetailSheet.show(context, s),
@@ -495,28 +495,29 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               ],
             ),
             const SizedBox(height: 13),
-            _qrButton(
-              ticket == null ? 'Chưa có mã QR ra cổng' : 'Mã QR ra cổng',
-              ticket == null
-                  ? null
-                  : () => PbmsQrDialog.show(
-                        context,
-                        title: 'Mã QR ra cổng',
-                        payload: ticket.qrPayload,
-                        headline: s.vehicleTypeName == null
-                            ? s.licensePlateIn
-                            : '${s.vehicleTypeName}, ${s.licensePlateIn}',
-                        rows: [
-                          (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),
-                          (Icons.local_parking_rounded, 'Vị trí đỗ',
-                              s.slotCode ?? 'Chưa phân ô'),
-                          (Icons.schedule_rounded, 'Vào bãi',
-                              DateFormatter.formatDateTime(s.entryTime)),
-                          (Icons.timelapse_rounded, 'Thời lượng',
-                              DateFormatter.humanDuration(s.parkedDuration)),
-                        ],
-                      ),
-            ),
+            if (s.exitPass != null)
+              _qrButton(
+                'Mã ra cổng ${s.exitPass!.code}',
+                () => PbmsQrDialog.show(
+                  context,
+                  title: 'Mã ra cổng',
+                  payload: s.exitPass!.qrPayload,
+                  headline: s.licensePlateIn,
+                  rows: [
+                    (Icons.password_rounded, 'Mã', s.exitPass!.code),
+                    (Icons.local_parking_rounded, 'Vị trí đỗ',
+                        s.slotCode ?? 'Chưa phân ô'),
+                    (Icons.timer_outlined, 'Hiệu lực', 'Tới khi xe ra khỏi bãi'),
+                  ],
+                ),
+              )
+            else
+              PbmsPrimaryButton(
+                label: 'Thanh toán để lấy xe',
+                icon: Icons.payments_outlined,
+                onPressed: () => SessionDetailSheet.show(context, s)
+                    .then((_) => reloadAll()),
+              ),
           ],
         ),
       ),
@@ -586,6 +587,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         name: 'Lịch sử',
         context: 'Lượt gửi, đặt chỗ',
         onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.history),
+      ),
+      (
+        icon: Icons.account_balance_wallet_rounded,
+        name: 'Ví PBMS',
+        context: 'Nạp tiền, trả phí',
+        onTap: () => WalletScreen.open(context),
       ),
       (
         icon: Icons.card_membership_rounded,

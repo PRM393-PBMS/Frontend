@@ -7,6 +7,7 @@ import 'package:prm393_frontend/core/utils/date_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/history/presentation/widgets/exit_payment_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 
@@ -27,6 +28,7 @@ class SessionDetailSheet extends StatefulWidget {
 class _SessionDetailSheetState extends State<SessionDetailSheet> {
   AsyncCubit<FeePreviewModel>? _fee;
   bool _checkingPayment = false;
+  late ExitPassModel? _exitPass = widget.session.exitPass;
 
   ParkingSessionModel get s => widget.session;
 
@@ -91,9 +93,23 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
     }
   }
 
+  Future<void> _payToExit() async {
+    final pass = await ExitPaymentSheet.show(
+      context,
+      session: s,
+      fee: _fee?.state.data,
+      onPayAtGate: _openCheckout,
+    );
+    if (pass != null && mounted) {
+      setState(() => _exitPass = pass);
+      showPbmsSnack(context, 'Đã thanh toán. Dùng mã ra cổng để lấy xe.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ticket = s.ticket;
+    final exitPass = _exitPass;
     return PbmsSheetFrame(
       title: s.licensePlateIn,
       subtitle: s.vehicleTypeName == null
@@ -143,53 +159,53 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
         ]),
         if (s.isActive) ...[
           const SizedBox(height: 18),
-          const Text('Phí tạm tính', style: PbmsText.section),
-          const SizedBox(height: 8),
-          PbmsAsync<FeePreviewModel>(
-            cubit: _fee!,
-            loadingHeight: 150,
-            errorTitle: 'Chưa tính được phí',
-            builder: (fee) => _FeeBreakdown(fee: fee),
-          ),
-          const SizedBox(height: 16),
-          PbmsPrimaryButton(
-            label: ticket == null ? 'Chưa có mã QR ra cổng' : 'Mở mã QR ra cổng',
-            icon: Icons.qr_code_2_rounded,
-            onPressed: ticket == null
-                ? null
-                : () => PbmsQrDialog.show(
-                      context,
-                      title: 'Mã QR ra cổng',
-                      payload: ticket.qrPayload,
-                      headline: s.licensePlateIn,
-                      rows: [
-                        (Icons.local_parking_rounded, 'Vị trí đỗ',
-                            s.slotCode ?? 'Chưa phân ô'),
-                        (Icons.schedule_rounded, 'Vào bãi',
-                            DateFormatter.formatDateTime(s.entryTime)),
-                      ],
-                    ),
-          ),
-          const SizedBox(height: 9),
-          SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: _checkingPayment ? null : _openCheckout,
-              icon: _checkingPayment
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.payments_outlined, size: 19),
-              label: const Text('Thanh toán khi ra bãi'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: PbmsTokens.teal,
-                backgroundColor: PbmsTokens.tealTint,
-                side: const BorderSide(color: PbmsTokens.tealLine),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13)),
+          if (exitPass != null)
+            ExitPassCard(pass: exitPass, plate: s.licensePlateIn)
+          else ...[
+            const Text('Phí tạm tính', style: PbmsText.section),
+            const SizedBox(height: 8),
+            PbmsAsync<FeePreviewModel>(
+              cubit: _fee!,
+              loadingHeight: 150,
+              errorTitle: 'Chưa tính được phí',
+              builder: (fee) => _FeeBreakdown(fee: fee),
+            ),
+            const SizedBox(height: 16),
+            PbmsPrimaryButton(
+              label: 'Thanh toán để lấy xe',
+              icon: Icons.payments_outlined,
+              onPressed: _checkingPayment ? null : _payToExit,
+            ),
+            const SizedBox(height: 9),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: ticket == null
+                    ? null
+                    : () => PbmsQrDialog.show(
+                          context,
+                          title: 'Vé gửi xe',
+                          payload: ticket.qrPayload,
+                          headline: s.licensePlateIn,
+                          rows: [
+                            (Icons.local_parking_rounded, 'Vị trí đỗ',
+                                s.slotCode ?? 'Chưa phân ô'),
+                            (Icons.schedule_rounded, 'Vào bãi',
+                                DateFormatter.formatDateTime(s.entryTime)),
+                          ],
+                        ),
+                icon: const Icon(Icons.qr_code_2_rounded, size: 19),
+                label: const Text('Vé gửi xe (thanh toán tại cổng)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: PbmsTokens.teal,
+                  backgroundColor: PbmsTokens.tealTint,
+                  side: const BorderSide(color: PbmsTokens.tealLine),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13)),
+                ),
               ),
             ),
-          ),
+          ],
         ] else ...[
           const SizedBox(height: 18),
           const Text('Thanh toán', style: PbmsText.section),

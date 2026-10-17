@@ -88,6 +88,33 @@ class PbmsRepository {
         _obj(await _get(ApiEndpoints.sessionCheckoutPayment(sessionId)), 'thanh toán'),
       );
 
+  /// Thanh toán trước khi ra bãi: `Wallet` trừ ví ngay, `PayOS` trả về link.
+  Future<PrepayResultModel> prepaySession(String sessionId, String method) async =>
+      PrepayResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.sessionPrepay(sessionId), {'paymentMethod': method}),
+        'thanh toán trước',
+      ));
+
+  /// Đồng bộ thanh toán PayOS đang chờ và lấy mã ra cổng (nếu đã trả).
+  Future<PrepayResultModel> getExitPass(String sessionId) async => PrepayResultModel.fromJson(
+        _obj(await _get(ApiEndpoints.sessionExitPass(sessionId)), 'mã ra cổng'),
+      );
+
+  // ---------------------------------------------------------------- wallet
+
+  Future<WalletModel> getWallet() async =>
+      WalletModel.fromJson(_obj(await _get(ApiEndpoints.myWallet), 'ví'));
+
+  Future<PaymentLinkModel> topUpWallet(int amount) async => PaymentLinkModel.fromJson(
+        _obj(await _post(ApiEndpoints.walletTopUp, {'amount': amount}), 'nạp ví'),
+      );
+
+  /// Trả về `true` nếu PayOS đã xác nhận lệnh nạp.
+  Future<bool> checkTopUp(String paymentId) async {
+    final raw = _obj(await _get(ApiEndpoints.walletTopUpStatus(paymentId)), 'nạp ví');
+    return JsonRead.str(raw, 'paymentStatus').toLowerCase() == 'success';
+  }
+
   // --------------------------------------------------------- reservations
 
   Future<List<ReservationModel>> getMyReservations() async =>
