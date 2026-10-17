@@ -86,6 +86,13 @@ class ApiEndpoints {
   static const String markAllNotificationsRead = '/api/Notification/read-all';
   static String deleteNotification(String id) => '/api/Notification/$id';
 
+  // ================= Contracts (/api/contracts) =================
+  static const String myContracts = '/api/contracts/my';
+  static String contractForSubscription(String subscriptionId) =>
+      '/api/contracts/subscription/$subscriptionId';
+  static String signContract(String id) => '/api/contracts/$id/sign';
+  static String verifyContract(String id) => '/api/contracts/$id/verify';
+
   // ================= Wallet (/api/wallet) =================
   static const String myWallet = '/api/wallet/my';
   static const String walletTopUp = '/api/wallet/top-up';

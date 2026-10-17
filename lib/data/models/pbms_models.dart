@@ -543,6 +543,10 @@ class MonthlySubscriptionModel {
   final double price;
   final String status;
   final String? fixedSlot;
+  final int? durationMonths;
+  final String? contractId;
+  final String? contractNumber;
+  final String? contractStatus;
 
   const MonthlySubscriptionModel({
     required this.subscriptionId,
@@ -554,10 +558,16 @@ class MonthlySubscriptionModel {
     required this.price,
     required this.status,
     this.fixedSlot,
+    this.durationMonths,
+    this.contractId,
+    this.contractNumber,
+    this.contractStatus,
   });
 
   bool get isActive => _is(status, 'active');
   bool get isPendingPayment => status.toLowerCase().contains('pending');
+  bool get hasContract => contractId != null;
+  bool get needsSignature => hasContract && _is(contractStatus, 'pendingsignature');
   bool get isCancelled => _is(status, 'cancelled');
 
   int get daysLeft {
@@ -585,6 +595,119 @@ class MonthlySubscriptionModel {
         price: JsonRead.num_(json, 'price'),
         status: JsonRead.str(json, 'status'),
         fixedSlot: JsonRead.strOrNull(json, 'fixedSlot'),
+        durationMonths: JsonRead.numOrNull(json, 'durationMonths')?.round(),
+        contractId: JsonRead.strOrNull(json, 'contractId'),
+        contractNumber: JsonRead.strOrNull(json, 'contractNumber'),
+        contractStatus: JsonRead.strOrNull(json, 'contractStatus'),
+      );
+}
+
+/// Kết quả đăng ký vé: gói >= 3 tháng trả về hợp đồng cần ký thay vì link thanh toán.
+class RegistrationResultModel {
+  final String? subscriptionId;
+  final String? contractId;
+  final PaymentLinkModel? link;
+
+  const RegistrationResultModel({this.subscriptionId, this.contractId, this.link});
+
+  bool get requiresContract => contractId != null;
+
+  factory RegistrationResultModel.fromJson(J json) {
+    final contractId = JsonRead.bool_(json, 'requiresContract')
+        ? JsonRead.strOrNull(json, 'contractId')
+        : null;
+    return RegistrationResultModel(
+      subscriptionId: JsonRead.strOrNull(json, 'subscriptionId'),
+      contractId: contractId,
+      link: contractId == null ? PaymentLinkModel.fromJson(json) : null,
+    );
+  }
+}
+
+/// Hợp đồng vé tháng dài hạn, ký điện tử và được bãi niêm phong.
+class ContractModel {
+  final String id;
+  final String subscriptionId;
+  final String contractNumber;
+  final String content;
+  final String contentHash;
+  final String status;
+  final String? signerName;
+  final String? signatureImageDataUrl;
+  final DateTime? signedAt;
+  final String? sealKeyId;
+
+  const ContractModel({
+    required this.id,
+    required this.subscriptionId,
+    required this.contractNumber,
+    required this.content,
+    required this.contentHash,
+    required this.status,
+    this.signerName,
+    this.signatureImageDataUrl,
+    this.signedAt,
+    this.sealKeyId,
+  });
+
+  bool get isSigned => _is(status, 'signed');
+  bool get isPending => _is(status, 'pendingsignature');
+
+  factory ContractModel.fromJson(J json) => ContractModel(
+        id: JsonRead.str(json, 'contractId'),
+        subscriptionId: JsonRead.str(json, 'subscriptionId'),
+        contractNumber: JsonRead.str(json, 'contractNumber'),
+        content: JsonRead.str(json, 'content'),
+        contentHash: JsonRead.str(json, 'contentHash'),
+        status: JsonRead.str(json, 'status', 'PendingSignature'),
+        signerName: JsonRead.strOrNull(json, 'signerName'),
+        signatureImageDataUrl: JsonRead.strOrNull(json, 'signatureImage'),
+        signedAt: JsonRead.date(json, 'signedAt'),
+        sealKeyId: JsonRead.strOrNull(json, 'sealKeyId'),
+      );
+}
+
+class SignContractResultModel {
+  final ContractModel contract;
+  final PaymentLinkModel? payment;
+  final String? paymentError;
+
+  const SignContractResultModel({required this.contract, this.payment, this.paymentError});
+
+  factory SignContractResultModel.fromJson(J json) {
+    final payment = JsonRead.map(json, 'payment');
+    return SignContractResultModel(
+      contract: ContractModel.fromJson(JsonRead.map(json, 'contract') ?? const <String, dynamic>{}),
+      payment: payment == null ? null : PaymentLinkModel.fromJson(payment),
+      paymentError: JsonRead.strOrNull(json, 'paymentError'),
+    );
+  }
+}
+
+class ContractVerificationModel {
+  final bool valid;
+  final bool contentIntact;
+  final bool signatureIntact;
+  final bool sealValid;
+  final bool keyMatches;
+  final String? sealKeyId;
+
+  const ContractVerificationModel({
+    required this.valid,
+    required this.contentIntact,
+    required this.signatureIntact,
+    required this.sealValid,
+    required this.keyMatches,
+    this.sealKeyId,
+  });
+
+  factory ContractVerificationModel.fromJson(J json) => ContractVerificationModel(
+        valid: JsonRead.bool_(json, 'valid'),
+        contentIntact: JsonRead.bool_(json, 'contentIntact'),
+        signatureIntact: JsonRead.bool_(json, 'signatureIntact'),
+        sealValid: JsonRead.bool_(json, 'sealValid'),
+        keyMatches: JsonRead.bool_(json, 'keyMatches'),
+        sealKeyId: JsonRead.strOrNull(json, 'sealKeyId'),
       );
 }
 

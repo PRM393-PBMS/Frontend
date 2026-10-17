@@ -10,6 +10,7 @@ import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/subscriptions/presentation/screens/contract_screen.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/widgets/pass_sheets.dart';
 
 class MonthlyPassScreen extends StatefulWidget {
@@ -66,6 +67,27 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
       showPbmsSnack(context, 'Vé tháng đã được kích hoạt.');
       setState(() => _activeTab = 0);
     }
+  }
+
+  Future<void> _openContract(String subscriptionId) async {
+    final activated = await ContractScreen.open(context, subscriptionId);
+    _changed();
+    if (!mounted) return;
+    if (activated == true) {
+      showPbmsSnack(context, 'Đã ký hợp đồng và kích hoạt vé tháng.');
+      setState(() => _activeTab = 0);
+    }
+  }
+
+  Future<void> _onRegistered(RegistrationResultModel r) async {
+    final subscriptionId = r.subscriptionId;
+    if (r.requiresContract && subscriptionId != null) {
+      setState(() => _activeTab = 0);
+      await _openContract(subscriptionId);
+      return;
+    }
+    final link = r.link;
+    if (link != null) await _payLink(link, subscriptionId);
   }
 
   Future<void> _pay(MonthlySubscriptionModel sub) async {
@@ -221,7 +243,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
                     ),
                     builder: (packages) => _RegistrationForm(
                       packages: packages,
-                      onRegistered: _payLink,
+                      onRegistered: _onRegistered,
                     ),
                   ),
               ],
@@ -264,6 +286,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
               _PassCard(
                 pass: s,
                 onPay: () => _pay(s),
+                onContract: () => _openContract(s.subscriptionId),
                 onRenew: () => _renew(s),
                 onChangePlate: () => _changePlate(s),
                 onHistory: () => RenewalHistorySheet.show(context, s),
@@ -308,6 +331,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
 class _PassCard extends StatelessWidget {
   final MonthlySubscriptionModel pass;
   final VoidCallback onPay;
+  final VoidCallback onContract;
   final VoidCallback onRenew;
   final VoidCallback onChangePlate;
   final VoidCallback onHistory;
@@ -316,6 +340,7 @@ class _PassCard extends StatelessWidget {
   const _PassCard({
     required this.pass,
     required this.onPay,
+    required this.onContract,
     required this.onRenew,
     required this.onChangePlate,
     required this.onHistory,
@@ -454,20 +479,31 @@ class _PassCard extends StatelessWidget {
           ],
           if (s.isPendingPayment) ...[
             const SizedBox(height: 13),
-            const Text(
-                'Vé chưa có hiệu lực. Thanh toán để kích hoạt ra vào bằng biển số.',
+            Text(
+                s.needsSignature
+                    ? 'Gói dài hạn cần ký hợp đồng điện tử trước khi thanh toán.'
+                    : 'Vé chưa có hiệu lực. Thanh toán để kích hoạt ra vào bằng biển số.',
                 style: PbmsText.caption),
             const SizedBox(height: 10),
-            PbmsPrimaryButton(
-              label: 'Thanh toán ${CurrencyFormatter.format(s.price)}',
-              icon: Icons.credit_card_rounded,
-              onPressed: onPay,
-            ),
+            if (s.needsSignature)
+              PbmsPrimaryButton(
+                label: 'Xem và ký hợp đồng',
+                icon: Icons.draw_rounded,
+                onPressed: onContract,
+              )
+            else
+              PbmsPrimaryButton(
+                label: 'Thanh toán ${CurrencyFormatter.format(s.price)}',
+                icon: Icons.credit_card_rounded,
+                onPressed: onPay,
+              ),
           ],
           const SizedBox(height: 10),
           const Divider(height: 1, color: PbmsTokens.divider),
           Wrap(
             children: [
+              if (s.hasContract && !s.needsSignature)
+                _action(Icons.description_outlined, 'Hợp đồng', onContract),
               if (s.isActive) ...[
                 _action(Icons.autorenew_rounded, 'Gia hạn', onRenew),
                 _action(Icons.swap_horiz_rounded, 'Đổi biển số', onChangePlate),
@@ -661,8 +697,7 @@ class _PastPassTile extends StatelessWidget {
 
 class _RegistrationForm extends StatefulWidget {
   final List<SubscriptionPackageModel> packages;
-  final Future<void> Function(PaymentLinkModel link, String? subscriptionId)
-      onRegistered;
+  final Future<void> Function(RegistrationResultModel result) onRegistered;
 
   const _RegistrationForm({required this.packages, required this.onRegistered});
 
@@ -756,7 +791,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
       _error = null;
     });
     try {
-      final link = await _repo.registerSubscription(
+      final result = await _repo.registerSubscription(
         packageId: pkg.packageId,
         vehicleTypeId: pkg.vehicleTypeId,
         licensePlate: normalizePlate(_plate.text),
@@ -764,7 +799,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
       );
       if (!mounted) return;
       _plate.clear();
-      await widget.onRegistered(link, link.subscriptionId);
+      await widget.onRegistered(result);
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));
     } finally {
@@ -853,6 +888,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
                 subtitle: [
                   '${p.durationMonths} tháng',
                   if (p.requireFixedSlot && !p.isMotorbike) 'ô cố định',
+                  if (p.durationMonths >= 3) 'kèm hợp đồng điện tử',
                   if (p.description != null) p.description!,
                 ].join(', '),
                 price: CurrencyFormatter.format(p.price),
@@ -898,7 +934,9 @@ class _RegistrationFormState extends State<_RegistrationForm> {
             ],
             const SizedBox(height: 12),
             PbmsPrimaryButton(
-              label: 'Thanh toán & kích hoạt',
+              label: (selected?.durationMonths ?? 0) >= 3
+                  ? 'Tiếp tục ký hợp đồng'
+                  : 'Thanh toán & kích hoạt',
               icon: Icons.credit_card_rounded,
               busy: _busy,
               onPressed: selected == null ? null : _submit,
