@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  // Màu nhấn duy nhất của các màn hình khách hàng (teal)
+  static const Color brand = Color(0xFF087B8C);
+  static const Color brandTint = Color(0xFFEFFBFC);
+
   // Primary Branding
   static const Color primary = Color(0xFF2563EB); // Modern Royal Blue
   static const Color primaryDark = Color(0xFF1D4ED8);

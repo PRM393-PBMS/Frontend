@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
-import 'package:prm393_frontend/core/theme/app_colors.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
@@ -54,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Expanded(child: Text(state.errorMessage!)),
                 ],
               ),
-              backgroundColor: AppColors.error,
+              backgroundColor: const Color(0xFFDC2626),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -213,25 +212,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 17),
-                        const AuthDivider(),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => context
-                              .read<AuthBloc>()
-                              .add(AuthDemoLoginRequested()),
-                          icon:
-                              const Icon(Icons.rocket_launch_rounded, size: 19),
-                          label: const Text('Vào xem thử giao diện'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            foregroundColor: const Color(0xFF00616E),
-                            backgroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFFBEC8CB)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
                         Center(
                           child: Wrap(
                             alignment: WrapAlignment.center,
@@ -258,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Tiếp tục đồng nghĩa với việc bạn đồng ý với Điều khoản dịch vụ',
                           textAlign: TextAlign.center,
                           style:
-                              TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                              TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                       ],
                     ),

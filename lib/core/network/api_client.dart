@@ -156,8 +156,12 @@ class ApiClient {
   ) {
     final dynamic data = response.data;
 
-    if (data is Map<String, dynamic>) {
-      final envelope = ApiResponse<T>.fromJson(data, fromJsonT);
+    final isEnvelope = data is Map<String, dynamic> &&
+        (data.containsKey('isSuccess') || data.containsKey('result'));
+
+    if (isEnvelope) {
+      final envelope =
+          ApiResponse<T>.fromJson(data, fromJsonT);
 
       // Nếu backend trả về isSuccess = false dù HTTP status là 200/400
       if (!envelope.isSuccess && envelope.statusCode >= 400) {

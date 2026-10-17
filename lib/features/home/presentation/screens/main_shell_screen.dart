@@ -3,7 +3,9 @@ import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
+import 'package:prm393_frontend/features/history/presentation/screens/history_screen.dart';
 import 'package:prm393_frontend/features/home/presentation/screens/home_dashboard_screen.dart';
+import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/screens/monthly_pass_screen.dart';
 
@@ -16,7 +18,9 @@ class MainShellScreen extends StatefulWidget {
 }
 
 class _MainShellScreenState extends State<MainShellScreen> {
-  int _currentTab = 0;
+  int _currentTab = AppTab.home;
+  final Set<int> _visited = {AppTab.home};
+  final ValueNotifier<int> _revision = ValueNotifier(0);
 
   // ---- Main destinations ----
   static const _tabs = [
@@ -38,89 +42,70 @@ class _MainShellScreenState extends State<MainShellScreen> {
         label: 'Cá nhân'),
   ];
 
+  void _goTab(int index) {
+    if (index == _currentTab) return;
+    setState(() {
+      _currentTab = index;
+      _visited.add(index);
+    });
+  }
+
+  Future<void> _openMap() async {
+    await context.push(RouteNames.mapPath);
+    // Có thể vừa đặt chỗ ở màn bản đồ → làm mới các tab.
+    _revision.value++;
+  }
+
   // ---- Body pages per tab index ----
   Widget _bodyForTab(int idx) {
     switch (idx) {
-      case 0:
-        return HomeDashboardScreen(
-          onOpenMap: (lotId) => context.push(RouteNames.mapPath, extra: lotId),
-        );
-      case 1:
-        return _PlaceholderPage(
-            icon: Icons.history_rounded,
-            label: 'Lịch sử giao dịch',
-            color: AppColors.secondary);
-      case 2:
+      case AppTab.history:
+        return const HistoryScreen();
+      case AppTab.pass:
         return const MonthlyPassScreen();
-      case 3:
+      case AppTab.profile:
         return const ProfileScreen();
       default:
-        return HomeDashboardScreen(
-          onOpenMap: (lotId) => context.push(RouteNames.mapPath, extra: lotId),
-        );
+        return HomeDashboardScreen(onOpenMap: _openMap);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      // extendBody so ListView content scrolls behind the floating bar
-      extendBody: true,
-      body: _bodyForTab(_currentTab),
-      bottomNavigationBar: FloatingBottomNavBar(
-        currentIndex: _currentTab,
-        onTabChanged: (i) => setState(() => _currentTab = i),
-        tabs: _tabs,
-        radialOptions: const [],
-        onCenterTap: () {},
-        showCenterButton: false,
-      ),
-    );
+  void dispose() {
+    _revision.dispose();
+    super.dispose();
   }
-}
-
-// ---- Simple placeholder for unimplemented tabs ----
-class _PlaceholderPage extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _PlaceholderPage(
-      {required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.paddingOf(context).bottom;
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Padding(
-        padding: EdgeInsets.only(bottom: 84.0 + bottomPad),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return ShellScope(
+      goTab: _goTab,
+      revision: _revision,
+      child: PopScope(
+        canPop: _currentTab == AppTab.home,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _goTab(AppTab.home);
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.bgLight,
+          // extendBody so ListView content scrolls behind the floating bar
+          extendBody: true,
+          body: IndexedStack(
+            index: _currentTab,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 48, color: color),
-              ),
-              const SizedBox(height: 16),
-              Text(label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text('Tính năng đang phát triển',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.textMutedLight)),
+              for (var i = 0; i < _tabs.length; i++)
+                _visited.contains(i)
+                    ? TickerMode(enabled: i == _currentTab, child: _bodyForTab(i))
+                    : const SizedBox.shrink(),
             ],
+          ),
+          bottomNavigationBar: FloatingBottomNavBar(
+            currentIndex: _currentTab,
+            onTabChanged: _goTab,
+            tabs: _tabs,
+            radialOptions: const [],
+            onCenterTap: () {},
+            showCenterButton: false,
           ),
         ),
       ),

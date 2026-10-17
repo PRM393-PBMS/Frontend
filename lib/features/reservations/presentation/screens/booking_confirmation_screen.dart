@@ -1,102 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:prm393_frontend/core/theme/app_colors.dart';
+import 'package:prm393_frontend/core/error/error_text.dart';
+import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
-import 'package:prm393_frontend/features/home/presentation/models/vehicle_card_model.dart';
-import 'package:prm393_frontend/features/map/data/models/mock_parking_lot.dart';
+import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
+import 'package:prm393_frontend/data/models/pbms_models.dart';
+import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-class BookingConfirmationScreen extends StatelessWidget {
-  final MockParkingLot parkingLot;
-  final VehicleCardModel vehicle;
+/// Xác nhận đặt chỗ ô tô: chọn giờ vào, đặt cọc qua PayOS, nhận vé QR.
+class BookingConfirmationScreen extends StatefulWidget {
+  const BookingConfirmationScreen({super.key});
 
-  const BookingConfirmationScreen({
-    super.key,
-    required this.parkingLot,
-    required this.vehicle,
-  });
+  @override
+  State<BookingConfirmationScreen> createState() =>
+      _BookingConfirmationScreenState();
+}
 
-  static const _teal = Color(0xFF087B8C);
-  static const _ink = Color(0xFF1E293B);
-  static const _muted = Color(0xFF64748B);
-  static const _border = Color(0xFFE2E8F0);
+class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
+  static const _pageBg = Color(0xFFF7FAFC);
 
-  String get _previewCode =>
-      'PRE-${parkingLot.id.toUpperCase()}-${vehicle.id.replaceFirst('veh_', '')}';
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+  late final _carPricing = AsyncCubit<PricingPolicyModel?>(() async =>
+      (await _repo.getPricingPolicies())
+          .where((p) => isCarType(p.vehicleTypeName))
+          .firstOrNull);
 
-  void _showNotice(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        ),
-      );
+  DateTime? _time;
+  bool _submitting = false;
+  String? _formError;
+
+  /// Đặt chỗ đã xác nhận (sau khi cọc thành công).
+  ReservationModel? _confirmed;
+
+  @override
+  void dispose() {
+    _carPricing.close();
+    super.dispose();
   }
 
-  Future<void> _copyCode(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: _previewCode));
-    if (context.mounted) _showNotice(context, 'Đã sao chép mã xem trước.');
+  Future<void> _submit() async {
+    final time = _time;
+    if (time == null) {
+      setState(() => _formError = 'Chọn giờ dự kiến vào bãi.');
+      return;
+    }
+    if (!ReservationWindow.isValid(time)) {
+      setState(() =>
+          _formError = 'Giờ vào phải trong vòng 5 giờ tới. Chọn lại giờ.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _formError = null;
+    });
+    try {
+      final link = await _repo.createReservation(time);
+      if (!mounted) return;
+      final paid = await ReservationActions.payNew(context, link, () {});
+      if (!mounted) return;
+      final id = link.reservationId;
+      if (paid && id != null) {
+        final r = await _repo.getReservation(id);
+        if (mounted) setState(() => _confirmed = r);
+      } else {
+        showPbmsSnack(context,
+            'Đặt chỗ đang chờ đặt cọc. Bạn có thể thanh toán trong mục Lịch sử.');
+        context.pop(true);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _formError = errorText(e));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _copyCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (mounted) showPbmsSnack(context, 'Đã sao chép mã đặt chỗ.');
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final confirmed = _confirmed;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAFC),
+      backgroundColor: _pageBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7FAFC).withValues(alpha: 0.96),
+        backgroundColor: _pageBg.withValues(alpha: 0.96),
         surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Vé đỗ xe điện tử',
-          style:
-              TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: _ink),
-        ),
+        title: const Text('Vé đỗ xe điện tử',
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: PbmsTokens.ink)),
         leading: IconButton(
           tooltip: 'Đóng',
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.close_rounded, color: _ink),
+          onPressed: () => context.pop(confirmed != null),
+          icon: const Icon(Icons.close_rounded, color: PbmsTokens.ink),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Chia sẻ mã xem trước',
-            onPressed: () => _copyCode(context),
-            icon: const Icon(Icons.ios_share_rounded, color: _ink),
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: ListView(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 194 + bottomInset),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 40 + bottomInset),
             children: [
-              const _ConfirmationHeader(),
+              _ConfirmationHeader(done: confirmed != null),
               const SizedBox(height: 20),
-              _buildTicketCard(context),
+              _buildTicketCard(confirmed),
+              if (confirmed == null) ...[
+                const SizedBox(height: 14),
+                _buildTimeCard(),
+              ],
             ],
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomActions(context, bottomInset),
+      bottomNavigationBar: _buildBottomActions(confirmed, bottomInset),
     );
   }
 
-  Widget _buildTicketCard(BuildContext context) {
+  Widget _buildTicketCard(ReservationModel? confirmed) {
+    final ticket = confirmed?.ticket;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(23),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x080F172A), blurRadius: 22, offset: Offset(0, 4)),
-        ],
+        border: Border.all(color: PbmsTokens.border),
+        borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -105,96 +142,135 @@ class BookingConfirmationScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(11),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7FAFC),
-                    border: Border.all(color: _border),
-                    borderRadius: BorderRadius.circular(17),
+                if (ticket != null)
+                  Container(
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: PbmsTokens.border),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: QrImageView(
+                      data: ticket.qrPayload,
+                      version: QrVersions.auto,
+                      size: 196,
+                      backgroundColor: Colors.white,
+                      semanticsLabel: 'Mã QR vào cổng',
+                      eyeStyle: const QrEyeStyle(color: Colors.black),
+                      dataModuleStyle:
+                          const QrDataModuleStyle(color: Colors.black),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 196,
+                    height: 196,
+                    decoration: BoxDecoration(
+                      color: PbmsTokens.surfaceLow,
+                      border: Border.all(color: PbmsTokens.border),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.qr_code_2_rounded,
+                            size: 44, color: PbmsTokens.muted),
+                        const SizedBox(height: 8),
+                        Text(
+                          confirmed == null
+                              ? 'Mã QR vào cổng có sau khi đặt cọc'
+                              : 'Đang tạo mã QR, xem lại trong Lịch sử',
+                          textAlign: TextAlign.center,
+                          style: PbmsText.caption,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: QrImageView(
-                    data: 'BOOKING-PREVIEW:${parkingLot.id}:${vehicle.id}',
-                    version: QrVersions.auto,
-                    size: 184,
-                    eyeStyle: const QrEyeStyle(color: _ink),
-                    dataModuleStyle: const QrDataModuleStyle(color: _ink),
+                if (confirmed != null) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _copyCode(confirmed.reservationId),
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    label: Text(
+                        'Mã đặt chỗ ${confirmed.reservationId.substring(0, confirmed.reservationId.length.clamp(0, 8)).toUpperCase()}'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: PbmsTokens.teal,
+                      backgroundColor: PbmsTokens.tealTint,
+                      side: const BorderSide(color: PbmsTokens.tealLine),
+                      minimumSize: const Size(48, 44),
+                      textStyle: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _copyCode(context),
-                  icon: const Icon(Icons.copy_rounded, size: 15),
-                  label: Text('Mã xem trước: $_previewCode'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _teal,
-                    backgroundColor: const Color(0xFFEFFBFC),
-                    side: const BorderSide(color: Color(0xFF97DFEB)),
-                    textStyle: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 7),
-                const Text(
-                  'Chưa có hiệu lực · Mã thật sẽ có sau khi đặt chỗ thành công',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: _muted),
-                ),
+                ],
               ],
             ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: _border),
+            child: Divider(height: 1, color: PbmsTokens.border),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _BookingInfoField(
-                        label: 'Bãi đỗ',
-                        value: parkingLot.name,
-                        detail: 'TP. Hồ Chí Minh',
+            child: PbmsAsync<PricingPolicyModel?>(
+              cubit: _carPricing,
+              loadingHeight: 90,
+              errorTitle: 'Không tải được bảng giá',
+              builder: (pricing) => Column(
+                children: [
+                  const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _BookingInfoField(
+                          label: 'Bãi đỗ',
+                          value: PbmsFacility.name,
+                          detail: PbmsFacility.area,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: _BookingInfoField(
-                        label: 'Vị trí đỗ',
-                        value: 'Chưa phân ô',
-                        detail: 'Xác nhận sau khi đặt',
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: _BookingInfoField(
+                          label: 'Vị trí đỗ',
+                          value: 'Phân ô khi vào bãi',
+                          detail: 'Camera nhận biển số tại cổng',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 19),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _BookingInfoField(
-                        label: 'Biển số xe',
-                        value: vehicle.licensePlate,
-                        detail: vehicle.vehicleName,
+                    ],
+                  ),
+                  const SizedBox(height: 19),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _BookingInfoField(
+                          label: 'Giờ vào dự kiến',
+                          value: confirmed != null
+                              ? DateFormatter.formatDayTime(
+                                  confirmed.expectedEntryTime)
+                              : (_time == null
+                                  ? 'Chưa chọn'
+                                  : DateFormatter.formatDayTime(_time!)),
+                          detail: 'Được vào trễ tối đa 1 giờ',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: _BookingInfoField(
-                        label: 'Giá theo giờ',
-                        value:
-                            CurrencyFormatter.format(parkingLot.pricePerHour),
-                        detail: 'Chưa chọn khung giờ',
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _BookingInfoField(
+                          label: 'Tiền cọc',
+                          value: pricing == null
+                              ? 'Chưa có bảng giá'
+                              : CurrencyFormatter.format(pricing.basePrice),
+                          detail: 'Trừ vào phí khi ra bãi',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -202,59 +278,87 @@ class BookingConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomActions(BuildContext context, double bottomInset) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
-        border: const Border(top: BorderSide(color: _border)),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x080F172A), blurRadius: 14, offset: Offset(0, -3)),
+  Widget _buildTimeCard() {
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Giờ dự kiến vào bãi', style: PbmsText.section),
+          const SizedBox(height: 4),
+          const Text('Giữ chỗ trước tối đa 5 giờ.', style: PbmsText.caption),
+          const SizedBox(height: 12),
+          EntryTimePicker(
+            value: _time,
+            onChanged: (v) => setState(() {
+              _time = v;
+              _formError = null;
+            }),
+          ),
+          if (_formError != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.error_outline_rounded,
+                    size: 18, color: PbmsTokens.danger),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(_formError!,
+                      style:
+                          PbmsText.caption.copyWith(color: PbmsTokens.danger)),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActions(ReservationModel? confirmed, double bottomInset) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: PbmsTokens.border)),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 8 + bottomInset),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: () => _showNotice(
-                    context,
-                    'Chưa gửi đặt chỗ: dịch vụ đặt chỗ chưa được kết nối.',
-                  ),
-                  icon: const Icon(Icons.directions_rounded, size: 20),
-                  label: const Text('Xác nhận đặt chỗ',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _teal,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                  ),
+              if (confirmed == null)
+                PbmsPrimaryButton(
+                  label: 'Xác nhận và đặt cọc',
+                  icon: Icons.payments_outlined,
+                  busy: _submitting,
+                  onPressed: _submit,
+                )
+              else
+                PbmsPrimaryButton(
+                  label: 'Xong',
+                  icon: Icons.check_rounded,
+                  onPressed: () => context.pop(true),
                 ),
-              ),
               const SizedBox(height: 9),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.pop(),
-                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-                  label: const Text('Quay lại chọn bãi hoặc xe'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _muted,
-                    side: const BorderSide(color: _border),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13)),
+              if (confirmed == null)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.pop(false),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Quay lại bản đồ'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: PbmsTokens.muted,
+                      side: const BorderSide(color: PbmsTokens.border),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13)),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -264,9 +368,9 @@ class BookingConfirmationScreen extends StatelessWidget {
 }
 
 class _ConfirmationHeader extends StatelessWidget {
-  const _ConfirmationHeader();
+  final bool done;
 
-  static const _teal = Color(0xFF087B8C);
+  const _ConfirmationHeader({required this.done});
 
   @override
   Widget build(BuildContext context) {
@@ -276,26 +380,25 @@ class _ConfirmationHeader extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: const Color(0xFFEFFBFC),
-            border: Border.all(color: const Color(0xFF97DFEB)),
+            color: PbmsTokens.tealTint,
+            border: Border.all(color: PbmsTokens.tealLine),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.fact_check_rounded, size: 29, color: _teal),
+          child: Icon(
+              done ? Icons.check_circle_rounded : Icons.fact_check_rounded,
+              size: 29,
+              color: PbmsTokens.teal),
         ),
         const SizedBox(height: 9),
-        const Text(
-          'Xác nhận đặt chỗ',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1E293B)),
-        ),
+        Text(done ? 'Đã giữ chỗ cho bạn' : 'Xác nhận đặt chỗ',
+            textAlign: TextAlign.center, style: PbmsText.headline),
         const SizedBox(height: 3),
-        const Text(
-          'Kiểm tra thông tin trước khi gửi yêu cầu',
+        Text(
+          done
+              ? 'Đưa mã QR vào đầu đọc tại cổng khi tới bãi'
+              : 'Kiểm tra thông tin trước khi đặt cọc',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          style: PbmsText.caption,
         ),
       ],
     );
@@ -315,30 +418,15 @@ class _BookingInfoField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondaryLight)),
+        Text(label, style: PbmsText.label),
         const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-              fontSize: 13,
-              height: 1.25,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimaryLight),
-        ),
+        Text(value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: PbmsText.bodyStrong),
         const SizedBox(height: 2),
-        Text(
-          detail,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-              fontSize: 10, height: 1.3, color: AppColors.textSecondaryLight),
-        ),
+        Text(detail,
+            maxLines: 2, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
       ],
     );
   }

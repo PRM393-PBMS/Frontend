@@ -12,8 +12,6 @@ import '../../features/home/presentation/screens/main_shell_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/home/presentation/screens/explore_home_screen.dart';
 import '../../features/reservations/presentation/screens/booking_confirmation_screen.dart';
-import '../../features/home/presentation/models/vehicle_card_model.dart';
-import '../../features/map/data/models/mock_parking_lot.dart';
 import 'route_names.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -116,20 +114,12 @@ class AppRouter {
         GoRoute(
           path: RouteNames.mapPath,
           name: RouteNames.map,
-          builder: (context, state) => ExploreHomeScreen(
-            initialLotId: state.extra as String?,
-          ),
+          builder: (context, state) => const ExploreHomeScreen(),
         ),
         GoRoute(
           path: RouteNames.bookingConfirmationPath,
           name: RouteNames.bookingConfirmation,
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>;
-            return BookingConfirmationScreen(
-              parkingLot: extra['parkingLot'] as MockParkingLot,
-              vehicle: extra['vehicle'] as VehicleCardModel,
-            );
-          },
+          builder: (context, state) => const BookingConfirmationScreen(),
         ),
       ],
     );

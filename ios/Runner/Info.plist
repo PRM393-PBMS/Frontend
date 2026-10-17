@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Dùng Face ID để mở khoá ứng dụng PBMS sau khi bạn rời ứng dụng.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Ứng dụng cần máy ảnh để chụp ảnh minh chứng khi báo sự cố.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Ứng dụng cần chọn ảnh để cập nhật ảnh đại diện.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

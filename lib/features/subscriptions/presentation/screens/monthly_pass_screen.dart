@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/error/error_text.dart';
+import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
-import 'package:prm393_frontend/features/home/presentation/models/vehicle_card_model.dart';
-import 'package:prm393_frontend/features/map/data/models/mock_parking_lot.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
+import 'package:prm393_frontend/data/models/pbms_models.dart';
+import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
+import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/subscriptions/presentation/widgets/pass_sheets.dart';
 
 class MonthlyPassScreen extends StatefulWidget {
   const MonthlyPassScreen({super.key});
@@ -13,74 +19,165 @@ class MonthlyPassScreen extends StatefulWidget {
   State<MonthlyPassScreen> createState() => _MonthlyPassScreenState();
 }
 
-class _MonthlyPassScreenState extends State<MonthlyPassScreen> {
-  static const _green = AppColors.success;
-  static const _ink = AppColors.textPrimaryLight;
-  static const _muted = AppColors.textSecondaryLight;
-  static const _border = AppColors.borderLight;
-  static const _monthlyPrice = 1800000;
-  static const _quarterlyPrice = 4860000;
-
-  final _qrCardKey = GlobalKey();
-  final _plateController = TextEditingController(
-    text: VehicleCardModel.mockVehicles.first.licensePlate,
-  );
+class _MonthlyPassScreenState extends State<MonthlyPassScreen>
+    with ReloadOnDataChange {
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+  late final _passes = AsyncCubit(_repo.getMySubscriptions);
+  late final _packages = AsyncCubit(_repo.getSubscriptionPackages);
+  late final _changes = AsyncCubit(_repo.getMyVehicleChangeRequests);
 
   int _activeTab = 0;
-  bool _autoRenew = true;
-  VehicleType _vehicleType = VehicleType.car;
-  int _selectedPlan = 1;
-  String _selectedParkingLotId = mockParkingLots.first.id;
 
-  VehicleCardModel get _activeVehicle =>
-      VehicleCardModel.mockVehicles.firstWhere(
-        (vehicle) => vehicle.isMonthlyActive,
-      );
+  @override
+  void reloadAll() {
+    _passes.load();
+    _packages.load();
+    _changes.load();
+  }
 
-  int get _selectedPrice =>
-      _selectedPlan == 1 ? _monthlyPrice : _quarterlyPrice;
+  void _changed() {
+    if (mounted) ShellScope.dataChanged(context);
+  }
 
   @override
   void dispose() {
-    _plateController.dispose();
+    _passes.close();
+    _packages.close();
+    _changes.close();
     super.dispose();
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 104),
+  Future<PaymentCheck> _verifyActive(String? subscriptionId) async {
+    if (subscriptionId == null) return PaymentCheck.pending;
+    final sub = await _repo.getSubscription(subscriptionId);
+    return sub.isActive ? PaymentCheck.paid : PaymentCheck.pending;
+  }
+
+  Future<void> _payLink(PaymentLinkModel link, String? subscriptionId) async {
+    final paid = await PbmsPaymentSheet.show(
+      context,
+      title: 'Thanh toán vé tháng',
+      link: link,
+      verify: () => _verifyActive(subscriptionId),
+    );
+    _changed();
+    if (!mounted) return;
+    if (paid) {
+      showPbmsSnack(context, 'Vé tháng đã được kích hoạt.');
+      setState(() => _activeTab = 0);
+    }
+  }
+
+  Future<void> _pay(MonthlySubscriptionModel sub) async {
+    try {
+      final link = await _repo.repaySubscription(sub.subscriptionId);
+      if (mounted) await _payLink(link, sub.subscriptionId);
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
+  }
+
+  Future<void> _renew(MonthlySubscriptionModel sub) async {
+    final packages =
+        (_packages.state.data ?? const <SubscriptionPackageModel>[])
+            .where((p) => p.vehicleTypeName == sub.vehicleType)
+            .toList();
+    final link = await RenewPassSheet.show(context, sub, packages);
+    if (link == null || !mounted) return;
+    final oldEnd = sub.endDate;
+    final paid = await PbmsPaymentSheet.show(
+      context,
+      title: 'Thanh toán gia hạn',
+      link: link,
+      verify: () async {
+        final fresh = await _repo.getSubscription(sub.subscriptionId);
+        final extended = fresh.endDate != null &&
+            oldEnd != null &&
+            fresh.endDate!.isAfter(oldEnd);
+        return extended ? PaymentCheck.paid : PaymentCheck.pending;
+      },
+    );
+    _changed();
+    if (paid && mounted) showPbmsSnack(context, 'Đã gia hạn vé tháng.');
+  }
+
+  Future<void> _cancel(MonthlySubscriptionModel sub) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Huỷ vé tháng?'),
+        content: Text(
+          'Vé của xe ${sub.licensePlate} sẽ ngừng hiệu lực'
+          '${sub.fixedSlot != null ? ' và ô ${sub.fixedSlot} được trả lại' : ''}.',
         ),
-      );
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Giữ vé')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
+            child: const Text('Huỷ vé'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _repo.cancelSubscription(sub.subscriptionId);
+      _changed();
+      if (mounted) showPbmsSnack(context, 'Đã huỷ vé tháng.');
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
   }
 
-  Future<void> _scrollToQr() async {
-    final targetContext = _qrCardKey.currentContext;
-    if (targetContext != null) {
-      await Scrollable.ensureVisible(
-        targetContext,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOutCubic,
-        alignment: 0.2,
-      );
-    }
-    if (mounted) {
-      _showMessage('Mã QR này là dữ liệu mẫu, chưa dùng tại barrier.');
+  Future<void> _changePlate(MonthlySubscriptionModel sub) async {
+    final sent = await VehicleChangeSheet.show(context, sub);
+    if (sent == true) {
+      _changed();
+      if (mounted) {
+        showPbmsSnack(
+            context, 'Đã gửi yêu cầu đổi biển số. Quản lý sẽ duyệt sớm.');
+      }
     }
   }
 
-  void _selectVehicleType(VehicleType type) {
-    setState(() {
-      _vehicleType = type;
-      final vehicle = VehicleCardModel.mockVehicles.firstWhere(
-        (item) => item.type == type,
-      );
-      _plateController.text = vehicle.licensePlate;
-    });
+  Future<void> _editChange(VehicleChangeRequestModel request) async {
+    final saved = await VehicleChangeSheet.edit(context, request);
+    if (saved == true) {
+      _changed();
+      if (mounted) showPbmsSnack(context, 'Đã cập nhật yêu cầu đổi biển số.');
+    }
+  }
+
+  Future<void> _withdrawChange(VehicleChangeRequestModel request) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rút yêu cầu?'),
+        content: Text(
+            'Yêu cầu đổi sang ${request.newLicensePlate} sẽ bị xoá. Vé vẫn giữ biển số cũ.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Giữ lại')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
+            child: const Text('Rút yêu cầu'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _repo.withdrawVehicleChangeRequest(request.requestId);
+      _changed();
+      if (mounted) showPbmsSnack(context, 'Đã rút yêu cầu đổi biển số.');
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
   }
 
   @override
@@ -89,74 +186,44 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
-      appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.96),
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              width: 31,
-              height: 31,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _ink,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: const Text(
-                'P',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Flexible(
-              child: Text(
-                'Quản lý vé tháng',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Thông báo',
-            onPressed: () => _showMessage('Bạn đã xem các thông báo mới nhất.'),
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
-            tooltip: 'Trợ giúp',
-            onPressed: () =>
-                _showMessage('Kênh hỗ trợ vé tháng đang được cập nhật.'),
-            icon: const Icon(Icons.help_outline_rounded),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) => Center(
+      appBar: pbmsTabAppBar('Quản lý vé tháng'),
+      body: RefreshIndicator(
+        color: PbmsTokens.teal,
+        onRefresh: () async => reloadAll(),
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(16, 12, 16, 116 + bottomInset),
               children: [
-                _buildTabs(),
+                PbmsSegmentedTabs(
+                  tabs: const [
+                    (Icons.verified_rounded, 'Vé của tôi'),
+                    (Icons.add_circle_outline_rounded, 'Đăng ký mới'),
+                  ],
+                  selected: _activeTab,
+                  onChanged: (i) => setState(() => _activeTab = i),
+                ),
                 const SizedBox(height: 16),
-                if (_activeTab == 0) ...[
-                  _buildActivePass(),
-                  const SizedBox(height: 14),
-                  _buildQrCard(),
-                  const SizedBox(height: 14),
-                  _buildPassInfo(),
-                  const SizedBox(height: 14),
-                  _buildActiveAction(),
-                ] else
-                  _buildRegistrationForm(),
+                if (_activeTab == 0)
+                  _buildMyPasses()
+                else
+                  PbmsAsync<List<SubscriptionPackageModel>>(
+                    cubit: _packages,
+                    loadingHeight: 360,
+                    errorTitle: 'Không tải được gói vé',
+                    isEmpty: (d) => d.isEmpty,
+                    empty: const PbmsEmptyView(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'Bãi chưa mở gói vé tháng',
+                      message: 'Khi quản lý mở bán gói, bạn có thể đăng ký tại đây.',
+                    ),
+                    builder: (packages) => _RegistrationForm(
+                      packages: packages,
+                      onRegistered: _payLink,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -165,45 +232,107 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen> {
     );
   }
 
-  Widget _buildTabs() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(13),
+  Widget _buildMyPasses() {
+    return PbmsAsync<List<MonthlySubscriptionModel>>(
+      cubit: _passes,
+      loadingHeight: 320,
+      errorTitle: 'Không tải được vé tháng',
+      isEmpty: (d) => d.isEmpty,
+      empty: PbmsEmptyView(
+        icon: Icons.card_membership_outlined,
+        title: 'Bạn chưa có vé tháng',
+        message: 'Vé tháng cho phép ra vào không giới hạn, cổng tự mở theo biển số.',
+        action: TextButton.icon(
+          onPressed: () => setState(() => _activeTab = 1),
+          style: TextButton.styleFrom(
+              foregroundColor: PbmsTokens.teal,
+              minimumSize: const Size(48, 48)),
+          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+          label: const Text('Đăng ký mới'),
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _PassTab(
-              label: 'Vé của tôi',
-              icon: Icons.verified_rounded,
-              selected: _activeTab == 0,
-              onTap: () => setState(() => _activeTab = 0),
+      builder: (items) {
+        int rank(MonthlySubscriptionModel s) =>
+            s.isActive ? 0 : (s.isPendingPayment ? 1 : 2);
+        final sorted = [...items]..sort((a, b) => rank(a).compareTo(rank(b)));
+        final current = sorted.where((s) => rank(s) < 2).toList();
+        final past = sorted.where((s) => rank(s) == 2).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final s in current) ...[
+              _PassCard(
+                pass: s,
+                onPay: () => _pay(s),
+                onRenew: () => _renew(s),
+                onChangePlate: () => _changePlate(s),
+                onHistory: () => RenewalHistorySheet.show(context, s),
+                onCancel: () => _cancel(s),
+              ),
+              const SizedBox(height: 14),
+              if (s.isActive) ...[
+                _AnprCard(pass: s),
+                const SizedBox(height: 14),
+              ],
+            ],
+            BlocBuilder<AsyncCubit<List<VehicleChangeRequestModel>>,
+                AsyncState<List<VehicleChangeRequestModel>>>(
+              bloc: _changes,
+              builder: (context, st) {
+                final requests = st.data ?? const [];
+                if (requests.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _ChangeRequestsCard(
+                    requests: requests,
+                    onEdit: _editChange,
+                    onWithdraw: _withdrawChange,
+                  ),
+                );
+              },
             ),
-          ),
-          Expanded(
-            child: _PassTab(
-              label: 'Đăng ký mới',
-              icon: Icons.add_circle_outline_rounded,
-              selected: _activeTab == 1,
-              onTap: () => setState(() => _activeTab = 1),
-            ),
-          ),
-        ],
-      ),
+            if (past.isNotEmpty) ...[
+              const PbmsSectionTitle('Vé đã hết hạn hoặc đã huỷ'),
+              for (final s in past) ...[
+                _PastPassTile(pass: s, onRenew: s.isCancelled ? null : () => _renew(s)),
+                const SizedBox(height: 9),
+              ],
+            ],
+          ],
+        );
+      },
     );
   }
+}
 
-  Widget _buildActivePass() {
-    final vehicle = _activeVehicle;
-    final expiryDate = _parseExpiryDate(vehicle.expiryDate);
-    final remainingDays =
-        expiryDate.difference(DateTime.now()).inDays.clamp(0, 999);
-    final periodStart = DateTime(expiryDate.year, expiryDate.month, 1);
-    final progress = (remainingDays / 60).clamp(0.0, 1.0);
+class _PassCard extends StatelessWidget {
+  final MonthlySubscriptionModel pass;
+  final VoidCallback onPay;
+  final VoidCallback onRenew;
+  final VoidCallback onChangePlate;
+  final VoidCallback onHistory;
+  final VoidCallback onCancel;
 
-    return _SurfaceCard(
+  const _PassCard({
+    required this.pass,
+    required this.onPay,
+    required this.onRenew,
+    required this.onChangePlate,
+    required this.onHistory,
+    required this.onCancel,
+  });
+
+  String _short(DateTime? d) => d == null
+      ? '--/--'
+      : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = pass;
+    final isMotorbike = s.vehicleType.toLowerCase().contains('máy');
+    final remaining = 1 - s.elapsedRatio;
+
+    return PbmsCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,63 +344,47 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'VÉ GỬI XE CỐ ĐỊNH',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: AppColors.textMutedLight,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      vehicle.ticketType,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        color: _ink,
-                      ),
-                    ),
+                    Text(s.packageName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PbmsText.title),
                     const SizedBox(height: 3),
                     Text(
-                      vehicle.parkingSlot,
-                      style: const TextStyle(fontSize: 11, color: _muted),
-                    ),
+                        s.fixedSlot == null
+                            ? '${PbmsFacility.name}, không cố định vị trí'
+                            : '${PbmsFacility.name}, ô cố định ${s.fixedSlot}',
+                        style: PbmsText.caption),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const _PassStatusBadge(),
+              PbmsStatusPill(StatusInfo.subscription(s.status)),
             ],
           ),
           const SizedBox(height: 13),
           Container(
             padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: AppColors.bgLight,
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+              color: PbmsTokens.surfaceLow,
+              border: Border.all(color: PbmsTokens.divider),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: _border),
+                    border: Border.all(color: PbmsTokens.border),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    vehicle.type == VehicleType.car
-                        ? Icons.directions_car_rounded
-                        : Icons.two_wheeler_rounded,
+                    isMotorbike
+                        ? Icons.two_wheeler_rounded
+                        : Icons.directions_car_rounded,
                     size: 20,
-                    color: AppColors.textSecondaryLight,
+                    color: PbmsTokens.teal,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -279,666 +392,518 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Biển kiểm soát',
-                          style: TextStyle(
-                              fontSize: 10, color: AppColors.textMutedLight)),
-                      Text(
-                        vehicle.licensePlate,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: _ink),
-                      ),
+                      const Text('Biển kiểm soát', style: PbmsText.caption),
+                      Text(s.licensePlate,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PbmsText.bodyStrong),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('Dòng xe',
-                          style: TextStyle(
-                              fontSize: 10, color: AppColors.textMutedLight)),
-                      Text(
-                        vehicle.vehicleName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Loại xe', style: PbmsText.caption),
+                    Text(s.vehicleType,
                         style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimaryLight),
+                            color: PbmsTokens.ink)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (s.isActive) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 16, color: PbmsTokens.muted),
+                const SizedBox(width: 5),
+                const Text('Còn lại ', style: PbmsText.caption),
+                Text('${s.daysLeft} ngày',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: s.daysLeft <= 5
+                            ? PbmsTokens.warn
+                            : PbmsTokens.ink)),
+                const Spacer(),
+                Text('${_short(s.startDate)} - ${_short(s.endDate)}',
+                    style: PbmsText.caption),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: LinearProgressIndicator(
+                value: remaining,
+                minHeight: 7,
+                color: s.daysLeft <= 5 ? PbmsTokens.warn : PbmsTokens.teal,
+                backgroundColor: PbmsTokens.divider,
+                semanticsLabel: 'Thời hạn còn lại',
+              ),
+            ),
+            if (s.daysLeft <= 5) ...[
+              const SizedBox(height: 8),
+              const Text('Vé sắp hết hạn. Gia hạn để không bị gián đoạn.',
+                  style: TextStyle(fontSize: 12, color: PbmsTokens.warn)),
+            ],
+          ],
+          if (s.isPendingPayment) ...[
+            const SizedBox(height: 13),
+            const Text(
+                'Vé chưa có hiệu lực. Thanh toán để kích hoạt ra vào bằng biển số.',
+                style: PbmsText.caption),
+            const SizedBox(height: 10),
+            PbmsPrimaryButton(
+              label: 'Thanh toán ${CurrencyFormatter.format(s.price)}',
+              icon: Icons.credit_card_rounded,
+              onPressed: onPay,
+            ),
+          ],
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: PbmsTokens.divider),
+          Wrap(
+            children: [
+              if (s.isActive) ...[
+                _action(Icons.autorenew_rounded, 'Gia hạn', onRenew),
+                _action(Icons.swap_horiz_rounded, 'Đổi biển số', onChangePlate),
+                _action(Icons.history_rounded, 'Lịch sử', onHistory),
+              ],
+              TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(
+                    foregroundColor: PbmsTokens.danger,
+                    minimumSize: const Size(48, 44)),
+                child: const Text('Huỷ vé'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _action(IconData icon, String label, VoidCallback onPressed) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: TextButton.styleFrom(
+          foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 44)),
+    );
+  }
+}
+
+/// Vé tháng mở cổng bằng nhận diện biển số (ANPR), không cần mã QR.
+class _AnprCard extends StatelessWidget {
+  final MonthlySubscriptionModel pass;
+
+  const _AnprCard({required this.pass});
+
+  @override
+  Widget build(BuildContext context) {
+    return PbmsCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.contactless_rounded, size: 20, color: PbmsTokens.teal),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Mở cổng tự động', style: PbmsText.section),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: PbmsTokens.ink, width: 2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              pass.licensePlate,
+              style: PbmsText.figure(24).copyWith(letterSpacing: 1.5),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Camera tại cổng đọc biển số này và mở barie, bạn không cần quét mã.',
+            textAlign: TextAlign.center,
+            style: PbmsText.caption,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChangeRequestsCard extends StatelessWidget {
+  final List<VehicleChangeRequestModel> requests;
+  final ValueChanged<VehicleChangeRequestModel> onEdit;
+  final ValueChanged<VehicleChangeRequestModel> onWithdraw;
+
+  const _ChangeRequestsCard({
+    required this.requests,
+    required this.onEdit,
+    required this.onWithdraw,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PbmsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Yêu cầu đổi biển số', style: PbmsText.section),
+          for (final r in requests) ...[
+            const Divider(height: 22, color: PbmsTokens.divider),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${r.oldLicensePlate} sang ${r.newLicensePlate}',
+                          style: PbmsText.bodyStrong),
+                      const SizedBox(height: 3),
+                      Text(
+                        [
+                          if (r.packageName != null) r.packageName!,
+                          if (r.createdAt != null)
+                            DateFormatter.formatDate(r.createdAt),
+                        ].join(', '),
+                        style: PbmsText.caption,
                       ),
+                      if (r.rejectionReason != null) ...[
+                        const SizedBox(height: 4),
+                        Text('Lý do từ chối: ${r.rejectionReason}',
+                            style: PbmsText.caption
+                                .copyWith(color: PbmsTokens.danger)),
+                      ],
                     ],
                   ),
                 ),
+                PbmsStatusPill(StatusInfo.vehicleChange(r.status)),
               ],
             ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(Icons.schedule_rounded,
-                  size: 15, color: AppColors.textMutedLight),
-              const SizedBox(width: 5),
-              const Text('Thời hạn còn lại: ',
-                  style: TextStyle(fontSize: 11, color: _muted)),
-              Text('$remainingDays ngày',
-                  style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: _ink)),
-              const Spacer(),
-              Text(
-                '${_formatShortDate(periodStart)} - ${_formatShortDate(expiryDate)}',
-                style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondaryLight),
+            if (r.status.toLowerCase() == 'pending')
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => onEdit(r),
+                    style: TextButton.styleFrom(
+                        foregroundColor: PbmsTokens.teal,
+                        minimumSize: const Size(48, 44)),
+                    child: const Text('Sửa'),
+                  ),
+                  TextButton(
+                    onPressed: () => onWithdraw(r),
+                    style: TextButton.styleFrom(
+                        foregroundColor: PbmsTokens.danger,
+                        minimumSize: const Size(48, 44)),
+                    child: const Text('Rút yêu cầu'),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 7,
-              color: const Color(0xFFF1F5F9),
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: progress,
-                child: const ColoredBox(color: AppColors.success),
-              ),
-            ),
-          ),
-          const SizedBox(height: 13),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.autorenew_rounded,
-                  size: 18, color: AppColors.textSecondaryLight),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tự động gia hạn',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimaryLight)),
-                    Text(
-                      '${CurrencyFormatter.format(_monthlyPrice)} / tháng · Gia hạn ${_formatShortDate(expiryDate.add(const Duration(days: 1)))}',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textMutedLight),
-                    ),
-                  ],
-                ),
-              ),
-              Switch.adaptive(
-                value: _autoRenew,
-                onChanged: (value) {
-                  setState(() => _autoRenew = value);
-                  _showMessage(value
-                      ? 'Đã bật tự động gia hạn (bản xem trước).'
-                      : 'Đã tắt tự động gia hạn.');
-                },
-                activeTrackColor: AppColors.success,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQrCard() {
-    final vehicle = _activeVehicle;
-
-    return _SurfaceCard(
-      key: _qrCardKey,
-      padding: const EdgeInsets.all(17),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.contactless_rounded, size: 19, color: _green),
-              const SizedBox(width: 7),
-              const Expanded(
-                child: Text(
-                  'MỞ CỔNG TỰ ĐỘNG',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: AppColors.textPrimaryLight),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20)),
-                child: const Text('MÃ MẪU',
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.success)),
-              ),
-            ],
-          ),
-          const Divider(height: 18, color: Color(0xFFF1F5F9)),
-          const Text(
-            'Mã QR minh họa cho vé tháng',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: AppColors.bgLight,
-              border: Border.all(color: AppColors.borderLight),
-              borderRadius: BorderRadius.circular(17),
-            ),
-            child: QrImageView(
-              data: vehicle.nfcTagId,
-              version: QrVersions.auto,
-              size: 176,
-              eyeStyle: const QrEyeStyle(color: AppColors.textPrimaryLight),
-              dataModuleStyle:
-                  const QrDataModuleStyle(color: AppColors.textPrimaryLight),
-            ),
-          ),
-          const SizedBox(height: 11),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-            decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(9)),
-            child: Text(
-              vehicle.nfcTagId,
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace',
-                  color: AppColors.textPrimaryLight),
-            ),
-          ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _showMessage('Chia sẻ vé chưa được kết nối.'),
-                  icon: const Icon(Icons.share_outlined, size: 16),
-                  label: const Text('Chia sẻ vé'),
-                  style: _utilityButtonStyle,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _showMessage('Nhật ký vào/ra chưa được kết nối.'),
-                  icon: const Icon(Icons.history_rounded, size: 16),
-                  label: const Text('Lịch sử vào ra'),
-                  style: _utilityButtonStyle,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPassInfo() {
-    final vehicle = _activeVehicle;
-    return _SurfaceCard(
-      padding: const EdgeInsets.all(15),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.local_parking_rounded,
-                  size: 18, color: AppColors.textMutedLight),
-              const SizedBox(width: 7),
-              const Expanded(
-                  child: Text('Thông tin vé',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: _ink))),
-              TextButton(
-                onPressed: () =>
-                    _showMessage('Bản đồ vé tháng chưa được kết nối.'),
-                child: const Text('Xem vị trí',
-                    style: TextStyle(fontSize: 11, color: AppColors.success)),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(vehicle.parkingSlot,
-                style: const TextStyle(fontSize: 11, color: _muted)),
-          ),
-          const Divider(height: 20, color: Color(0xFFF1F5F9)),
-          Row(
-            children: [
-              const Expanded(
-                  child: Text('Gói vé',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textSecondaryLight))),
-              Text(vehicle.ticketType,
-                  style: const TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600, color: _ink)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Expanded(
-                  child: Text('Mã phương tiện',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textSecondaryLight))),
-              Text(vehicle.id,
-                  style: const TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600, color: _ink)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActiveAction() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: FilledButton.icon(
-            onPressed: _scrollToQr,
-            icon: const Icon(Icons.qr_code_scanner_rounded, size: 19),
-            label: const Text('Quét mã mở barrier',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Dữ liệu vé mẫu, chưa dùng để ra vào bãi',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10, color: AppColors.textMutedLight),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRegistrationForm() {
-    return _SurfaceCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Đăng ký vé tháng mới',
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700, color: _ink)),
-          const SizedBox(height: 4),
-          const Text('Chọn bãi, phương tiện và kỳ hạn vé',
-              style: TextStyle(fontSize: 11, color: _muted)),
-          const SizedBox(height: 17),
-          const _FieldLabel('Điểm đỗ'),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedParkingLotId,
-            isExpanded: true,
-            decoration: _formDecoration(),
-            items: mockParkingLots
-                .map((lot) => DropdownMenuItem(
-                      value: lot.id,
-                      child: Text(lot.name,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ))
-                .toList(),
-            onChanged: (value) => setState(() =>
-                _selectedParkingLotId = value ?? mockParkingLots.first.id),
-          ),
-          const SizedBox(height: 14),
-          const _FieldLabel('Loại phương tiện'),
-          SegmentedButton<VehicleType>(
-            segments: const [
-              ButtonSegment(
-                  value: VehicleType.car,
-                  label: Text('Ô tô'),
-                  icon: Icon(Icons.directions_car_rounded)),
-              ButtonSegment(
-                  value: VehicleType.motorcycle,
-                  label: Text('Xe máy'),
-                  icon: Icon(Icons.two_wheeler_rounded)),
-            ],
-            selected: {_vehicleType},
-            onSelectionChanged: (selection) =>
-                _selectVehicleType(selection.first),
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.resolveWith((states) =>
-                  states.contains(WidgetState.selected)
-                      ? AppColors.success
-                      : AppColors.textSecondaryLight),
-              backgroundColor: WidgetStateProperty.resolveWith((states) =>
-                  states.contains(WidgetState.selected)
-                      ? AppColors.success.withValues(alpha: 0.1)
-                      : Colors.white),
-              side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                  color: states.contains(WidgetState.selected)
-                      ? AppColors.success
-                      : AppColors.borderLight)),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const _FieldLabel('Biển kiểm soát'),
-          Semantics(
-            label: 'Biển kiểm soát',
-            child: TextField(
-              controller: _plateController,
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9 .-]'))
-              ],
-              decoration: _formDecoration(hint: 'Ví dụ: 51H - 999.88'),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const _FieldLabel('Kỳ hạn cước'),
-          _PlanOption(
-            selected: _selectedPlan == 1,
-            title: '1 tháng',
-            subtitle: 'Linh hoạt theo tháng',
-            price: CurrencyFormatter.format(_monthlyPrice),
-            onTap: () => setState(() => _selectedPlan = 1),
-          ),
-          const SizedBox(height: 8),
-          _PlanOption(
-            selected: _selectedPlan == 3,
-            title: '3 tháng',
-            subtitle: 'Giá tham khảo, có thể tiết kiệm',
-            price: CurrencyFormatter.format(_quarterlyPrice),
-            onTap: () => setState(() => _selectedPlan = 3),
-          ),
-          const SizedBox(height: 13),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            decoration: BoxDecoration(
-                color: AppColors.bgLight,
-                borderRadius: BorderRadius.circular(11)),
-            child: Row(
-              children: [
-                const Expanded(
-                    child: Text('Tổng tiền tham khảo',
-                        style: TextStyle(fontSize: 11, color: _muted))),
-                Text(CurrencyFormatter.format(_selectedPrice),
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _ink)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 49,
-            child: FilledButton.icon(
-              onPressed: () => _showMessage(
-                  'Đăng ký và thanh toán vé tháng chưa được kết nối.'),
-              icon: const Icon(Icons.credit_card_rounded, size: 19),
-              label: const Text('Thanh toán & kích hoạt',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  DateTime _parseExpiryDate(String value) {
-    final parts = value.split('/');
-    if (parts.length != 3) return DateTime.now().add(const Duration(days: 30));
-    return DateTime(
-      int.tryParse(parts[2]) ?? DateTime.now().year,
-      int.tryParse(parts[1]) ?? DateTime.now().month,
-      int.tryParse(parts[0]) ?? DateTime.now().day,
-    );
-  }
-
-  String _formatShortDate(DateTime date) =>
-      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-
-  static InputDecoration _formDecoration({String? hint}) {
-    return InputDecoration(
-      hintText: hint,
-      isDense: true,
-      filled: true,
-      fillColor: AppColors.bgLight,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(11),
-          borderSide: const BorderSide(color: _border)),
-      enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(11),
-          borderSide: const BorderSide(color: _border)),
-      focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(11),
-          borderSide: const BorderSide(color: _green, width: 1.5)),
-    );
-  }
-
-  static const _utilityButtonStyle = ButtonStyle(
-    minimumSize: WidgetStatePropertyAll(Size.fromHeight(40)),
-    foregroundColor: WidgetStatePropertyAll(AppColors.textSecondaryLight),
-    backgroundColor: WidgetStatePropertyAll(Colors.white),
-    side: WidgetStatePropertyAll(BorderSide(color: AppColors.borderLight)),
-    textStyle: WidgetStatePropertyAll(
-        TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-    shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(11)))),
-  );
-}
-
-class _PassTab extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PassTab(
-      {required this.label,
-      required this.icon,
-      required this.selected,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: selected,
-      child: TextButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        style: TextButton.styleFrom(
-          minimumSize: const Size.fromHeight(44),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          backgroundColor: selected ? Colors.white : Colors.transparent,
-          foregroundColor: selected
-              ? AppColors.textPrimaryLight
-              : AppColors.textSecondaryLight,
-          elevation: selected ? 1 : 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-}
-
-class _PassStatusBadge extends StatelessWidget {
-  const _PassStatusBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.1),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.circle, size: 6, color: AppColors.success),
-          SizedBox(width: 5),
-          Text('Kích hoạt',
-              style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.success)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SurfaceCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  const _SurfaceCard(
-      {super.key,
-      required this.child,
-      this.padding = const EdgeInsets.all(16)});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      explicitChildNodes: true,
-      child: Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.borderLight),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x070F172A), blurRadius: 8, offset: Offset(0, 2))
           ],
-        ),
-        child: child,
+        ],
       ),
     );
   }
 }
 
-class _FieldLabel extends StatelessWidget {
-  final String label;
+class _PastPassTile extends StatelessWidget {
+  final MonthlySubscriptionModel pass;
+  final VoidCallback? onRenew;
 
-  const _FieldLabel(this.label);
+  const _PastPassTile({required this.pass, this.onRenew});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(label,
-          style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondaryLight)),
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${pass.packageName}, ${pass.licensePlate}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PbmsText.bodyStrong),
+                const SizedBox(height: 3),
+                Text('Hết hạn ${DateFormatter.formatDate(pass.endDate)}',
+                    style: PbmsText.caption),
+              ],
+            ),
+          ),
+          PbmsStatusPill(StatusInfo.subscription(pass.status)),
+          if (onRenew != null)
+            IconButton(
+              tooltip: 'Gia hạn',
+              onPressed: onRenew,
+              icon: const Icon(Icons.autorenew_rounded, color: PbmsTokens.teal),
+            ),
+        ],
+      ),
     );
   }
 }
 
-class _PlanOption extends StatelessWidget {
-  final bool selected;
-  final String title;
-  final String subtitle;
-  final String price;
-  final VoidCallback onTap;
+class _RegistrationForm extends StatefulWidget {
+  final List<SubscriptionPackageModel> packages;
+  final Future<void> Function(PaymentLinkModel link, String? subscriptionId)
+      onRegistered;
 
-  const _PlanOption(
-      {required this.selected,
-      required this.title,
-      required this.subtitle,
-      required this.price,
-      required this.onTap});
+  const _RegistrationForm({required this.packages, required this.onRegistered});
+
+  @override
+  State<_RegistrationForm> createState() => _RegistrationFormState();
+}
+
+class _RegistrationFormState extends State<_RegistrationForm> {
+  final _form = GlobalKey<FormState>();
+  final _plate = TextEditingController();
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+
+  late String _vehicleTypeId = widget.packages.first.vehicleTypeId;
+  String? _packageId;
+  AsyncCubit<List<ParkingSlotModel>>? _slots;
+  String? _slotId;
+  bool _busy = false;
+  String? _error;
+
+  List<(String, String)> get _vehicleTypes {
+    final seen = <String, String>{};
+    for (final p in widget.packages) {
+      seen.putIfAbsent(p.vehicleTypeId, () => p.vehicleTypeName);
+    }
+    return seen.entries.map((e) => (e.key, e.value)).toList();
+  }
+
+  List<SubscriptionPackageModel> get _plans => widget.packages
+      .where((p) => p.vehicleTypeId == _vehicleTypeId)
+      .toList()
+    ..sort((a, b) => a.durationMonths.compareTo(b.durationMonths));
+
+  SubscriptionPackageModel? get _selected =>
+      _plans.where((p) => p.packageId == _packageId).firstOrNull;
+
+  bool get _needsSlot {
+    final p = _selected;
+    return p != null && p.requireFixedSlot && !p.isMotorbike;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _packageId = _plans.firstOrNull?.packageId;
+    _syncSlots();
+  }
+
+  @override
+  void dispose() {
+    _plate.dispose();
+    _slots?.close();
+    super.dispose();
+  }
+
+  void _syncSlots() {
+    _slots?.close();
+    _slots = null;
+    _slotId = null;
+    if (_needsSlot) {
+      _slots = AsyncCubit(() => _repo.getResidentSlots(_vehicleTypeId));
+    }
+  }
+
+  void _selectVehicleType(String id) {
+    setState(() {
+      _vehicleTypeId = id;
+      _packageId = _plans.firstOrNull?.packageId;
+      _error = null;
+      _syncSlots();
+    });
+  }
+
+  void _selectPlan(String id) {
+    setState(() {
+      _packageId = id;
+      _error = null;
+      _syncSlots();
+    });
+  }
+
+  Future<void> _submit() async {
+    final pkg = _selected;
+    if (pkg == null) return;
+    if (!(_form.currentState?.validate() ?? false)) return;
+    if (_needsSlot && _slotId == null) {
+      setState(() => _error = 'Chọn một ô đỗ cố định.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final link = await _repo.registerSubscription(
+        packageId: pkg.packageId,
+        vehicleTypeId: pkg.vehicleTypeId,
+        licensePlate: normalizePlate(_plate.text),
+        fixedSlotId: _needsSlot ? _slotId : null,
+      );
+      if (!mounted) return;
+      _plate.clear();
+      await widget.onRegistered(link, link.subscriptionId);
+    } catch (e) {
+      if (mounted) setState(() => _error = errorText(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final outline = selected ? AppColors.success : AppColors.borderLight;
-    return Material(
-      color: selected
-          ? AppColors.success.withValues(alpha: 0.06)
-          : AppColors.bgLight,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-          decoration: BoxDecoration(
-              border: Border.all(color: outline),
-              borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            children: [
-              Icon(
-                  selected
-                      ? Icons.radio_button_checked_rounded
-                      : Icons.radio_button_off_rounded,
-                  size: 19,
-                  color:
-                      selected ? AppColors.success : AppColors.textMutedLight),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimaryLight)),
-                    const SizedBox(height: 3),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 9, color: AppColors.textSecondaryLight)),
-                  ],
-                ),
+    final types = _vehicleTypes;
+    final selected = _selected;
+
+    return PbmsCard(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Đăng ký vé tháng mới', style: PbmsText.title),
+            const SizedBox(height: 4),
+            const Text('Chọn phương tiện và kỳ hạn vé', style: PbmsText.caption),
+            const SizedBox(height: 17),
+            const Text('Điểm đỗ', style: PbmsText.label),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                color: PbmsTokens.surfaceLow,
+                border: Border.all(color: PbmsTokens.border),
+                borderRadius: BorderRadius.circular(11),
               ),
-              const SizedBox(width: 8),
-              Text(price,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimaryLight)),
+              child: const Row(
+                children: [
+                  Icon(Icons.local_parking_rounded,
+                      size: 18, color: PbmsTokens.teal),
+                  SizedBox(width: 8),
+                  Text(PbmsFacility.name, style: PbmsText.body),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text('Loại phương tiện', style: PbmsText.label),
+            const SizedBox(height: 6),
+            SegmentedButton<String>(
+              segments: [
+                for (final t in types)
+                  ButtonSegment(
+                    value: t.$1,
+                    label: Text(t.$2),
+                    icon: Icon(t.$2.toLowerCase().contains('máy')
+                        ? Icons.two_wheeler_rounded
+                        : Icons.directions_car_rounded),
+                  ),
+              ],
+              selected: {_vehicleTypeId},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => _selectVehicleType(s.first),
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+                foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? PbmsTokens.teal
+                        : PbmsTokens.muted),
+                backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? PbmsTokens.tealTint
+                        : Colors.white),
+                side: WidgetStateProperty.resolveWith((states) => BorderSide(
+                    color: states.contains(WidgetState.selected)
+                        ? PbmsTokens.teal
+                        : PbmsTokens.border)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text('Biển kiểm soát', style: PbmsText.label),
+            const SizedBox(height: 6),
+            PlateField(controller: _plate),
+            const SizedBox(height: 14),
+            const Text('Kỳ hạn cước', style: PbmsText.label),
+            const SizedBox(height: 6),
+            for (final p in _plans) ...[
+              PlanOption(
+                selected: _packageId == p.packageId,
+                title: p.packageName,
+                subtitle: [
+                  '${p.durationMonths} tháng',
+                  if (p.requireFixedSlot && !p.isMotorbike) 'ô cố định',
+                  if (p.description != null) p.description!,
+                ].join(', '),
+                price: CurrencyFormatter.format(p.price),
+                onTap: () => _selectPlan(p.packageId),
+              ),
+              const SizedBox(height: 8),
             ],
-          ),
+            if (_needsSlot && _slots != null) ...[
+              const SizedBox(height: 6),
+              const Text('Ô đỗ cố định tại tầng cư dân', style: PbmsText.label),
+              const SizedBox(height: 6),
+              FixedSlotPicker(
+                slots: _slots!,
+                selectedId: _slotId,
+                onSelected: (id) => setState(() {
+                  _slotId = id;
+                  _error = null;
+                }),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                  color: PbmsTokens.surfaceLow,
+                  borderRadius: BorderRadius.circular(11)),
+              child: Row(
+                children: [
+                  const Expanded(
+                      child: Text('Tổng tiền', style: PbmsText.caption)),
+                  Text(
+                      selected == null
+                          ? 'Chọn gói'
+                          : CurrencyFormatter.format(selected.price),
+                      style: PbmsText.figure(16)),
+                ],
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!,
+                  style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
+            ],
+            const SizedBox(height: 12),
+            PbmsPrimaryButton(
+              label: 'Thanh toán & kích hoạt',
+              icon: Icons.credit_card_rounded,
+              busy: _busy,
+              onPressed: selected == null ? null : _submit,
+            ),
+          ],
         ),
       ),
     );

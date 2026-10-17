@@ -1,42 +1,114 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
-import 'package:prm393_frontend/features/home/presentation/models/vehicle_card_model.dart';
-import 'package:prm393_frontend/features/map/data/models/mock_parking_lot.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
+import 'package:prm393_frontend/data/models/pbms_models.dart';
+import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
+import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart';
+import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
+import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
+import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
+import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
 
-class HomeDashboardScreen extends StatelessWidget {
-  final ValueChanged<String?> onOpenMap;
+/// Lượt gửi đang diễn ra hoặc đặt chỗ sắp tới, ưu tiên xe đang trong bãi.
+typedef _Activity = ({
+  ParkingSessionModel? session,
+  ReservationModel? reservation,
+  PricingPolicyModel? sessionPricing,
+});
+
+class HomeDashboardScreen extends StatefulWidget {
+  final VoidCallback onOpenMap;
 
   const HomeDashboardScreen({super.key, required this.onOpenMap});
 
-  static const _teal = Color(0xFF087B8C);
-  static const _tealTint = Color(0xFFEFFBFC);
-  static const _ink = Color(0xFF1E293B);
-  static const _muted = Color(0xFF64748B);
-  static const _border = Color(0xFFE2E8F0);
+  @override
+  State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
 
-  static const _favoritePlaces = [
-    (
-      lotId: 'p1',
-      name: 'Vincom Đồng Khởi',
-      context: 'Công ty',
-      icon: Icons.apartment_rounded
-    ),
-    (
-      lotId: 'p2',
-      name: 'Chợ Bến Thành',
-      context: 'Cà phê',
-      icon: Icons.home_rounded
-    ),
-    (
-      lotId: 'p3',
-      name: 'Phố đi bộ',
-      context: 'Ăn uống',
-      icon: Icons.favorite_rounded
-    ),
-  ];
+class _HomeDashboardScreenState extends State<HomeDashboardScreen>
+    with ReloadOnDataChange {
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+  late final _capacity = AsyncCubit<List<VehicleTypeCapacity>>(_loadCapacity);
+  late final _activity = AsyncCubit<_Activity>(_loadActivity);
+  int _unread = 0;
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnread();
+    // Đồng hồ thời gian đỗ cập nhật mỗi phút.
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void reloadAll() {
+    _capacity.load();
+    _activity.load();
+    _loadUnread();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _capacity.close();
+    _activity.close();
+    super.dispose();
+  }
+
+  Future<List<VehicleTypeCapacity>> _loadCapacity() async {
+    final results = await Future.wait([
+      _repo.getAvailability(),
+      _repo.getPricingPolicies(),
+    ]);
+    return VehicleTypeCapacity.summarize(
+      results[0] as List<FacilityAvailabilityModel>,
+      results[1] as List<PricingPolicyModel>,
+    );
+  }
+
+  Future<_Activity> _loadActivity() async {
+    final results = await Future.wait([
+      _repo.getMySessions(),
+      _repo.getMyReservations(),
+      _repo.getPricingPolicies(),
+    ]);
+    final sessions = results[0] as List<ParkingSessionModel>;
+    final reservations = results[1] as List<ReservationModel>;
+    final pricing = results[2] as List<PricingPolicyModel>;
+    final active = sessions.where((s) => s.isActive).firstOrNull;
+    final upcoming = reservations.where((r) => r.canModify).toList()
+      ..sort((a, b) => a.expectedEntryTime.compareTo(b.expectedEntryTime));
+    return (
+      session: active,
+      reservation: upcoming.firstOrNull,
+      sessionPricing: active == null
+          ? null
+          : pricing
+              .where((p) => p.vehicleTypeName == active.vehicleTypeName)
+              .firstOrNull,
+    );
+  }
+
+  Future<void> _loadUnread() async {
+    try {
+      final page = await _repo.getNotifications();
+      if (mounted) setState(() => _unread = page.unreadCount);
+    } catch (_) {
+      // Huy hiệu chưa đọc không chặn trang chủ.
+    }
+  }
 
   String get _greeting {
     final hour = DateTime.now().hour;
@@ -48,94 +120,153 @@ class HomeDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final vehicle = VehicleCardModel.mockVehicles.first;
-    final availableLots =
-        mockParkingLots.where((lot) => lot.availableSlots > 0).toList();
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 112 + bottomInset),
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 22),
-            _buildSearchEntry(),
-            const SizedBox(height: 10),
-            _buildNearbyButton(availableLots.length),
-            const SizedBox(height: 20),
-            _buildActivePass(context, vehicle),
-            const SizedBox(height: 22),
-            _buildFavoritePlaces(),
-            const SizedBox(height: 22),
-            _buildNearbyLots(availableLots),
-          ],
+        child: RefreshIndicator(
+          color: PbmsTokens.teal,
+          onRefresh: () async => reloadAll(),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics()),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 112 + bottomInset),
+            children: [
+              _buildHeader(context),
+              const SizedBox(height: 22),
+              _buildSearchEntry(),
+              const SizedBox(height: 10),
+              PbmsAsync<List<VehicleTypeCapacity>>(
+                cubit: _capacity,
+                loadingHeight: 58,
+                errorTitle: 'Không tải được chỗ trống',
+                builder: _buildNearbyButton,
+              ),
+              const SizedBox(height: 20),
+              PbmsAsync<_Activity>(
+                cubit: _activity,
+                loadingHeight: 160,
+                errorTitle: 'Không tải được lượt gửi xe',
+                builder: _buildActivity,
+              ),
+              const SizedBox(height: 22),
+              _buildQuickAccess(context),
+              const SizedBox(height: 22),
+              const PbmsSectionTitle('Chỗ trống theo loại xe'),
+              PbmsAsync<List<VehicleTypeCapacity>>(
+                cubit: _capacity,
+                loadingHeight: 150,
+                errorTitle: 'Không tải được chỗ trống',
+                isEmpty: (d) => d.isEmpty,
+                empty: const PbmsEmptyView(
+                  icon: Icons.local_parking_rounded,
+                  title: 'Bãi chưa mở ô đỗ nào',
+                  message: 'Khi bãi cấu hình tầng và ô đỗ, chỗ trống sẽ hiện ở đây.',
+                ),
+                builder: (items) => Column(
+                  children: [
+                    for (final c in items) ...[
+                      _CapacityCard(capacity: c, onOpenMap: widget.onOpenMap),
+                      const SizedBox(height: 11),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => onOpenMap(null),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.near_me_rounded, size: 16, color: _teal),
-                      SizedBox(width: 5),
-                      Text('Bến Nghé, Quận 1',
-                          style: TextStyle(fontSize: 12, color: _muted)),
-                      Icon(Icons.expand_more_rounded, size: 17, color: _muted),
-                    ],
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = state.user;
+        final fullName = (user?.fullName ?? '').trim();
+        final displayName = fullName.isNotEmpty
+            ? fullName.split(RegExp(r'\s+')).last
+            : (user?.userName ?? 'bạn');
+        final initial =
+            displayName.isNotEmpty ? displayName[0].toUpperCase() : 'P';
+
+        return Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: widget.onOpenMap,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.near_me_rounded,
+                              size: 16, color: PbmsTokens.teal),
+                          SizedBox(width: 5),
+                          Text(PbmsFacility.area, style: PbmsText.caption),
+                          Icon(Icons.expand_more_rounded,
+                              size: 17, color: PbmsTokens.muted),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$_greeting, $displayName',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PbmsText.headline,
+                  ),
+                ],
+              ),
+            ),
+            Badge(
+              isLabelVisible: _unread > 0,
+              label: Text(_unread > 9 ? '9+' : '$_unread'),
+              backgroundColor: PbmsTokens.danger,
+              offset: const Offset(-4, 4),
+              child: IconButton(
+                tooltip: _unread > 0
+                    ? 'Thông báo, $_unread chưa đọc'
+                    : 'Thông báo',
+                onPressed: () => NotificationsBottomSheet.show(
+                  context,
+                  onNotificationsUpdated: _loadUnread,
+                ).then((_) => _loadUnread()),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: PbmsTokens.ink,
+                  side: const BorderSide(color: PbmsTokens.border),
+                  minimumSize: const Size(48, 48),
+                ),
+                icon: const Icon(Icons.notifications_none_rounded, size: 21),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Semantics(
+              button: true,
+              label: 'Mở trang cá nhân',
+              child: GestureDetector(
+                onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.profile),
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: PbmsTokens.tealTint,
+                  child: Text(initial,
+                      style: const TextStyle(
+                          color: PbmsTokens.teal,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700)),
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                '$_greeting, Nam',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 21,
-                    height: 1.2,
-                    fontWeight: FontWeight.w700,
-                    color: _ink),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          tooltip: 'Thông báo',
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bạn đã xem các thông báo mới nhất.')),
-          ),
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: _ink,
-            side: const BorderSide(color: _border),
-            minimumSize: const Size(44, 44),
-          ),
-          icon: const Icon(Icons.notifications_none_rounded, size: 21),
-        ),
-        const SizedBox(width: 10),
-        CircleAvatar(
-          radius: 21,
-          backgroundColor: _tealTint,
-          child: const Text('N',
-              style: TextStyle(color: _teal, fontWeight: FontWeight.w700)),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -145,17 +276,13 @@ class HomeDashboardScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => onOpenMap(null),
+        onTap: widget.onOpenMap,
         child: Container(
           constraints: const BoxConstraints(minHeight: 68),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: _border),
+            border: Border.all(color: PbmsTokens.border),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x080F172A), blurRadius: 8, offset: Offset(0, 2))
-            ],
           ),
           child: Row(
             children: [
@@ -163,8 +290,10 @@ class HomeDashboardScreen extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                    color: _tealTint, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.search_rounded, color: _teal, size: 22),
+                    color: PbmsTokens.tealTint,
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.map_outlined,
+                    color: PbmsTokens.teal, size: 22),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -172,25 +301,16 @@ class HomeDashboardScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Bạn muốn đỗ xe ở đâu?',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _ink)),
+                    Text('Bạn muốn đỗ xe khi nào?', style: PbmsText.bodyStrong),
                     SizedBox(height: 3),
-                    Text('Tìm tòa nhà, đường hoặc bãi đỗ xe',
+                    Text('Xem bãi trên bản đồ và giữ chỗ ô tô trước',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: _muted)),
+                        style: PbmsText.caption),
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Mở bộ lọc bãi đỗ',
-                onPressed: () => onOpenMap(null),
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.tune_rounded, color: _muted, size: 20),
-              ),
+              const Icon(Icons.chevron_right_rounded, color: PbmsTokens.muted),
             ],
           ),
         ),
@@ -198,34 +318,42 @@ class HomeDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNearbyButton(int availableCount) {
+  Widget _buildNearbyButton(List<VehicleTypeCapacity> items) {
+    final available = items.fold<int>(0, (s, c) => s + c.available);
+    final detail = items.isEmpty
+        ? 'Chưa có dữ liệu ô đỗ'
+        : items.map((c) => '${c.vehicleTypeName} ${c.available}').join(', ');
+
     return Material(
-      color: _teal,
+      color: PbmsTokens.teal,
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         borderRadius: BorderRadius.circular(13),
-        onTap: () => onOpenMap(null),
+        onTap: widget.onOpenMap,
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           child: Row(
             children: [
-              const Icon(Icons.near_me_rounded, size: 20, color: Colors.white),
+              const Icon(Icons.local_parking_rounded,
+                  size: 20, color: Colors.white),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$availableCount bãi xe gần bạn còn chỗ',
+                    Text('${PbmsFacility.name} còn $available chỗ trống',
                         style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Colors.white)),
                     const SizedBox(height: 2),
-                    const Text('Trong khu vực · Xem giá và chỗ trống',
-                        style:
-                            TextStyle(fontSize: 10, color: Color(0xFFE4F7F8))),
+                    Text(detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFFE4F7F8))),
                   ],
                 ),
               ),
@@ -238,349 +366,288 @@ class HomeDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActivePass(BuildContext context, VehicleCardModel vehicle) {
-    final activeLot = mockParkingLots.last;
-
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(17),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x080F172A), blurRadius: 8, offset: Offset(0, 2))
-        ],
+  Widget _buildActivity(_Activity activity) {
+    final session = activity.session;
+    if (session != null) return _buildActiveSession(session, activity.sessionPricing);
+    final reservation = activity.reservation;
+    if (reservation != null) return _buildUpcomingReservation(reservation);
+    return PbmsEmptyView(
+      icon: Icons.directions_car_outlined,
+      title: 'Chưa có xe trong bãi',
+      message: 'Giữ chỗ ô tô trước tối đa 5 giờ, tiền cọc trừ vào phí khi ra bãi.',
+      action: TextButton.icon(
+        onPressed: widget.onOpenMap,
+        style: TextButton.styleFrom(
+            foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 48)),
+        icon: const Icon(Icons.event_available_rounded, size: 18),
+        label: const Text('Đặt chỗ trước'),
       ),
+    );
+  }
+
+  Widget _activityHeader(String title, Widget trailing) {
+    return Row(
+      children: [
+        Semantics(
+          label: 'Đang hoạt động',
+          child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                  color: PbmsTokens.teal, shape: BoxShape.circle)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: PbmsTokens.teal)),
+        ),
+        trailing,
+      ],
+    );
+  }
+
+  Widget _slotChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+          color: PbmsTokens.tealTint, borderRadius: BorderRadius.circular(20)),
+      child: Text(text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: PbmsTokens.teal)),
+    );
+  }
+
+  Widget _qrButton(String label, VoidCallback? onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.qr_code_2_rounded, size: 19),
+        label: Text(label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: PbmsTokens.teal,
+          backgroundColor: PbmsTokens.tealTint,
+          side: const BorderSide(color: PbmsTokens.tealLine),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveSession(
+      ParkingSessionModel s, PricingPolicyModel? pricing) {
+    final ticket = s.ticket;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => SessionDetailSheet.show(context, s),
+      child: PbmsCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _activityHeader('Xe đang trong bãi',
+                _slotChip(s.slotCode ?? 'Chưa phân ô')),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.licensePlateIn,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PbmsText.title),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Vào lúc ${DateFormatter.formatDayTime(s.entryTime)}'
+                        '${s.vehicleTypeName == null ? '' : ', ${s.vehicleTypeName}'}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: PbmsText.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(DateFormatter.clock(s.parkedDuration),
+                        style: PbmsText.figure(17, color: PbmsTokens.teal)),
+                    const SizedBox(height: 3),
+                    if (pricing != null)
+                      Text(
+                          '${CurrencyFormatter.format(pricing.extraHourPrice)}/giờ',
+                          style: PbmsText.caption),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 13),
+            _qrButton(
+              ticket == null ? 'Chưa có mã QR ra cổng' : 'Mã QR ra cổng',
+              ticket == null
+                  ? null
+                  : () => PbmsQrDialog.show(
+                        context,
+                        title: 'Mã QR ra cổng',
+                        payload: ticket.qrPayload,
+                        headline: s.vehicleTypeName == null
+                            ? s.licensePlateIn
+                            : '${s.vehicleTypeName}, ${s.licensePlateIn}',
+                        rows: [
+                          (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),
+                          (Icons.local_parking_rounded, 'Vị trí đỗ',
+                              s.slotCode ?? 'Chưa phân ô'),
+                          (Icons.schedule_rounded, 'Vào bãi',
+                              DateFormatter.formatDateTime(s.entryTime)),
+                          (Icons.timelapse_rounded, 'Thời lượng',
+                              DateFormatter.humanDuration(s.parkedDuration)),
+                        ],
+                      ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingReservation(ReservationModel r) {
+    final ticket = r.ticket;
+    final info = StatusInfo.reservation(r.status);
+    return PbmsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      color: _teal, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              const Expanded(
-                  child: Text('VÉ ĐỖ ĐANG HOẠT ĐỘNG',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: _teal))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                    color: _tealTint, borderRadius: BorderRadius.circular(20)),
-                child: Text(vehicle.parkingSlot,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: _teal)),
-              ),
-            ],
-          ),
+          _activityHeader('Đặt chỗ sắp tới', PbmsStatusPill(info)),
           const SizedBox(height: 14),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(activeLot.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _ink)),
-                    const SizedBox(height: 5),
-                    Text('${vehicle.vehicleName} · ${vehicle.licensePlate}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, color: _muted)),
-                  ],
-                ),
-              ),
+              Text(DateFormatter.formatTime(r.expectedEntryTime),
+                  style: PbmsText.figure(24)),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text('01h 24m',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: _teal)),
-                  const SizedBox(height: 3),
-                  Text(
-                      '${CurrencyFormatter.format(activeLot.pricePerHour)}/giờ',
-                      style: const TextStyle(fontSize: 11, color: _muted)),
-                ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    '${DateFormatter.formatDay(r.expectedEntryTime)}, ${r.vehicleTypeName}',
+                    style: PbmsText.caption,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 13),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: OutlinedButton.icon(
-              onPressed: () => _showPassDialog(context, vehicle),
-              icon: const Icon(Icons.qr_code_2_rounded, size: 19),
-              label: const Text('Mã QR ra vào cổng',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _teal,
-                backgroundColor: _tealTint,
-                side: const BorderSide(color: Color(0xFF97DFEB)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
+          if (r.isPending)
+            PbmsPrimaryButton(
+              label: 'Đặt cọc để giữ chỗ',
+              icon: Icons.payments_outlined,
+              onPressed: () => ReservationActions.payDeposit(
+                  context, r, () => ShellScope.dataChanged(context)),
+            )
+          else
+            _qrButton(
+              ticket == null ? 'Mã QR sẽ có sau khi xác nhận' : 'Mã QR vào cổng',
+              ticket == null
+                  ? null
+                  : () => PbmsQrDialog.show(
+                        context,
+                        title: 'Mã QR vào cổng',
+                        payload: ticket.qrPayload,
+                        headline: r.vehicleTypeName,
+                        rows: [
+                          (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),
+                          (Icons.schedule_rounded, 'Giờ vào dự kiến',
+                              DateFormatter.formatDayTime(r.expectedEntryTime)),
+                        ],
+                      ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Future<void> _showPassDialog(BuildContext context, VehicleCardModel vehicle) {
-    final code = 'PBMS:${vehicle.id}:${vehicle.licensePlate}';
-    final parkingDuration = const Duration(hours: 1, minutes: 24);
-    final entryTime = DateTime.now().subtract(parkingDuration);
-    final localizations = MaterialLocalizations.of(context);
-    final entryTimeLabel =
-        '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(entryTime))} · '
-        '${localizations.formatMediumDate(entryTime)}';
-
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final qrSize =
-            (MediaQuery.sizeOf(dialogContext).width - 104).clamp(180.0, 252.0);
-
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 390,
-              maxHeight: MediaQuery.sizeOf(dialogContext).height - 48,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Mã QR ra vào cổng',
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: _ink),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Đóng mã QR',
-                        onPressed: () => Navigator.pop(dialogContext),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _tealTint,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.directions_car_rounded,
-                            size: 17, color: _teal),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            '${vehicle.vehicleName} · ${vehicle.licensePlate}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: _ink),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: _border),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: QrImageView(
-                        data: code,
-                        version: QrVersions.auto,
-                        size: qrSize,
-                        semanticsLabel:
-                            'Mã QR ra vào cổng cho xe ${vehicle.licensePlate}',
-                        eyeStyle: const QrEyeStyle(color: Colors.black),
-                        dataModuleStyle:
-                            const QrDataModuleStyle(color: Colors.black),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 13, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _border),
-                    ),
-                    child: Column(
-                      children: [
-                        _passDetailRow(
-                          icon: Icons.location_on_outlined,
-                          label: 'Địa điểm',
-                          value: mockParkingLots.last.name,
-                        ),
-                        const Divider(height: 1, color: _border),
-                        _passDetailRow(
-                          icon: Icons.local_parking_rounded,
-                          label: 'Vị trí đỗ',
-                          value: vehicle.parkingSlot,
-                        ),
-                        const Divider(height: 1, color: _border),
-                        _passDetailRow(
-                          icon: Icons.schedule_rounded,
-                          label: 'Vào bãi',
-                          value: entryTimeLabel,
-                        ),
-                        const Divider(height: 1, color: _border),
-                        _passDetailRow(
-                          icon: Icons.timelapse_rounded,
-                          label: 'Thời lượng',
-                          value: '01 giờ 24 phút',
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _passDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: _teal),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(fontSize: 12, color: _muted)),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: _ink),
-            ),
-          ),
-        ],
+  Widget _buildQuickAccess(BuildContext context) {
+    final shortcuts = [
+      (
+        icon: Icons.history_rounded,
+        name: 'Lịch sử',
+        context: 'Lượt gửi, đặt chỗ',
+        onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.history),
       ),
-    );
-  }
+      (
+        icon: Icons.card_membership_rounded,
+        name: 'Vé tháng',
+        context: 'Đăng ký, gia hạn',
+        onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.pass),
+      ),
+      (
+        icon: Icons.report_gmailerrorred_rounded,
+        name: 'Báo sự cố',
+        context: 'Gửi cho nhân viên',
+        onTap: () => IncidentsScreen.open(context),
+      ),
+    ];
 
-  Widget _buildFavoritePlaces() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          children: [
-            Expanded(
-                child: Text('Địa điểm thân quen',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: _ink))),
-            Text('Đã lưu',
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w500, color: _teal)),
-          ],
-        ),
-        const SizedBox(height: 11),
+        const PbmsSectionTitle('Truy cập nhanh'),
         SizedBox(
           height: 66,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _favoritePlaces.length,
+            itemCount: shortcuts.length,
             separatorBuilder: (context, index) => const SizedBox(width: 9),
             itemBuilder: (context, index) {
-              final place = _favoritePlaces[index];
+              final item = shortcuts[index];
               return Material(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(13),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(13),
-                  onTap: () => onOpenMap(place.lotId),
+                  onTap: item.onTap,
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                     decoration: BoxDecoration(
-                        border: Border.all(color: _border),
+                        border: Border.all(color: PbmsTokens.border),
                         borderRadius: BorderRadius.circular(13)),
                     child: Row(
                       children: [
                         Container(
-                          width: 34,
-                          height: 34,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                              color: _tealTint,
+                              color: PbmsTokens.tealTint,
                               borderRadius: BorderRadius.circular(9)),
-                          child: Icon(place.icon, size: 18, color: _teal),
+                          child:
+                              Icon(item.icon, size: 18, color: PbmsTokens.teal),
                         ),
                         const SizedBox(width: 9),
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(place.name,
+                            Text(item.name,
                                 style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: _ink)),
-                            const SizedBox(height: 3),
-                            Text(place.context,
-                                style: const TextStyle(
-                                    fontSize: 10, color: _muted)),
+                                    color: PbmsTokens.ink)),
+                            const SizedBox(height: 2),
+                            Text(item.context, style: PbmsText.caption),
                           ],
                         ),
                       ],
@@ -594,89 +661,40 @@ class HomeDashboardScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildNearbyLots(List<MockParkingLot> lots) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Expanded(
-                child: Text('Gợi ý bãi gần nhất',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: _ink))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                  color: _tealTint, borderRadius: BorderRadius.circular(20)),
-              child: const Text('Còn chỗ',
-                  style: TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600, color: _teal)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 11),
-        for (final lot in lots) ...[
-          _ParkingSuggestion(lot: lot, onOpenMap: onOpenMap),
-          const SizedBox(height: 11),
-        ],
-      ],
-    );
-  }
 }
 
-class _ParkingSuggestion extends StatelessWidget {
-  final MockParkingLot lot;
-  final ValueChanged<String?> onOpenMap;
+class _CapacityCard extends StatelessWidget {
+  final VehicleTypeCapacity capacity;
+  final VoidCallback onOpenMap;
 
-  const _ParkingSuggestion({required this.lot, required this.onOpenMap});
-
-  static const _teal = Color(0xFF087B8C);
-  static const _tealTint = Color(0xFFEFFBFC);
-  static const _ink = Color(0xFF1E293B);
-  static const _muted = Color(0xFF64748B);
-  static const _border = Color(0xFFE2E8F0);
-  static const _initialCenter = LatLng(10.7791, 106.7009);
+  const _CapacityCard({required this.capacity, required this.onOpenMap});
 
   @override
   Widget build(BuildContext context) {
-    final distanceMeters = (const Distance().as(LengthUnit.Meter,
-            _initialCenter, LatLng(lot.latitude, lot.longitude)))
-        .round();
-    final walkMinutes = (distanceMeters / 80).ceil().clamp(1, 99);
-    final occupiedPercent =
-        ((lot.totalSlots - lot.availableSlots) / lot.totalSlots * 100).round();
-    final amenities = switch (lot.id) {
-      'p1' => 'Mái che · Sạc EV',
-      'p2' => 'Camera 24/7 · Ra vào tự động',
-      _ => 'Có mái che · Bảo vệ 24/7',
-    };
+    final c = capacity;
+    final pricing = c.pricing;
+    final hasRoom = c.available > 0;
+    final stateColor = hasRoom ? PbmsTokens.teal : PbmsTokens.danger;
 
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x080F172A), blurRadius: 8, offset: Offset(0, 2))
-        ],
-      ),
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(13, 13, 13, 4),
       child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 58,
-                height: 58,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                    color: _tealTint, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.local_parking_rounded,
-                    size: 27, color: _teal),
+                    color: PbmsTokens.tealTint,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(
+                    c.isCar
+                        ? Icons.directions_car_rounded
+                        : Icons.two_wheeler_rounded,
+                    size: 26,
+                    color: PbmsTokens.teal),
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -686,62 +704,59 @@ class _ParkingSuggestion extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                            child: Text(lot.name,
+                            child: Text(c.vehicleTypeName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: _ink))),
+                                style: PbmsText.bodyStrong)),
                         const SizedBox(width: 5),
-                        Text('${CurrencyFormatter.format(lot.pricePerHour)}/h',
-                            style: const TextStyle(
-                                fontSize: 11,
+                        if (pricing != null)
+                          Text(
+                              '${CurrencyFormatter.format(pricing.basePrice)}/${pricing.baseHours}h đầu',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: PbmsTokens.teal)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      pricing == null
+                          ? 'Chưa có bảng giá'
+                          : 'Sau đó ${CurrencyFormatter.format(pricing.extraHourPrice)}/giờ'
+                              '${pricing.nightSurcharge > 0 ? ', phụ thu đêm ${CurrencyFormatter.format(pricing.nightSurcharge)}' : ''}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PbmsText.caption,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                            hasRoom
+                                ? '${c.available} chỗ trống'
+                                : 'Đã hết chỗ',
+                            style: TextStyle(
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: _teal)),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Icon(Icons.directions_walk_rounded,
-                            size: 14, color: _teal),
-                        const SizedBox(width: 3),
-                        Text('${distanceMeters}m · ${walkMinutes}p',
-                            style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: _teal)),
-                        const SizedBox(width: 6),
-                        const Text('·', style: TextStyle(color: _muted)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                            child: Text(amenities,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 10, color: _muted))),
-                      ],
-                    ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        Container(
-                            width: 7,
-                            height: 7,
-                            decoration: const BoxDecoration(
-                                color: _teal, shape: BoxShape.circle)),
-                        const SizedBox(width: 5),
-                        Text('${lot.availableSlots} chỗ trống',
-                            style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: _teal)),
+                                color: stateColor,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ])),
                         const Spacer(),
-                        Text('Đã lấp $occupiedPercent%',
-                            style:
-                                const TextStyle(fontSize: 10, color: _muted)),
+                        Text('Đã lấp ${c.occupiedPercent}% / ${c.total} chỗ',
+                            style: PbmsText.caption),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: c.total == 0 ? 0 : c.occupiedPercent / 100,
+                        minHeight: 4,
+                        color: stateColor,
+                        backgroundColor: PbmsTokens.divider,
+                        semanticsLabel: 'Tỉ lệ lấp đầy ${c.vehicleTypeName}',
+                      ),
                     ),
                   ],
                 ),
@@ -749,26 +764,33 @@ class _ParkingSuggestion extends StatelessWidget {
             ],
           ),
           const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: Divider(height: 1, color: _border)),
+              padding: EdgeInsets.only(top: 6),
+              child: Divider(height: 1, color: PbmsTokens.border)),
           Row(
             children: [
-              TextButton.icon(
-                onPressed: () => onOpenMap(lot.id),
-                icon: const Icon(Icons.local_parking_rounded, size: 16),
-                label: const Text('Đặt chỗ trước'),
-                style: TextButton.styleFrom(
-                    foregroundColor: _teal,
-                    visualDensity: VisualDensity.compact),
-              ),
+              if (c.isCar)
+                TextButton.icon(
+                  onPressed: onOpenMap,
+                  icon: const Icon(Icons.event_available_rounded, size: 17),
+                  label: const Text('Đặt chỗ trước'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: PbmsTokens.teal,
+                      minimumSize: const Size(48, 44)),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 13),
+                  child: Text('Không cần đặt trước, vào bãi trực tiếp',
+                      style: PbmsText.caption),
+                ),
               const Spacer(),
               TextButton.icon(
-                onPressed: () => onOpenMap(lot.id),
-                icon: const Icon(Icons.navigation_rounded, size: 15),
+                onPressed: onOpenMap,
+                icon: const Icon(Icons.navigation_rounded, size: 16),
                 label: const Text('Bản đồ'),
                 style: TextButton.styleFrom(
-                    foregroundColor: _muted,
-                    visualDensity: VisualDensity.compact),
+                    foregroundColor: PbmsTokens.muted,
+                    minimumSize: const Size(48, 44)),
               ),
             ],
           ),

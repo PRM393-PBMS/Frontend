@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 
@@ -10,6 +11,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: GoogleFonts.beVietnamPro().fontFamily,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.bgDark,
       colorScheme: const ColorScheme.dark(
@@ -99,10 +101,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: AppColors.primaryDark,
+      fontFamily: GoogleFonts.beVietnamPro().fontFamily,
+      primaryColor: AppColors.brand,
       scaffoldBackgroundColor: AppColors.bgLight,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.primaryDark,
+        primary: AppColors.brand,
         onPrimary: Colors.white,
         secondary: AppColors.secondary,
         onSecondary: Colors.white,
