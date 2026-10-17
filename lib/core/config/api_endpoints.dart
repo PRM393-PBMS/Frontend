@@ -41,6 +41,7 @@ class ApiEndpoints {
   static const String mySubscriptions = '/api/MonthlySubscription/my';
   static const String registerSubscription =
       '/api/MonthlySubscription/register';
+  static String subscriptionById(String id) => '/api/MonthlySubscription/$id';
   static String cancelSubscription(String id) =>
       '/api/MonthlySubscription/$id/cancel';
   static String subscriptionPayment(String subscriptionId) =>
@@ -57,6 +58,8 @@ class ApiEndpoints {
       '/api/VehicleChangeRequest/change-vehicle';
   static const String myVehicleChangeRequests =
       '/api/VehicleChangeRequest/my-requests';
+  static String vehicleChangeRequestById(String id) =>
+      '/api/VehicleChangeRequest/change-vehicle/$id';
 
   // ================= Catalog =================
   static const String vehicleTypes = '/api/VehicleType';

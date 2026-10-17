@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-/// Định dạng tiền tệ VNĐ cho các chi phí đỗ xe, đặt cọc và gói tháng
+/// Định dạng tiền VNĐ: "35.000 ₫".
 class CurrencyFormatter {
   CurrencyFormatter._();
 
@@ -10,7 +10,10 @@ class CurrencyFormatter {
     decimalDigits: 0,
   );
 
-  static String format(num amount) {
-    return _formatter.format(amount);
-  }
+  static final NumberFormat _plain = NumberFormat.decimalPattern('vi_VN');
+
+  static String format(num amount) => _formatter.format(amount);
+
+  /// Chỉ phần số, dùng khi đơn vị hiển thị tách riêng.
+  static String number(num amount) => _plain.format(amount);
 }
