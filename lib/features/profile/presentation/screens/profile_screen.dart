@@ -33,7 +33,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
   late final PbmsRepository _repo = context.read<PbmsRepository>();
-  late final AppLockController _lock = context.read<AppLockController>();
+  late final AppLockController _lock = AppLockController.instance;
   late final _stats = AsyncCubit<_Stats>(_loadStats);
 
   @override

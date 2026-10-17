@@ -14,6 +14,9 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
     this.timeout = const Duration(minutes: 1),
   }) : _biometric = biometric ?? BiometricService.instance;
 
+  /// Instance dùng chung cho toàn app (khởi tạo trong `main`).
+  static final AppLockController instance = AppLockController();
+
   static const _prefKey = 'biometric_lock_enabled';
 
   final BiometricService _biometric;

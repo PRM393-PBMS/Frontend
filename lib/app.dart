@@ -22,7 +22,7 @@ class ParkingApp extends StatefulWidget {
 
 class _ParkingAppState extends State<ParkingApp> {
   late final GoRouter _router;
-  late final AppLockController _lock = context.read<AppLockController>();
+  late final AppLockController _lock = AppLockController.instance;
 
   /// Chưa từng thấy trạng thái đăng xuất trong lần chạy này → phiên được khôi phục.
   bool _sawSignedOut = false;
