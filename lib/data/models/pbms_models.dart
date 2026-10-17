@@ -195,6 +195,7 @@ class ParkingSessionModel {
   final String? paymentMethod;
   final DateTime? paymentTime;
   final TicketModel? ticket;
+  final ExitPassModel? exitPass;
 
   const ParkingSessionModel({
     required this.sessionId,
@@ -214,9 +215,11 @@ class ParkingSessionModel {
     this.paymentMethod,
     this.paymentTime,
     this.ticket,
+    this.exitPass,
   });
 
   bool get isActive => _is(status, 'active');
+  bool get isPrepaid => exitPass != null;
   String? get slotCode => actualSlotCode ?? assignedSlotCode;
 
   Duration get parkedDuration {
@@ -242,6 +245,114 @@ class ParkingSessionModel {
         paymentMethod: JsonRead.strOrNull(json, 'paymentMethod'),
         paymentTime: JsonRead.date(json, 'paymentTime'),
         ticket: TicketModel.fromJson(json['ticket']),
+        exitPass: ExitPassModel.fromJson(JsonRead.map(json, 'exitPass')),
+      );
+}
+
+/// Mã ra cổng sau khi thanh toán trước; hiệu lực tới khi xe ra khỏi bãi.
+class ExitPassModel {
+  final String code;
+  final String qrPayload;
+  final DateTime? prepaidAt;
+
+  const ExitPassModel({required this.code, required this.qrPayload, this.prepaidAt});
+
+  static ExitPassModel? fromJson(J? json) {
+    if (json == null) return null;
+    final code = JsonRead.str(json, 'code');
+    final payload = JsonRead.str(json, 'qrPayload');
+    if (code.isEmpty || payload.isEmpty) return null;
+    return ExitPassModel(
+      code: code,
+      qrPayload: payload,
+      prepaidAt: JsonRead.date(json, 'prepaidAt'),
+    );
+  }
+}
+
+/// Kết quả `POST /my/:id/prepay` và `GET /my/:id/exit-pass`.
+class PrepayResultModel {
+  final ExitPassModel? exitPass;
+  final PaymentLinkModel? online;
+  final String? paymentStatus;
+  final double? walletBalance;
+
+  const PrepayResultModel({this.exitPass, this.online, this.paymentStatus, this.walletBalance});
+
+  factory PrepayResultModel.fromJson(J json) {
+    final online = JsonRead.map(json, 'onlinePayment');
+    final payment = JsonRead.map(json, 'payment');
+    final fee = JsonRead.map(json, 'fee');
+    return PrepayResultModel(
+      exitPass: ExitPassModel.fromJson(JsonRead.map(json, 'exitPass')),
+      online: online == null
+          ? null
+          : PaymentLinkModel(
+              paymentUrl: JsonRead.str(online, 'paymentUrl'),
+              orderCode: JsonRead.strOrNull(online, 'orderCode'),
+              paymentLinkId: JsonRead.strOrNull(online, 'paymentLinkId'),
+              paymentId: payment == null ? null : JsonRead.strOrNull(payment, 'paymentId'),
+              amount: (payment == null ? null : JsonRead.numOrNull(payment, 'amount')) ??
+                  (fee == null ? null : JsonRead.numOrNull(fee, 'amount')),
+            ),
+      paymentStatus: JsonRead.strOrNull(json, 'paymentStatus'),
+      walletBalance: JsonRead.numOrNull(json, 'walletBalance'),
+    );
+  }
+}
+
+class WalletTransactionModel {
+  final String id;
+  final String type;
+  final double amount;
+  final double balanceAfter;
+  final String? description;
+  final DateTime createdAt;
+
+  const WalletTransactionModel({
+    required this.id,
+    required this.type,
+    required this.amount,
+    required this.balanceAfter,
+    this.description,
+    required this.createdAt,
+  });
+
+  bool get isTopUp => _is(type, 'topup');
+
+  factory WalletTransactionModel.fromJson(J json) => WalletTransactionModel(
+        id: JsonRead.str(json, 'transactionId'),
+        type: JsonRead.str(json, 'type'),
+        amount: JsonRead.num_(json, 'amount'),
+        balanceAfter: JsonRead.num_(json, 'balanceAfter'),
+        description: JsonRead.strOrNull(json, 'description'),
+        createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
+      );
+}
+
+class WalletModel {
+  final double balance;
+  final List<WalletTransactionModel> transactions;
+  final int pendingTopUps;
+  final double topUpMin;
+  final double topUpMax;
+
+  const WalletModel({
+    required this.balance,
+    required this.transactions,
+    required this.pendingTopUps,
+    required this.topUpMin,
+    required this.topUpMax,
+  });
+
+  factory WalletModel.fromJson(J json) => WalletModel(
+        balance: JsonRead.num_(json, 'balance'),
+        transactions: JsonRead.list(json['transactions'])
+            .map(WalletTransactionModel.fromJson)
+            .toList(),
+        pendingTopUps: JsonRead.list(json['pendingTopUps']).length,
+        topUpMin: JsonRead.num_(json, 'topUpMin', 10000),
+        topUpMax: JsonRead.num_(json, 'topUpMax', 5000000),
       );
 }
 

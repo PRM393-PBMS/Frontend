@@ -33,6 +33,9 @@ class ApiEndpoints {
   static const String mySessions = '/api/ParkingSession/my';
   static String sessionFeePreview(String id) =>
       '/api/ParkingSession/my/$id/fee-preview';
+  static String sessionPrepay(String id) => '/api/ParkingSession/my/$id/prepay';
+  static String sessionExitPass(String id) =>
+      '/api/ParkingSession/my/$id/exit-pass';
   static String sessionCheckoutPayment(String id) =>
       '/api/ParkingSession/my/$id/checkout-payment';
   static String sessionById(String id) => '/api/ParkingSession/$id';
@@ -82,4 +85,10 @@ class ApiEndpoints {
   static String markNotificationRead(String id) => '/api/Notification/$id/read';
   static const String markAllNotificationsRead = '/api/Notification/read-all';
   static String deleteNotification(String id) => '/api/Notification/$id';
+
+  // ================= Wallet (/api/wallet) =================
+  static const String myWallet = '/api/wallet/my';
+  static const String walletTopUp = '/api/wallet/top-up';
+  static String walletTopUpStatus(String paymentId) =>
+      '/api/wallet/top-up/$paymentId/status';
 }

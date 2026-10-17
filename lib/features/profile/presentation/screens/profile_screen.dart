@@ -15,6 +15,7 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
 /// Số liệu hoạt động của khách hàng, tổng hợp từ lượt gửi, vé tháng, đặt chỗ.
 typedef _Stats = ({
@@ -184,6 +185,13 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                     _buildSectionCard(
                       title: 'Hoạt động',
                       children: [
+                        _buildActionTile(
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'Ví PBMS',
+                          subtitle: 'Nạp tiền qua ngân hàng, thẻ; trả phí gửi xe',
+                          onTap: () => WalletScreen.open(context),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
                         _buildActionTile(
                           icon: Icons.receipt_long_outlined,
                           title: 'Lịch sử gửi xe & thanh toán',
