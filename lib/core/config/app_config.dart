@@ -6,7 +6,7 @@ class AppConfig {
   static const bool useCloudBackend = true;
 
   static const String localBaseUrl = 'http://10.0.2.2:3000'; // 10.0.2.2 cho Android Emulator, localhost cho iOS/Web
-  static const String cloudBaseUrl = 'https://prm393-backend-u2ym.onrender.com';
+  static const String cloudBaseUrl = 'https://prm393backend.onrender.com';
 
   static String get baseUrl => useCloudBackend ? cloudBaseUrl : localBaseUrl;
 
