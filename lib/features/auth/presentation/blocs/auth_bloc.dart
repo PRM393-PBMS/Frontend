@@ -34,7 +34,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await _authRepository
           .getCurrentUser()
-          .timeout(const Duration(seconds: 4), onTimeout: () => null);
+          // Kho lưu trữ đã tự dùng hồ sơ cũ khi máy chủ chậm; đây chỉ là chốt an toàn.
+          .timeout(const Duration(seconds: 10), onTimeout: () => null);
       if (user != null) {
         emit(state.copyWith(
           status: AuthStatus.authenticated,

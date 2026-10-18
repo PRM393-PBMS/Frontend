@@ -870,24 +870,26 @@ class _RegistrationFormState extends State<_RegistrationForm> {
             const SizedBox(height: 4),
             const Text('Chọn phương tiện và kỳ hạn vé', style: PbmsText.caption),
             const SizedBox(height: 17),
-            const Text('Điểm đỗ', style: PbmsText.label),
+            const Text('Bãi áp dụng vé', style: PbmsText.label),
             const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-              decoration: BoxDecoration(
-                color: PbmsTokens.surfaceLow,
-                border: Border.all(color: PbmsTokens.border),
-                borderRadius: BorderRadius.circular(11),
+            if (_needsLot)
+              ParkingLotPicker(lots: _lots, selectedId: _parkingId, onSelected: _selectLot)
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                decoration: BoxDecoration(
+                  color: PbmsTokens.surfaceLow,
+                  border: Border.all(color: PbmsTokens.border),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.public_rounded, size: 18, color: PbmsTokens.teal),
+                    SizedBox(width: 8),
+                    Text('Mọi bãi PBMS', style: PbmsText.body),
+                  ],
+                ),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.local_parking_rounded,
-                      size: 18, color: PbmsTokens.teal),
-                  SizedBox(width: 8),
-                  Text(PbmsFacility.name, style: PbmsText.body),
-                ],
-              ),
-            ),
             const SizedBox(height: 14),
             const Text('Loại phương tiện', style: PbmsText.label),
             const SizedBox(height: 6),
@@ -953,13 +955,6 @@ class _RegistrationFormState extends State<_RegistrationForm> {
               ),
               const SizedBox(height: 8),
             ],
-            if (_needsLot) ...[
-              const SizedBox(height: 6),
-              const Text('Bãi áp dụng vé', style: PbmsText.label),
-              const SizedBox(height: 6),
-              ParkingLotPicker(lots: _lots, selectedId: _parkingId, onSelected: _selectLot),
-              const SizedBox(height: 8),
-            ],
             if (_needsSlot && _slots != null) ...[
               const SizedBox(height: 6),
               const Text('Ô đỗ cố định tại tầng cư dân', style: PbmsText.label),
@@ -1009,8 +1004,17 @@ class _RegistrationFormState extends State<_RegistrationForm> {
                 selected: {_payByWallet},
                 showSelectedIcon: false,
                 onSelectionChanged: (s) => setState(() => _payByWallet = s.first),
-                style: const ButtonStyle(
-                    minimumSize: WidgetStatePropertyAll(Size(48, 48))),
+                style: ButtonStyle(
+                  minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+                  foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                      states.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.muted),
+                  backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                      states.contains(WidgetState.selected) ? PbmsTokens.tealTint : Colors.white),
+                  side: WidgetStateProperty.resolveWith((states) => BorderSide(
+                      color: states.contains(WidgetState.selected)
+                          ? PbmsTokens.teal
+                          : PbmsTokens.border)),
+                ),
               ),
             ],
             if (_error != null) ...[

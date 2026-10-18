@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:prm393_frontend/core/error/app_exception.dart';
@@ -64,7 +65,9 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       try {
-        final profileResponse = await _remoteDataSource.getProfile();
+        // Máy chủ Render ngủ dậy chậm: quá thời gian thì dùng hồ sơ đã lưu, không đăng xuất.
+        final profileResponse =
+            await _remoteDataSource.getProfile().timeout(const Duration(seconds: 6));
         final freshUser = profileResponse.result;
 
         if (freshUser != null) {
@@ -83,6 +86,12 @@ class AuthRepositoryImpl implements AuthRepository {
         return null;
       } on NetworkException {
         // Mất mạng hoặc timeout: dùng dữ liệu đã lưu.
+        return cachedUser;
+      } on TimeoutException {
+        return cachedUser;
+      } on AppException {
+        // Máy chủ lỗi (5xx, 502 khi đang khởi động lại...): phiên vẫn hợp lệ,
+        // chỉ đăng xuất khi máy chủ thật sự từ chối phiên (401 / 403 ở trên).
         return cachedUser;
       }
     } catch (_) {
