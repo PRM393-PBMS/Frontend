@@ -27,6 +27,14 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   static const _surfaceLow = PbmsTokens.surfaceLow;
 
   final MapController _mapController = MapController();
+  final DraggableScrollableController _sheet = DraggableScrollableController();
+
+  /// Chiều cao hiện tại của khung bãi (px), để nút định vị đi theo mép khung.
+  final ValueNotifier<double> _sheetPx = ValueNotifier(0);
+
+  /// Các mức của khung (tỉ lệ chiều cao vùng bản đồ), tính trong LayoutBuilder.
+  double _minSize = 0.2;
+  double _midSize = 0.5;
   late final PbmsRepository _repo = context.read<PbmsRepository>();
   late final _lots = AsyncCubit<List<LotView>>(() => LotView.load(
         lots: _repo.getParkingLots,
@@ -44,6 +52,8 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   void dispose() {
     _lots.close();
     _mapController.dispose();
+    _sheet.dispose();
+    _sheetPx.dispose();
     super.dispose();
   }
 
@@ -70,6 +80,19 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     });
     final p = lot.point;
     if (p != null) _mapController.move(p, 16);
+    _snapSheet(_midSize);
+  }
+
+  void _snapSheet(double size) {
+    if (!_sheet.isAttached) return;
+    _sheet.animateTo(size,
+        duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+  }
+
+  /// Chạm tay nắm: đang mở thì thu xuống để xem toàn bản đồ, đang thu thì mở ra.
+  void _toggleSheet() {
+    if (!_sheet.isAttached) return;
+    _snapSheet(_sheet.size > _minSize + 0.02 ? _minSize : _midSize);
   }
 
   Future<void> _requestUserLocation() async {
@@ -129,7 +152,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       final target = withPoint.firstOrNull?.point;
       _mapController.fitCamera(CameraFit.coordinates(
         coordinates: [location, if (target != null) target],
-        padding: const EdgeInsets.fromLTRB(60, 120, 60, 420),
+        padding: EdgeInsets.fromLTRB(60, 120, 60, _sheetPx.value + 40),
         maxZoom: 16,
       ));
     } catch (_) {
@@ -192,22 +215,45 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           final selected = _selected(lots);
           return LayoutBuilder(
             builder: (context, constraints) {
-              final sheetHeight =
-                  (constraints.maxHeight * 0.52).clamp(360.0, 450.0);
+              final h = constraints.maxHeight;
+              // Thu nhỏ: chỉ còn tay nắm + nút đặt chỗ, để xem toàn bản đồ.
+              _minSize = ((_collapsedHeight + bottomInset) / h).clamp(0.1, 0.4);
+              _midSize = (((h * 0.52).clamp(360.0, 450.0) + bottomInset) / h)
+                  .clamp(_minSize + 0.05, 0.8);
+              const maxSize = 0.9;
+              if (_sheetPx.value == 0) _sheetPx.value = _midSize * h;
               return Stack(
                 children: [
                   Positioned.fill(child: _buildMap(lots, selected)),
-                  Positioned(
-                    right: 14,
-                    bottom: sheetHeight + bottomInset + 14,
+                  ValueListenableBuilder<double>(
+                    valueListenable: _sheetPx,
+                    builder: (context, px, child) => Positioned(
+                      right: 14,
+                      bottom: px + 14,
+                      // Ẩn khi khung kéo gần kín màn hình.
+                      child: AnimatedOpacity(
+                        opacity: px > h * 0.75 ? 0 : 1,
+                        duration: const Duration(milliseconds: 150),
+                        child: child,
+                      ),
+                    ),
                     child: _buildRecenterButton(),
                   ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _buildLotSheet(
-                        st, lots, selected, sheetHeight + bottomInset, bottomInset),
+                  NotificationListener<DraggableScrollableNotification>(
+                    onNotification: (n) {
+                      _sheetPx.value = n.extent * h;
+                      return false;
+                    },
+                    child: DraggableScrollableSheet(
+                      controller: _sheet,
+                      initialChildSize: _midSize,
+                      minChildSize: _minSize,
+                      maxChildSize: maxSize,
+                      snap: true,
+                      snapSizes: [_midSize],
+                      builder: (context, scroll) =>
+                          _buildLotSheet(st, lots, selected, scroll, bottomInset),
+                    ),
                   ),
                 ],
               );
@@ -229,9 +275,15 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
         ),
       ),
       children: [
+        // Nền bản đồ CARTO (dữ liệu OSM): máy chủ tile.openstreetmap.org chặn /
+        // không trả ảnh cho ứng dụng nên bản đồ chỉ hiện nền xám.
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.prm393_frontend',
+          urlTemplate:
+              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+          retinaMode: RetinaMode.isHighDensity(context),
+          maxNativeZoom: 20,
+          userAgentPackageName: 'com.prm393.parking.prm393_frontend',
         ),
         MarkerLayer(
           markers: [
@@ -242,7 +294,10 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
         ),
         const RichAttributionWidget(
           alignment: AttributionAlignment.bottomLeft,
-          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+          attributions: [
+            TextSourceAttribution('OpenStreetMap contributors'),
+            TextSourceAttribution('CARTO'),
+          ],
         ),
       ],
     );
@@ -366,11 +421,28 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     );
   }
 
+  /// Chiều cao khung khi thu nhỏ (chưa gồm vùng an toàn dưới):
+  /// lề trên + tay nắm + khoảng cách + nút đặt chỗ + lề dưới.
+  static const double _collapsedHeight = 8 + 28 + 10 + 50 + 14;
+
   Widget _buildLotSheet(AsyncState<List<LotView>> st, List<LotView> lots,
-      LotView? selected, double height, double bottomInset) {
+      LotView? selected, ScrollController scroll, double bottomInset) {
+    final Widget body = selected != null
+        ? _buildLotDetails(selected)
+        : st.status == AsyncStatus.error
+            ? PbmsErrorView(
+                title: 'Không tải được bãi đỗ',
+                message: st.error ?? '',
+                onRetry: _lots.load)
+            : st.isLoading
+                ? const PbmsLoadingBox(height: 220)
+                : const PbmsEmptyView(
+                    icon: Icons.local_parking_rounded,
+                    title: 'Chưa có bãi đỗ nào',
+                  );
+
     return Container(
-      height: height,
-      padding: EdgeInsets.fromLTRB(20, 10, 20, 14 + bottomInset),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 14 + bottomInset),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -384,34 +456,38 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       ),
       child: Column(
         children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: PbmsTokens.border,
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (lots.length > 1) ...[
-            _buildLotStrip(lots, selected),
-            const SizedBox(height: 12),
-          ],
           Expanded(
-            child: selected != null
-                ? SingleChildScrollView(child: _buildLotDetails(selected))
-                : st.status == AsyncStatus.error
-                    ? PbmsErrorView(
-                        title: 'Không tải được bãi đỗ',
-                        message: st.error ?? '',
-                        onRetry: _lots.load)
-                    : st.isLoading
-                        ? const PbmsLoadingBox(height: 220)
-                        : const PbmsEmptyView(
-                            icon: Icons.local_parking_rounded,
-                            title: 'Chưa có bãi đỗ nào',
-                          ),
+            child: ListView(
+              controller: scroll,
+              padding: EdgeInsets.zero,
+              children: [
+                Semantics(
+                  button: true,
+                  label: 'Thu gọn hoặc mở rộng thông tin bãi',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggleSheet,
+                    child: SizedBox(
+                      height: 28,
+                      child: Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                              color: PbmsTokens.border,
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (lots.length > 1) ...[
+                  _buildLotStrip(lots, selected),
+                  const SizedBox(height: 12),
+                ],
+                body,
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           _buildActions(selected),
