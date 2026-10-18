@@ -14,6 +14,7 @@ class ApiEndpoints {
   // ================= Profile (lowercase /api/profile) =================
   static const String profile = '/api/profile';
   static const String profileAvatar = '/api/profile/avatar';
+  static const String changePassword = '/api/profile/change-password';
 
   // ================= Reservations (lowercase /api/reservations) =================
   static const String reservations = '/api/reservations';

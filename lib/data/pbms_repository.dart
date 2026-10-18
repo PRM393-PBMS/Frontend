@@ -504,6 +504,40 @@ class PbmsRepository {
   Future<UserModel> getProfile() async =>
       UserModel.fromJson(_obj(await _get(ApiEndpoints.profile), 'hồ sơ'));
 
+  /// Tải ảnh đại diện (JPEG / PNG / WebP, tối đa 5MB), trả hồ sơ có avatarUrl mới.
+  Future<UserModel> uploadAvatar(Uint8List bytes, String fileName) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: fileName),
+    });
+    final result = await _api.post<dynamic>(ApiEndpoints.profileAvatar, data: form);
+    return UserModel.fromJson(_obj(result.result, 'hồ sơ'));
+  }
+
+  /// Đổi mật khẩu, có xác minh mật khẩu hiện tại.
+  /// Máy chủ chưa có API đổi mật khẩu (404): xác minh bằng cách đăng nhập với
+  /// mật khẩu hiện tại rồi mới cập nhật qua PUT /api/profile.
+  Future<void> changePassword({
+    required String identifier,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _post(ApiEndpoints.changePassword, {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+      return;
+    } on NotFoundException {
+      // Máy chủ cũ: đi đường dự phòng bên dưới.
+    }
+    try {
+      await _post(ApiEndpoints.login, {'email': identifier, 'password': currentPassword});
+    } on AppException {
+      throw const ValidationException(message: 'Mật khẩu hiện tại không đúng');
+    }
+    await _put(ApiEndpoints.profile, {'password': newPassword});
+  }
+
   Future<UserModel> updateProfile({
     required String fullName,
     required String phoneNumber,

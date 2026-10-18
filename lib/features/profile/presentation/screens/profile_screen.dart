@@ -16,6 +16,8 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/profile/presentation/widgets/change_password_sheet.dart';
+import 'package:prm393_frontend/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
@@ -123,6 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                       email: user?.email ?? '',
                       phone: user?.phoneNumber,
                       initial: initial,
+                      avatarUrl: user?.avatarUrl,
                       onEdit: () => _showEditProfileSheet(
                           fullName, user?.phoneNumber ?? ''),
                     ),
@@ -206,6 +209,17 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                     _buildSectionCard(
                       title: 'Bảo mật và thông báo',
                       children: [
+                        _buildActionTile(
+                          icon: Icons.password_rounded,
+                          title: 'Đổi mật khẩu',
+                          subtitle: 'Cần nhập mật khẩu hiện tại',
+                          onTap: () {
+                            final u = context.read<AuthBloc>().state.user;
+                            final id = (u?.email ?? '').isNotEmpty ? u!.email : (u?.userName ?? '');
+                            ChangePasswordSheet.show(context, id);
+                          },
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
                         _buildBiometricTile(),
                         const Divider(height: 1, color: PbmsTokens.divider),
                         const PushToggleTile(),
@@ -249,21 +263,14 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     required String email,
     required String? phone,
     required String initial,
+    required String? avatarUrl,
     required VoidCallback onEdit,
   }) {
     return PbmsCard(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: PbmsTokens.tealTint,
-            child: Text(initial,
-                style: const TextStyle(
-                    fontSize: 22,
-                    color: PbmsTokens.teal,
-                    fontWeight: FontWeight.w700)),
-          ),
+          ProfileAvatar(avatarUrl: avatarUrl, initial: initial),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
