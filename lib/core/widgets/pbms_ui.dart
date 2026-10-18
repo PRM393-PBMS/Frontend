@@ -996,40 +996,56 @@ class PbmsSegmentedTabs extends StatelessWidget {
   }
 }
 
-/// Thanh tiêu đề trang tab: ô chữ "P" + tiêu đề (theo thiết kế gốc).
+/// Thanh tiêu đề của các tab: tiêu đề lớn căn trái trên cùng màu nền trang,
+/// nút hành động dạng tròn viền mảnh giống nút chuông ở trang chủ.
 PreferredSizeWidget pbmsTabAppBar(String title, {List<Widget>? actions}) {
   return AppBar(
-    backgroundColor: Colors.white.withValues(alpha: 0.96),
+    backgroundColor: AppColors.bgLight,
     surfaceTintColor: Colors.transparent,
-    titleSpacing: 16,
-    title: Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: PbmsTokens.ink,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: const Text('P',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: PbmsTokens.ink)),
-        ),
-      ],
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    automaticallyImplyLeading: false,
+    toolbarHeight: 64,
+    titleSpacing: 20,
+    title: Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+          fontSize: 24, height: 1.2, fontWeight: FontWeight.w700, color: PbmsTokens.ink),
     ),
-    actions: actions,
+    actions: [...?actions, const SizedBox(width: 12)],
   );
+}
+
+/// Nút hành động trên thanh tiêu đề (cùng kiểu nút chuông ở trang chủ).
+class PbmsHeaderAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const PbmsHeaderAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: PbmsTokens.ink,
+          side: const BorderSide(color: PbmsTokens.border),
+          minimumSize: const Size(44, 44),
+        ),
+        icon: Icon(icon, size: 21),
+      ),
+    );
+  }
 }

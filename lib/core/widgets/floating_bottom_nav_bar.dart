@@ -58,7 +58,7 @@ class FloatingBottomNavBar extends StatefulWidget {
     required this.radialOptions,
     required this.onCenterTap,
     this.centerIcon = Icons.add_rounded,
-    this.centerColor = AppColors.primary,
+    this.centerColor = AppColors.brand,
     this.showCenterButton = true,
   });
 
@@ -356,14 +356,9 @@ class _GlassPill extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.08),
                   blurRadius: sp(26),
                   offset: Offset(0, sp(6)),
-                ),
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  blurRadius: sp(40),
-                  offset: Offset(0, sp(2)),
                 ),
               ],
             ),
@@ -404,7 +399,7 @@ class _GlassPill extends StatelessWidget {
                               gradient: LinearGradient(
                                 colors: [
                                   centerColor,
-                                  Color.lerp(centerColor, AppColors.accent,
+                                  Color.lerp(centerColor, AppColors.brandTint,
                                           0.40) ??
                                       centerColor,
                                 ],
@@ -499,22 +494,22 @@ class _NavItem extends StatelessWidget {
             padding: EdgeInsets.all(context.space(5)),
             decoration: BoxDecoration(
               color: active
-                  ? AppColors.primary.withValues(alpha: 0.12)
+                  ? AppColors.brandTint
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(context.space(11)),
             ),
             child: Icon(
               active ? tab.activeIcon : tab.icon,
               size: context.iconSize(22),
-              color: active ? AppColors.primary : AppColors.textMutedLight,
+              color: active ? AppColors.brand : AppColors.textSecondaryLight,
             ),
           ),
           SizedBox(height: context.space(2)),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 220),
             style: AppTypography.labelMedium.copyWith(
-              fontSize: context.sp(10),
-              color: active ? AppColors.primary : AppColors.textMutedLight,
+              fontSize: context.sp(12),
+              color: active ? AppColors.brand : AppColors.textSecondaryLight,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
             child:

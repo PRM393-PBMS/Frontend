@@ -50,13 +50,12 @@ class _HistoryScreenState extends State<HistoryScreen> with ReloadOnDataChange {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       backgroundColor: AppColors.bgLight,
-      appBar: pbmsTabAppBar('Lịch sử gửi xe', actions: [
-        IconButton(
+      appBar: pbmsTabAppBar('Lịch sử', actions: [
+        PbmsHeaderAction(
           tooltip: 'Báo cáo sự cố',
           onPressed: () => IncidentsScreen.open(context),
-          icon: const Icon(Icons.report_gmailerrorred_rounded),
+          icon: Icons.report_gmailerrorred_rounded,
         ),
-        const SizedBox(width: 4),
       ]),
       body: RefreshIndicator(
         color: PbmsTokens.teal,

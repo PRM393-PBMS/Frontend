@@ -91,13 +91,12 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: pbmsTabAppBar('Cá nhân', actions: [
-        IconButton(
+        PbmsHeaderAction(
           tooltip: 'Thông báo',
-          icon: const Icon(Icons.notifications_none_rounded),
+          icon: Icons.notifications_none_rounded,
           onPressed: () => NotificationsBottomSheet.show(context,
               onNotificationsUpdated: () {}),
         ),
-        const SizedBox(width: 4),
       ]),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {

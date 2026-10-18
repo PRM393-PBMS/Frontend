@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:prm393_frontend/core/widgets/pbms_logo.dart';
 
 class AuthScreenHeader extends StatelessWidget {
   final bool isRegister;
@@ -16,7 +17,6 @@ class AuthScreenHeader extends StatelessWidget {
     required this.onSelectLogin,
   });
 
-  static const _brand = Color(0xFF087B8C);
   static const _ink = Color(0xFF111C2D);
   static const _muted = Color(0xFF3E484B);
 
@@ -25,54 +25,7 @@ class AuthScreenHeader extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 12),
-        SizedBox(
-          width: 64,
-          height: 64,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_brand, Color(0xFF8AD2DE)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x2600616E),
-                      blurRadius: 14,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.local_parking_rounded,
-                  size: 31,
-                  color: Colors.white,
-                ),
-              ),
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  width: 19,
-                  height: 19,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFA3EBF7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 12,
-                    color: _brand,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        const PbmsLogo(size: 64),
         const SizedBox(height: 13),
         Text(
           title,

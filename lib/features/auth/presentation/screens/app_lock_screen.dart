@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/services/app_lock_controller.dart';
 import 'package:prm393_frontend/core/services/biometric_service.dart';
+import 'package:prm393_frontend/core/widgets/pbms_logo.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_event.dart';
@@ -54,17 +55,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
               child: Column(
                 children: [
                   const Spacer(flex: 3),
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      color: PbmsTokens.tealTint,
-                      border: Border.all(color: PbmsTokens.tealLine),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.fingerprint_rounded,
-                        size: 40, color: PbmsTokens.teal),
-                  ),
+                  const PbmsLogo(size: 76),
                   const SizedBox(height: 18),
                   const Text('PBMS đã khoá',
                       textAlign: TextAlign.center, style: PbmsText.headline),

@@ -119,13 +119,13 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
+                          color: AppColors.brand.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
                           Icons.mark_email_read_outlined,
                           size: 38,
-                          color: AppColors.primary,
+                          color: AppColors.brand,
                         ),
                       ),
                     ),
@@ -151,7 +151,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                           TextSpan(
                             text: widget.email,
                             style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
+                              color: AppColors.brand,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -180,7 +180,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                             style: AppTypography.displayMedium.copyWith(
                               letterSpacing: 12.0,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                              color: AppColors.brand,
                               fontSize: context.sp(26),
                             ),
                             decoration: InputDecoration(

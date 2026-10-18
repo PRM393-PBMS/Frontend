@@ -216,7 +216,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
-      appBar: pbmsTabAppBar('Quản lý vé tháng'),
+      appBar: pbmsTabAppBar('Vé tháng'),
       body: RefreshIndicator(
         color: PbmsTokens.teal,
         onRefresh: () async => reloadAll(),
