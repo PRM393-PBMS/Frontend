@@ -114,7 +114,8 @@ class AppRouter {
         GoRoute(
           path: RouteNames.mapPath,
           name: RouteNames.map,
-          builder: (context, state) => const ExploreHomeScreen(),
+          builder: (context, state) =>
+              ExploreHomeScreen(initialLotId: state.extra as String?),
         ),
         GoRoute(
           path: RouteNames.bookingConfirmationPath,

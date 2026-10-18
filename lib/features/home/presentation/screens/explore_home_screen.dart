@@ -8,13 +8,15 @@ import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
-import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 
-/// Bản đồ bãi đỗ PBMS với chỗ trống và bảng giá thời gian thực.
+/// Bản đồ các bãi đỗ với chỗ trống và bảng giá thời gian thực.
 class ExploreHomeScreen extends StatefulWidget {
-  const ExploreHomeScreen({super.key});
+  /// Bãi được chọn sẵn (từ trang chủ).
+  final String? initialLotId;
+
+  const ExploreHomeScreen({super.key, this.initialLotId});
 
   @override
   State<ExploreHomeScreen> createState() => _ExploreHomeScreenState();
@@ -25,26 +27,41 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
 
   final MapController _mapController = MapController();
   late final PbmsRepository _repo = context.read<PbmsRepository>();
-  late final _capacity = AsyncCubit<List<VehicleTypeCapacity>>(() async {
-    final results = await Future.wait([
-      _repo.getAvailability(),
-      _repo.getPricingPolicies(),
-    ]);
-    return VehicleTypeCapacity.summarize(
-      results[0] as List<FacilityAvailabilityModel>,
-      results[1] as List<PricingPolicyModel>,
-    );
-  });
+  late final _lots = AsyncCubit<List<LotView>>(() => LotView.load(
+        lots: _repo.getParkingLots,
+        facility: _repo.getAvailability,
+        pricing: _repo.getPricingPolicies,
+      ));
 
+  late String? _selectedId = widget.initialLotId;
   LatLng? _userLocation;
   bool _isLocating = false;
   bool _showDetails = false;
 
   @override
   void dispose() {
-    _capacity.close();
+    _lots.close();
     _mapController.dispose();
     super.dispose();
+  }
+
+  LotView? _selected(List<LotView> lots) =>
+      lots.where((l) => l.id == _selectedId).firstOrNull ?? lots.firstOrNull;
+
+  LatLng get _initialCenter {
+    final lots = _lots.state.data ?? const <LotView>[];
+    return _selected(lots)?.point ??
+        lots.map((l) => l.point).whereType<LatLng>().firstOrNull ??
+        PbmsFacility.location;
+  }
+
+  void _selectLot(LotView lot) {
+    setState(() {
+      _selectedId = lot.id;
+      _showDetails = false;
+    });
+    final p = lot.point;
+    if (p != null) _mapController.move(p, 16);
   }
 
   Future<void> _requestUserLocation() async {
@@ -91,9 +108,19 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       );
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
-      setState(() => _userLocation = location);
+      final lots = _lots.state.data ?? const <LotView>[];
+      // Chọn bãi gần nhất có toạ độ.
+      final withPoint = lots.where((l) => l.point != null).toList()
+        ..sort((a, b) => const Distance()
+            .as(LengthUnit.Meter, location, a.point!)
+            .compareTo(const Distance().as(LengthUnit.Meter, location, b.point!)));
+      setState(() {
+        _userLocation = location;
+        if (withPoint.isNotEmpty) _selectedId = withPoint.first.id;
+      });
+      final target = withPoint.firstOrNull?.point;
       _mapController.fitCamera(CameraFit.coordinates(
-        coordinates: [location, PbmsFacility.location],
+        coordinates: [location, if (target != null) target],
         padding: const EdgeInsets.fromLTRB(60, 120, 60, 420),
         maxZoom: 16,
       ));
@@ -144,44 +171,52 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
         actions: [
           IconButton(
             tooltip: 'Làm mới chỗ trống',
-            onPressed: _capacity.load,
+            onPressed: _lots.load,
             icon: const Icon(Icons.refresh_rounded, color: PbmsTokens.ink),
           ),
           const SizedBox(width: 6),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final sheetHeight =
-              (constraints.maxHeight * 0.5).clamp(340.0, 420.0);
-          return Stack(
-            children: [
-              Positioned.fill(child: _buildMap()),
-              Positioned(
-                right: 14,
-                bottom: sheetHeight + bottomInset + 14,
-                child: _buildRecenterButton(),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildLotSheet(sheetHeight + bottomInset, bottomInset),
-              ),
-            ],
+      body: BlocBuilder<AsyncCubit<List<LotView>>, AsyncState<List<LotView>>>(
+        bloc: _lots,
+        builder: (context, st) {
+          final lots = st.data ?? const <LotView>[];
+          final selected = _selected(lots);
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final sheetHeight =
+                  (constraints.maxHeight * 0.52).clamp(360.0, 450.0);
+              return Stack(
+                children: [
+                  Positioned.fill(child: _buildMap(lots, selected)),
+                  Positioned(
+                    right: 14,
+                    bottom: sheetHeight + bottomInset + 14,
+                    child: _buildRecenterButton(),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildLotSheet(
+                        st, lots, selected, sheetHeight + bottomInset, bottomInset),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
     );
   }
 
-  Widget _buildMap() {
+  Widget _buildMap(List<LotView> lots, LotView? selected) {
     return FlutterMap(
       mapController: _mapController,
-      options: const MapOptions(
-        initialCenter: PbmsFacility.location,
-        initialZoom: 16,
-        interactionOptions: InteractionOptions(
+      options: MapOptions(
+        initialCenter: _initialCenter,
+        initialZoom: 15,
+        interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
       ),
@@ -190,16 +225,12 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.prm393_frontend',
         ),
-        BlocBuilder<AsyncCubit<List<VehicleTypeCapacity>>,
-            AsyncState<List<VehicleTypeCapacity>>>(
-          bloc: _capacity,
-          builder: (context, st) => MarkerLayer(
-            markers: [
-              _buildLotMarker(st.data),
-              if (_userLocation != null)
-                _buildUserLocationMarker(_userLocation!),
-            ],
-          ),
+        MarkerLayer(
+          markers: [
+            for (final l in lots)
+              if (l.point != null) _buildLotMarker(l, l.id == selected?.id),
+            if (_userLocation != null) _buildUserLocationMarker(_userLocation!),
+          ],
         ),
         const RichAttributionWidget(
           alignment: AttributionAlignment.bottomLeft,
@@ -238,69 +269,69 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     );
   }
 
-  Marker _buildLotMarker(List<VehicleTypeCapacity>? items) {
-    final available = items?.fold<int>(0, (s, c) => s + c.available);
-    final car = items?.where((c) => c.isCar).firstOrNull;
-    final price = car?.pricing?.basePrice;
+  Marker _buildLotMarker(LotView lot, bool isSelected) {
+    final price = lot.car?.pricing?.basePrice;
+    final bg = isSelected ? PbmsTokens.teal : Colors.white;
+    final fg = isSelected ? Colors.white : PbmsTokens.ink;
 
     return Marker(
-      point: PbmsFacility.location,
+      point: lot.point!,
       width: 180,
       height: 58,
       alignment: Alignment.topCenter,
       child: Semantics(
-        label: available == null
-            ? PbmsFacility.name
-            : '${PbmsFacility.name}, còn $available chỗ',
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: PbmsTokens.teal,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: PbmsTokens.ink.withValues(alpha: 0.18),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.local_parking_rounded,
-                      size: 15, color: Colors.white),
-                  const SizedBox(width: 5),
-                  if (price != null) ...[
-                    Text('${(price / 1000).round()}k',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 6),
+        button: true,
+        label: '${lot.name}, còn ${lot.available} chỗ',
+        child: GestureDetector(
+          onTap: () => _selectLot(lot),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: PbmsTokens.ink.withValues(alpha: 0.18),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
                   ],
-                  Text(available == null ? 'Đang tải' : '$available chỗ',
-                      style: const TextStyle(
-                          color: Color(0xFFE4F7F8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600)),
-                ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_parking_rounded,
+                        size: 15, color: isSelected ? Colors.white : PbmsTokens.teal),
+                    const SizedBox(width: 5),
+                    if (price != null) ...[
+                      Text('${(price / 1000).round()}k',
+                          style: TextStyle(
+                              color: fg, fontSize: 12, fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 6),
+                    ],
+                    Text('${lot.available} chỗ',
+                        style: TextStyle(
+                            color: isSelected ? const Color(0xFFE4F7F8) : PbmsTokens.muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
               ),
-            ),
-            Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(top: 1),
-              transform: Matrix4.rotationZ(0.785398),
-              decoration: BoxDecoration(
-                color: PbmsTokens.teal,
-                borderRadius: BorderRadius.circular(2),
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(top: 1),
+                transform: Matrix4.rotationZ(0.785398),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -327,7 +358,8 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     );
   }
 
-  Widget _buildLotSheet(double height, double bottomInset) {
+  Widget _buildLotSheet(AsyncState<List<LotView>> st, List<LotView> lots,
+      LotView? selected, double height, double bottomInset) {
     return Container(
       height: height,
       padding: EdgeInsets.fromLTRB(20, 10, 20, 14 + bottomInset),
@@ -354,51 +386,87 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          if (lots.length > 1) ...[
+            _buildLotStrip(lots, selected),
+            const SizedBox(height: 12),
+          ],
           Expanded(
-            child: PbmsAsync<List<VehicleTypeCapacity>>(
-              cubit: _capacity,
-              loadingHeight: 220,
-              errorTitle: 'Không tải được chỗ trống',
-              builder: (items) =>
-                  SingleChildScrollView(child: _buildLotDetails(items)),
-            ),
+            child: selected != null
+                ? SingleChildScrollView(child: _buildLotDetails(selected))
+                : st.status == AsyncStatus.error
+                    ? PbmsErrorView(
+                        title: 'Không tải được bãi đỗ',
+                        message: st.error ?? '',
+                        onRetry: _lots.load)
+                    : st.isLoading
+                        ? const PbmsLoadingBox(height: 220)
+                        : const PbmsEmptyView(
+                            icon: Icons.local_parking_rounded,
+                            title: 'Chưa có bãi đỗ nào',
+                          ),
           ),
           const SizedBox(height: 10),
-          BlocBuilder<AsyncCubit<List<VehicleTypeCapacity>>,
-              AsyncState<List<VehicleTypeCapacity>>>(
-            bloc: _capacity,
-            builder: (context, st) => _buildActions(st.data),
-          ),
+          _buildActions(selected),
         ],
       ),
     );
   }
 
-  Widget _buildLotDetails(List<VehicleTypeCapacity> items) {
-    final available = items.fold<int>(0, (s, c) => s + c.available);
-    final hasRoom = available > 0;
-    final car = items.where((c) => c.isCar).firstOrNull;
+  /// Dải chọn bãi: gồm cả bãi chưa có toạ độ trên bản đồ.
+  Widget _buildLotStrip(List<LotView> lots, LotView? selected) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: lots.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final l = lots[i];
+          final isSel = l.id == selected?.id;
+          return ChoiceChip(
+            label: Text('${l.name} · ${l.available}'),
+            avatar: Icon(l.point == null ? Icons.location_off_outlined : Icons.place_outlined,
+                size: 16, color: isSel ? PbmsTokens.teal : PbmsTokens.muted),
+            selected: isSel,
+            selectedColor: PbmsTokens.tealTint,
+            showCheckmark: false,
+            side: BorderSide(color: isSel ? PbmsTokens.teal : PbmsTokens.border),
+            onSelected: (_) => _selectLot(l),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLotDetails(LotView lot) {
+    final hasRoom = lot.available > 0;
+    final car = lot.car;
     final user = _userLocation;
-    final distance = user == null
+    final point = lot.point;
+    final distance = user == null || point == null
         ? null
-        : const Distance()
-            .as(LengthUnit.Meter, user, PbmsFacility.location)
-            .round();
+        : const Distance().as(LengthUnit.Meter, user, point).round();
+    final where = [
+      if (lot.area != null) lot.area!,
+      if (distance != null)
+        'cách bạn ${distance >= 1000 ? '${(distance / 1000).toStringAsFixed(1)} km' : '$distance m'}',
+      if (point == null) 'chưa có vị trí trên bản đồ',
+    ].join(', ');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Expanded(
-              child: Text(PbmsFacility.name,
+              child: Text(lot.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: PbmsText.title),
             ),
-            SizedBox(width: 5),
-            Icon(Icons.verified_rounded, color: PbmsTokens.teal, size: 18),
+            const SizedBox(width: 5),
+            const Icon(Icons.verified_rounded, color: PbmsTokens.teal, size: 18),
           ],
         ),
         const SizedBox(height: 6),
@@ -411,17 +479,13 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                   fontWeight: FontWeight.w600,
                   color: hasRoom ? PbmsTokens.ok : PbmsTokens.danger),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                distance == null
-                    ? PbmsFacility.area
-                    : '${PbmsFacility.area}, cách bạn ${distance >= 1000 ? '${(distance / 1000).toStringAsFixed(1)} km' : '$distance m'}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: PbmsText.caption,
+            if (where.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(where,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
               ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 14),
@@ -436,9 +500,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                 badge: car == null
                     ? 'Bãi chưa có ô ô tô'
                     : (car.available > 0 ? 'Có thể đặt trước' : 'Bãi ô tô đã đầy'),
-                accent: (car?.available ?? 0) > 0
-                    ? PbmsTokens.ok
-                    : PbmsTokens.danger,
+                accent: (car?.available ?? 0) > 0 ? PbmsTokens.ok : PbmsTokens.danger,
               ),
             ),
             const SizedBox(width: 10),
@@ -465,8 +527,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 13),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 18, color: PbmsTokens.muted),
+                const Icon(Icons.info_outline_rounded, size: 18, color: PbmsTokens.muted),
                 const SizedBox(width: 8),
                 const Expanded(
                     child: Text('Chỗ trống và giá theo loại xe',
@@ -477,15 +538,14 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                 AnimatedRotation(
                   turns: _showDetails ? 0.5 : 0,
                   duration: const Duration(milliseconds: 180),
-                  child: const Icon(Icons.expand_more_rounded,
-                      size: 20, color: PbmsTokens.muted),
+                  child: const Icon(Icons.expand_more_rounded, size: 20, color: PbmsTokens.muted),
                 ),
               ],
             ),
           ),
         ),
         if (_showDetails)
-          for (final c in items)
+          for (final c in lot.capacities)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
@@ -493,12 +553,8 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                   color: _surfaceLow, borderRadius: BorderRadius.circular(10)),
               child: Row(
                 children: [
-                  Icon(
-                      c.isCar
-                          ? Icons.directions_car_rounded
-                          : Icons.two_wheeler_rounded,
-                      size: 18,
-                      color: PbmsTokens.teal),
+                  Icon(c.isCar ? Icons.directions_car_rounded : Icons.two_wheeler_rounded,
+                      size: 18, color: PbmsTokens.teal),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -510,9 +566,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                   ),
                   Text('${c.available}/${c.total}',
                       style: PbmsText.figure(13,
-                          color: c.available > 0
-                              ? PbmsTokens.ok
-                              : PbmsTokens.danger)),
+                          color: c.available > 0 ? PbmsTokens.ok : PbmsTokens.danger)),
                 ],
               ),
             ),
@@ -538,10 +592,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: PbmsText.caption),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -562,16 +613,15 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           Text(badge,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
         ],
       ),
     );
   }
 
-  Widget _buildActions(List<VehicleTypeCapacity>? items) {
-    final car = items?.where((c) => c.isCar).firstOrNull;
-    final canBook = car != null;
+  Widget _buildActions(LotView? lot) {
+    final car = lot?.car;
+    final point = lot?.point;
     return Row(
       children: [
         SizedBox(
@@ -579,12 +629,11 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           height: 50,
           child: IconButton(
             tooltip: 'Xem vị trí bãi đỗ trên bản đồ',
-            onPressed: () => _mapController.move(PbmsFacility.location, 17),
+            onPressed: point == null ? null : () => _mapController.move(point, 17),
             style: IconButton.styleFrom(
               foregroundColor: PbmsTokens.ink,
               side: const BorderSide(color: PbmsTokens.border),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
             ),
             icon: const Icon(Icons.directions_rounded, size: 21),
           ),
@@ -596,7 +645,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                 ? 'Đặt chỗ ô tô'
                 : 'Đặt chỗ, cọc ${CurrencyFormatter.format(car!.pricing!.basePrice)}',
             icon: Icons.directions_car_rounded,
-            onPressed: canBook ? _book : null,
+            onPressed: car != null ? _book : null,
           ),
         ),
       ],

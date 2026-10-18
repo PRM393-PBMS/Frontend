@@ -12,6 +12,60 @@ class PbmsFacility {
   static const location = LatLng(10.7769, 106.7009);
 }
 
+/// Một bãi để hiển thị trên bản đồ / trang chủ. Khi backend chưa có danh sách
+/// bãi, app dùng một bãi PBMS mặc định với chỗ trống toàn hệ thống.
+class LotView {
+  final String id;
+  final String name;
+  final String? area;
+  final LatLng? point;
+  final List<VehicleTypeCapacity> capacities;
+
+  const LotView({
+    required this.id,
+    required this.name,
+    required this.area,
+    required this.point,
+    required this.capacities,
+  });
+
+  int get available => capacities.fold(0, (s, c) => s + c.available);
+  int get total => capacities.fold(0, (s, c) => s + c.total);
+  int get occupiedPercent => total == 0 ? 0 : ((total - available) / total * 100).round();
+  VehicleTypeCapacity? get car => capacities.where((c) => c.isCar).firstOrNull;
+
+  static Future<List<LotView>> load({
+    required Future<List<ParkingLotModel>> Function() lots,
+    required Future<List<FacilityAvailabilityModel>> Function() facility,
+    required Future<List<PricingPolicyModel>> Function() pricing,
+  }) async {
+    final results = await Future.wait([lots(), pricing()]);
+    final lotList = results[0] as List<ParkingLotModel>;
+    final prices = results[1] as List<PricingPolicyModel>;
+    if (lotList.isNotEmpty) {
+      return [
+        for (final l in lotList)
+          LotView(
+            id: l.id,
+            name: l.name,
+            area: l.displayLocation,
+            point: l.hasCoordinates ? LatLng(l.latitude!, l.longitude!) : null,
+            capacities: VehicleTypeCapacity.fromLot(l, prices),
+          ),
+      ];
+    }
+    return [
+      LotView(
+        id: 'pbms',
+        name: PbmsFacility.name,
+        area: PbmsFacility.area,
+        point: PbmsFacility.location,
+        capacities: VehicleTypeCapacity.summarize(await facility(), prices),
+      ),
+    ];
+  }
+}
+
 /// Loại xe được phép đặt chỗ trước (backend chỉ nhận đặt chỗ ô tô).
 bool isCarType(String vehicleTypeName) {
   final n = vehicleTypeName.toLowerCase();
@@ -37,6 +91,25 @@ class VehicleTypeCapacity {
   bool get isCar => isCarType(vehicleTypeName);
   int get occupiedPercent =>
       total == 0 ? 0 : ((total - available) / total * 100).round();
+
+  /// Chỗ trống của một bãi (từ `/parkings/available`) kèm bảng giá theo loại xe.
+  static List<VehicleTypeCapacity> fromLot(
+    ParkingLotModel lot,
+    List<PricingPolicyModel> pricing,
+  ) {
+    final result = [
+      for (final a in lot.availability)
+        VehicleTypeCapacity(
+          vehicleTypeId: a.vehicleTypeId,
+          vehicleTypeName: a.vehicleTypeName,
+          available: a.availableSlots,
+          total: a.totalSlots,
+          pricing: pricing.where((p) => p.vehicleTypeId == a.vehicleTypeId).firstOrNull,
+        ),
+    ];
+    result.sort((a, b) => (b.isCar ? 1 : 0).compareTo(a.isCar ? 1 : 0));
+    return result;
+  }
 
   static List<VehicleTypeCapacity> summarize(
     List<FacilityAvailabilityModel> floors,

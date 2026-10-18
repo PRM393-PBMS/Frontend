@@ -130,6 +130,9 @@ class PbmsRepository {
   }
 
   /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
+  Future<bool> checkPayment(String paymentId) => checkTopUp(paymentId);
+
+  /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
   Future<bool> checkTopUp(String paymentId) async {
     final raw = _obj(await _get(ApiEndpoints.syncPayment(paymentId)), 'thanh toán');
     return JsonRead.str(raw, 'paymentStatus').toLowerCase() == 'success';
@@ -137,6 +140,18 @@ class PbmsRepository {
 
   /// Xoá walletId đã nhớ (gọi khi đăng xuất / đổi tài khoản).
   void clearSessionCache() => _walletId = null;
+
+  // ---------------------------------------------------------------- parkings
+
+  /// Các bãi đỗ cho khách. Server chưa có API này (404) thì trả rỗng để app
+  /// quay về cách hiển thị một bãi.
+  Future<List<ParkingLotModel>> getParkingLots() async {
+    try {
+      return _list(await _get(ApiEndpoints.availableParkings), ParkingLotModel.fromJson);
+    } on NotFoundException {
+      return const [];
+    }
+  }
 
   // ---------------------------------------------------------------- vehicles
 

@@ -34,6 +34,9 @@ class PaymentLinkModel {
   final String? subscriptionId;
   final TicketModel? ticket;
 
+  /// Chuỗi VietQR của đơn PayOS: quét bằng app ngân hàng để trả.
+  final String? qrCode;
+
   const PaymentLinkModel({
     required this.paymentUrl,
     this.orderCode,
@@ -43,6 +46,7 @@ class PaymentLinkModel {
     this.reservationId,
     this.subscriptionId,
     this.ticket,
+    this.qrCode,
   });
 
   factory PaymentLinkModel.fromJson(J json) => PaymentLinkModel(
@@ -55,6 +59,7 @@ class PaymentLinkModel {
         reservationId: JsonRead.strOrNull(json, 'reservationId'),
         subscriptionId: JsonRead.strOrNull(json, 'subscriptionId'),
         ticket: TicketModel.fromJson(json['ticket']),
+        qrCode: JsonRead.strOrNull(json, 'qrCode'),
       );
 
   bool get hasUrl => paymentUrl.isNotEmpty;
@@ -359,6 +364,71 @@ class WalletModel {
         transactions: JsonRead.list(json['transactions'])
             .map(WalletTransactionModel.fromJson)
             .toList(),
+      );
+}
+
+class LotTypeAvailability {
+  final String vehicleTypeId;
+  final String vehicleTypeName;
+  final int totalSlots;
+  final int availableSlots;
+
+  const LotTypeAvailability({
+    required this.vehicleTypeId,
+    required this.vehicleTypeName,
+    required this.totalSlots,
+    required this.availableSlots,
+  });
+
+  factory LotTypeAvailability.fromJson(J json) => LotTypeAvailability(
+        vehicleTypeId: JsonRead.str(json, 'vehicleTypeId'),
+        vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
+        totalSlots: JsonRead.int_(json, 'totalSlots'),
+        availableSlots: JsonRead.int_(json, 'availableSlots'),
+      );
+}
+
+/// Một bãi đỗ (`/parkings/available`): toạ độ có thể null nếu quản lý chưa nhập.
+class ParkingLotModel {
+  final String id;
+  final String name;
+  final String location;
+  final double? latitude;
+  final double? longitude;
+  final int totalSlots;
+  final int availableSlots;
+  final List<LotTypeAvailability> availability;
+
+  const ParkingLotModel({
+    required this.id,
+    required this.name,
+    required this.location,
+    this.latitude,
+    this.longitude,
+    required this.totalSlots,
+    required this.availableSlots,
+    required this.availability,
+  });
+
+  bool get hasCoordinates => latitude != null && longitude != null;
+  int get occupiedPercent =>
+      totalSlots == 0 ? 0 : ((totalSlots - availableSlots) / totalSlots * 100).round();
+
+  /// Địa chỉ để hiển thị; bỏ giá trị giữ chỗ như "N/A".
+  String? get displayLocation {
+    final l = location.trim();
+    return l.isEmpty || l.toUpperCase() == 'N/A' ? null : l;
+  }
+
+  factory ParkingLotModel.fromJson(J json) => ParkingLotModel(
+        id: JsonRead.str(json, 'parkingId'),
+        name: JsonRead.str(json, 'name'),
+        location: JsonRead.str(json, 'location'),
+        latitude: JsonRead.numOrNull(json, 'latitude'),
+        longitude: JsonRead.numOrNull(json, 'longitude'),
+        totalSlots: JsonRead.int_(json, 'totalSlots'),
+        availableSlots: JsonRead.int_(json, 'availableSlots'),
+        availability: JsonRead.list(json['availability']).map(LotTypeAvailability.fromJson).toList(),
       );
 }
 

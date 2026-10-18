@@ -50,8 +50,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-  Future<void> _openMap() async {
-    await context.push(RouteNames.mapPath);
+  Future<void> _openMap(String? lotId) async {
+    await context.push(RouteNames.mapPath, extra: lotId);
     // Có thể vừa đặt chỗ ở màn bản đồ → làm mới các tab.
     _revision.value++;
   }

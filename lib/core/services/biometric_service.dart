@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
+import 'web_auth.dart';
+
 /// Kết quả một lần xác thực.
 enum BiometricResult { success, canceled, unavailable, lockedOut, failed }
 
-/// Xác thực bằng API sinh trắc học của hệ điều hành qua gói `local_auth`
-/// (Android BiometricPrompt, iOS LocalAuthentication / Face ID / Touch ID).
+/// Xác thực bằng API sinh trắc học chính thức của nền tảng:
+/// - Android / iOS: gói `local_auth` (BiometricPrompt, LocalAuthentication / Face ID / Touch ID).
+/// - Web: Web Authentication API (WebAuthn) của trình duyệt (Windows Hello, Touch ID, vân tay...).
 class BiometricService {
   BiometricService();
   static final BiometricService instance = BiometricService();
@@ -14,7 +17,7 @@ class BiometricService {
 
   /// Thiết bị có thể xác thực (sinh trắc học hoặc mã khoá màn hình).
   Future<bool> canAuthenticate() async {
-    if (kIsWeb) return false;
+    if (kIsWeb) return WebAuth.isAvailable();
     try {
       return await _auth.isDeviceSupported();
     } catch (e) {
@@ -39,6 +42,14 @@ class BiometricService {
     String reason = 'Xác thực để mở khoá ứng dụng PBMS',
   }) async {
     if (!await canAuthenticate()) return BiometricResult.unavailable;
+    if (kIsWeb) {
+      return switch (await WebAuth.authenticate('PBMS')) {
+        'success' => BiometricResult.success,
+        'canceled' => BiometricResult.canceled,
+        'unavailable' => BiometricResult.unavailable,
+        _ => BiometricResult.failed,
+      };
+    }
     try {
       final ok = await _auth.authenticate(
         localizedReason: reason,
@@ -66,5 +77,10 @@ class BiometricService {
       debugPrint('Biometric general exception: $e');
       return BiometricResult.failed;
     }
+  }
+
+  /// Quên khoá WebAuthn đã tạo trên trình duyệt (khi người dùng tắt khoá).
+  void resetWebCredential() {
+    if (kIsWeb) WebAuth.reset();
   }
 }

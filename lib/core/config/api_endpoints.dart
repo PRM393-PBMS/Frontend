@@ -102,6 +102,10 @@ class ApiEndpoints {
   /// Khách tự kiểm tra một thanh toán PayOS của mình (tra trực tiếp PayOS).
   static String syncPayment(String paymentId) => '/api/payments/$paymentId/sync';
 
+  // ================= Parkings (nhiều bãi) =================
+  /// Bãi cho app khách: toạ độ + chỗ trống theo loại xe (mảng, không bọc envelope).
+  static const String availableParkings = '/parkings/available';
+
   // ================= Vehicles (/api/vehicles) =================
   static const String vehicles = '/api/vehicles';
   static const String myVehicles = '/api/vehicles/my';

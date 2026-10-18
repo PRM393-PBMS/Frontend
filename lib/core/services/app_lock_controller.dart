@@ -113,6 +113,7 @@ class AppLockController extends ChangeNotifier with WidgetsBindingObserver {
           : 'Xác thực để tắt khoá sinh trắc học',
     );
     if (result != BiometricResult.success) return false;
+    if (!value) _biometric.resetWebCredential();
     _enabled = value;
     try {
       final prefs = await SharedPreferences.getInstance();

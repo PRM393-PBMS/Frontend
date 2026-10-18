@@ -27,7 +27,8 @@ typedef _Activity = ({
 });
 
 class HomeDashboardScreen extends StatefulWidget {
-  final VoidCallback onOpenMap;
+  /// Mở bản đồ, có thể chọn sẵn một bãi.
+  final ValueChanged<String?> onOpenMap;
 
   const HomeDashboardScreen({super.key, required this.onOpenMap});
 
@@ -38,7 +39,11 @@ class HomeDashboardScreen extends StatefulWidget {
 class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     with ReloadOnDataChange {
   late final PbmsRepository _repo = context.read<PbmsRepository>();
-  late final _capacity = AsyncCubit<List<VehicleTypeCapacity>>(_loadCapacity);
+  late final _lots = AsyncCubit<List<LotView>>(() => LotView.load(
+        lots: _repo.getParkingLots,
+        facility: _repo.getAvailability,
+        pricing: _repo.getPricingPolicies,
+      ));
   late final _activity = AsyncCubit<_Activity>(_loadActivity);
   int _unread = 0;
   Timer? _ticker;
@@ -55,7 +60,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   @override
   void reloadAll() {
-    _capacity.load();
+    _lots.load();
     _activity.load();
     _loadUnread();
   }
@@ -63,20 +68,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   @override
   void dispose() {
     _ticker?.cancel();
-    _capacity.close();
+    _lots.close();
     _activity.close();
     super.dispose();
-  }
-
-  Future<List<VehicleTypeCapacity>> _loadCapacity() async {
-    final results = await Future.wait([
-      _repo.getAvailability(),
-      _repo.getPricingPolicies(),
-    ]);
-    return VehicleTypeCapacity.summarize(
-      results[0] as List<FacilityAvailabilityModel>,
-      results[1] as List<PricingPolicyModel>,
-    );
   }
 
   Future<_Activity> _loadActivity() async {
@@ -138,8 +132,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               const SizedBox(height: 22),
               _buildSearchEntry(),
               const SizedBox(height: 10),
-              PbmsAsync<List<VehicleTypeCapacity>>(
-                cubit: _capacity,
+              PbmsAsync<List<LotView>>(
+                cubit: _lots,
                 loadingHeight: 58,
                 errorTitle: 'Không tải được chỗ trống',
                 builder: _buildNearbyButton,
@@ -154,25 +148,46 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               const SizedBox(height: 22),
               _buildQuickAccess(context),
               const SizedBox(height: 22),
-              const PbmsSectionTitle('Chỗ trống theo loại xe'),
-              PbmsAsync<List<VehicleTypeCapacity>>(
-                cubit: _capacity,
-                loadingHeight: 150,
+              PbmsAsync<List<LotView>>(
+                cubit: _lots,
+                loadingHeight: 180,
                 errorTitle: 'Không tải được chỗ trống',
-                isEmpty: (d) => d.isEmpty,
+                isEmpty: (d) => d.every((l) => l.total == 0),
                 empty: const PbmsEmptyView(
                   icon: Icons.local_parking_rounded,
                   title: 'Bãi chưa mở ô đỗ nào',
                   message: 'Khi bãi cấu hình tầng và ô đỗ, chỗ trống sẽ hiện ở đây.',
                 ),
-                builder: (items) => Column(
-                  children: [
-                    for (final c in items) ...[
-                      _CapacityCard(capacity: c, onOpenMap: widget.onOpenMap),
-                      const SizedBox(height: 11),
-                    ],
-                  ],
-                ),
+                builder: (lots) => lots.length > 1
+                    // Nhiều bãi: "Gợi ý bãi" như thiết kế gốc, bãi còn chỗ lên trước.
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          PbmsSectionTitle('Gợi ý bãi đỗ',
+                              trailing: Text('${lots.where((l) => l.available > 0).length} bãi còn chỗ',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: PbmsTokens.teal))),
+                          for (final l in [...lots]
+                            ..sort((a, b) => b.available.compareTo(a.available))) ...[
+                            _LotCard(lot: l, onOpenMap: widget.onOpenMap),
+                            const SizedBox(height: 11),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const PbmsSectionTitle('Chỗ trống theo loại xe'),
+                          for (final c in lots.first.capacities) ...[
+                            _CapacityCard(
+                                capacity: c,
+                                onOpenMap: () => widget.onOpenMap(lots.first.id)),
+                            const SizedBox(height: 11),
+                          ],
+                        ],
+                      ),
               ),
             ],
           ),
@@ -200,7 +215,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: widget.onOpenMap,
+                    onTap: () => widget.onOpenMap(null),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
                       child: Row(
@@ -277,7 +292,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: widget.onOpenMap,
+        onTap: () => widget.onOpenMap(null),
         child: Container(
           constraints: const BoxConstraints(minHeight: 68),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -319,18 +334,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     );
   }
 
-  Widget _buildNearbyButton(List<VehicleTypeCapacity> items) {
-    final available = items.fold<int>(0, (s, c) => s + c.available);
-    final detail = items.isEmpty
-        ? 'Chưa có dữ liệu ô đỗ'
-        : items.map((c) => '${c.vehicleTypeName} ${c.available}').join(', ');
+  Widget _buildNearbyButton(List<LotView> lots) {
+    final available = lots.fold<int>(0, (s, l) => s + l.available);
+    final single = lots.length == 1 ? lots.first : null;
+    final detail = single == null
+        ? '${lots.where((l) => l.available > 0).length}/${lots.length} bãi còn chỗ, xem trên bản đồ'
+        : (single.capacities.isEmpty
+            ? 'Chưa có dữ liệu ô đỗ'
+            : single.capacities.map((c) => '${c.vehicleTypeName} ${c.available}').join(', '));
 
     return Material(
       color: PbmsTokens.teal,
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         borderRadius: BorderRadius.circular(13),
-        onTap: widget.onOpenMap,
+        onTap: () => widget.onOpenMap(null),
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -344,7 +362,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${PbmsFacility.name} còn $available chỗ trống',
+                    Text(single == null
+                            ? '${lots.length} bãi còn $available chỗ trống'
+                            : '${single.name} còn $available chỗ trống',
                         style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -377,7 +397,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       title: 'Chưa có xe trong bãi',
       message: 'Giữ chỗ ô tô trước tối đa 5 giờ, tiền cọc trừ vào phí khi ra bãi.',
       action: TextButton.icon(
-        onPressed: widget.onOpenMap,
+        onPressed: () => widget.onOpenMap(null),
         style: TextButton.styleFrom(
             foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 48)),
         icon: const Icon(Icons.event_available_rounded, size: 18),
@@ -798,6 +818,107 @@ class _CapacityCard extends StatelessWidget {
                 style: TextButton.styleFrom(
                     foregroundColor: PbmsTokens.muted,
                     minimumSize: const Size(48, 44)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Thẻ gợi ý một bãi (thiết kế "Gợi ý bãi gần nhất" của main).
+class _LotCard extends StatelessWidget {
+  final LotView lot;
+  final ValueChanged<String?> onOpenMap;
+
+  const _LotCard({required this.lot, required this.onOpenMap});
+
+  @override
+  Widget build(BuildContext context) {
+    final car = lot.car;
+    final hasRoom = lot.available > 0;
+    final stateColor = hasRoom ? PbmsTokens.teal : PbmsTokens.danger;
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(13, 13, 13, 4),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                    color: PbmsTokens.tealTint, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.local_parking_rounded, size: 26, color: PbmsTokens.teal),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                            child: Text(lot.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: PbmsText.bodyStrong)),
+                        if (car?.pricing != null)
+                          Text('${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w700, color: PbmsTokens.teal)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(lot.area ?? (lot.point == null ? 'Chưa có vị trí trên bản đồ' : ''),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(hasRoom ? '${lot.available} chỗ trống' : 'Đã hết chỗ',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700, color: stateColor)),
+                        const Spacer(),
+                        Text('Đã lấp ${lot.occupiedPercent}%', style: PbmsText.caption),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: lot.total == 0 ? 0 : lot.occupiedPercent / 100,
+                        minHeight: 4,
+                        color: stateColor,
+                        backgroundColor: PbmsTokens.divider,
+                        semanticsLabel: 'Tỉ lệ lấp đầy ${lot.name}',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Padding(
+              padding: EdgeInsets.only(top: 6), child: Divider(height: 1, color: PbmsTokens.border)),
+          Row(
+            children: [
+              if (car != null)
+                TextButton.icon(
+                  onPressed: () => onOpenMap(lot.id),
+                  icon: const Icon(Icons.event_available_rounded, size: 17),
+                  label: const Text('Đặt chỗ trước'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 44)),
+                ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => onOpenMap(lot.id),
+                icon: const Icon(Icons.navigation_rounded, size: 16),
+                label: const Text('Bản đồ'),
+                style: TextButton.styleFrom(
+                    foregroundColor: PbmsTokens.muted, minimumSize: const Size(48, 44)),
               ),
             ],
           ),

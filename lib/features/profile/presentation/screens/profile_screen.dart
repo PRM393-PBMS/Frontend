@@ -525,8 +525,8 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
               style: PbmsText.bodyStrong),
           subtitle: Text(
             supported
-                ? 'Yêu cầu vân tay, khuôn mặt hoặc mã khoá máy khi rời ứng dụng quá 1 phút'
-                : 'Thiết bị chưa cài vân tay, khuôn mặt hoặc mã khoá màn hình',
+                ? 'Yêu cầu vân tay, khuôn mặt hoặc mã khoá máy (Windows Hello, Touch ID trên web) khi rời ứng dụng quá 1 phút'
+                : 'Thiết bị hoặc trình duyệt chưa có vân tay, khuôn mặt hay mã khoá màn hình',
             style: PbmsText.caption,
           ),
         );

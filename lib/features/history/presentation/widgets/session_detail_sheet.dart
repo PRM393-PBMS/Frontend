@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
@@ -8,6 +7,7 @@ import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/history/presentation/widgets/exit_payment_sheet.dart';
+import 'package:prm393_frontend/features/history/presentation/widgets/gate_payment_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 
@@ -27,7 +27,6 @@ class SessionDetailSheet extends StatefulWidget {
 
 class _SessionDetailSheetState extends State<SessionDetailSheet> {
   AsyncCubit<FeePreviewModel>? _fee;
-  bool _checkingPayment = false;
   late ExitPassModel? _exitPass = widget.session.exitPass;
 
   ParkingSessionModel get s => widget.session;
@@ -48,48 +47,9 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
   }
 
   Future<void> _openCheckout() async {
-    final repo = context.read<PbmsRepository>();
-    setState(() => _checkingPayment = true);
-    try {
-      final checkout = await repo.getCheckoutPayment(s.sessionId);
-      if (!mounted) return;
-      final payment = checkout.payment;
-      final online = checkout.online;
-      if (payment == null) {
-        showPbmsSnack(context,
-            'Chưa có yêu cầu thanh toán. Nhân viên sẽ tạo khi xe ra cổng.');
-        return;
-      }
-      if (online == null || !online.hasUrl) {
-        showPbmsSnack(
-          context,
-          'Thanh toán ${CurrencyFormatter.format(payment.amount)} bằng ${payment.paymentMethod} tại cổng ra.',
-        );
-        return;
-      }
-      final paid = await PbmsPaymentSheet.show(
-        context,
-        title: 'Thanh toán phí gửi xe',
-        link: PaymentLinkModel(
-          paymentUrl: online.paymentUrl,
-          orderCode: online.orderCode,
-          paymentLinkId: online.paymentLinkId,
-          amount: payment.amount,
-        ),
-        verify: online.orderCode == null
-            ? null
-            : () async {
-                final st = await repo.checkPaymentStatus(online.orderCode!);
-                return st.isPaid ? PaymentCheck.paid : PaymentCheck.pending;
-              },
-      );
-      if (paid && mounted) {
-        showPbmsSnack(context, 'Đã thanh toán. Barie sẽ mở khi xe tới cổng ra.');
-      }
-    } catch (e) {
-      if (mounted) showPbmsSnack(context, errorText(e), error: true);
-    } finally {
-      if (mounted) setState(() => _checkingPayment = false);
+    final paid = await GatePaymentSheet.show(context, s.sessionId);
+    if (paid == true && mounted) {
+      showPbmsSnack(context, 'Đã thanh toán. Barie sẽ mở khi xe tới cổng ra.');
     }
   }
 
@@ -174,7 +134,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
             PbmsPrimaryButton(
               label: 'Thanh toán để lấy xe',
               icon: Icons.payments_outlined,
-              onPressed: _checkingPayment ? null : _payToExit,
+              onPressed: _payToExit,
             ),
             const SizedBox(height: 9),
             SizedBox(
