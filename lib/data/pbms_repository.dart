@@ -501,6 +501,34 @@ class PbmsRepository {
     await _api.delete<dynamic>(ApiEndpoints.deleteNotification(id));
   }
 
+  // ------------------------------------------------------- mã vào bãi 1 lần
+
+  static const _entryPassUnavailable = NotFoundException(
+      message: 'Máy chủ chưa bật mã QR gửi xe 1 lần. Bạn vẫn có thể vào bãi bình thường.');
+
+  Future<List<EntryPassModel>> getMyEntryPasses() async {
+    try {
+      return _list(await _get(ApiEndpoints.myEntryPasses), EntryPassModel.fromJson);
+    } on NotFoundException {
+      throw _entryPassUnavailable;
+    }
+  }
+
+  Future<EntryPassModel> createEntryPass(String vehicleId) async {
+    try {
+      return EntryPassModel.fromJson(
+          _obj(await _post(ApiEndpoints.entryPasses, {'vehicleId': vehicleId}), 'mã vào bãi'));
+    } on NotFoundException catch (e) {
+      // 404 khi máy chủ chưa có API (khác 404 "không tìm thấy xe" có thông báo riêng).
+      if (e.message.contains('xe')) rethrow;
+      throw _entryPassUnavailable;
+    }
+  }
+
+  Future<void> cancelEntryPass(String id) async {
+    await _api.delete<dynamic>(ApiEndpoints.entryPassById(id));
+  }
+
   // -------------------------------------------------------------- profile
 
   Future<UserModel> getProfile() async =>

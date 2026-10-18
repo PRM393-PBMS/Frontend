@@ -1049,3 +1049,47 @@ class NotificationPage {
     return const NotificationPage(items: [], unreadCount: 0);
   }
 }
+
+/// Mã QR gửi xe một lần (POST/GET /api/entry-passes).
+class EntryPassModel {
+  final String id;
+  final String code;
+  final String status;
+  final String licensePlate;
+  final String? vehicleName;
+  final String vehicleTypeName;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final DateTime? usedAt;
+  final String? qrPayload;
+
+  const EntryPassModel({
+    required this.id,
+    required this.code,
+    required this.status,
+    required this.licensePlate,
+    this.vehicleName,
+    required this.vehicleTypeName,
+    required this.createdAt,
+    required this.expiresAt,
+    this.usedAt,
+    this.qrPayload,
+  });
+
+  bool get isActive =>
+      _is(status, 'active') && qrPayload != null && expiresAt.isAfter(DateTime.now());
+  bool get isMotorbike => vehicleTypeName.toLowerCase().contains('máy');
+
+  factory EntryPassModel.fromJson(J json) => EntryPassModel(
+        id: JsonRead.str(json, 'entryPassId'),
+        code: JsonRead.str(json, 'code'),
+        status: JsonRead.str(json, 'status'),
+        licensePlate: JsonRead.str(json, 'licensePlate'),
+        vehicleName: JsonRead.strOrNull(json, 'vehicleName'),
+        vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
+        createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
+        expiresAt: JsonRead.date(json, 'expiresAt') ?? DateTime.now(),
+        usedAt: JsonRead.date(json, 'usedAt'),
+        qrPayload: JsonRead.strOrNull(json, 'qrPayload'),
+      );
+}

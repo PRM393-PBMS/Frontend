@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
@@ -99,22 +100,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _onGetStarted,
               ),
               const SizedBox(height: 14),
-              Text.rich(
-                TextSpan(
-                  text: 'Tiếp tục đồng nghĩa với việc bạn đồng ý với ',
-                  style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                  children: [
-                    TextSpan(
-                      text: 'Điều khoản dịch vụ',
-                      style: const TextStyle(
-                        color: Color(0xFF087B8C),
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
+              const LegalLinks(
+                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 20),
             ],

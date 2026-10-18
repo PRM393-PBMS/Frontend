@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import '../blocs/auth_bloc.dart';
@@ -264,26 +265,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
                                   activeColor: const Color(0xFF00616E),
-                                  title: const Text.rich(
-                                    TextSpan(
-                                      text: 'Tôi đồng ý với ',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Color(0xFF3E484B)),
-                                      children: [
-                                        TextSpan(
-                                            text: 'Điều khoản dịch vụ',
-                                            style: TextStyle(
-                                                color: Color(0xFF00616E),
-                                                fontWeight: FontWeight.w600)),
-                                        TextSpan(text: ' và '),
-                                        TextSpan(
-                                            text: 'Chính sách bảo mật',
-                                            style: TextStyle(
-                                                color: Color(0xFF00616E),
-                                                fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
+                                  title: const LegalLinks(
+                                    prefix: 'Tôi đã đọc và đồng ý với ',
+                                    textAlign: TextAlign.start,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF3E484B)),
                                   ),
                                 ),
                                 const SizedBox(height: 7),
