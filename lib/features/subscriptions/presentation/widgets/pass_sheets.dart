@@ -231,6 +231,113 @@ class FixedSlotPicker extends StatelessWidget {
   }
 }
 
+/// Chọn bãi áp dụng vé tháng. Chỉ có một bãi thì hiện cố định, không cần chọn.
+class ParkingLotPicker extends StatelessWidget {
+  final AsyncCubit<List<ParkingLotModel>> lots;
+  final String? selectedId;
+  final ValueChanged<String> onSelected;
+
+  const ParkingLotPicker({
+    super.key,
+    required this.lots,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  Future<void> _open(BuildContext context, List<ParkingLotModel> items) async {
+    final id = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text('Chọn bãi đỗ', style: PbmsText.title),
+        children: [
+          for (final l in items)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, l.id),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    l.id == selectedId ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                    color: l.id == selectedId ? PbmsTokens.teal : PbmsTokens.muted,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.name, style: PbmsText.bodyStrong),
+                        if (l.location.trim().isNotEmpty)
+                          Text(l.location, maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (id != null) onSelected(id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PbmsAsync<List<ParkingLotModel>>(
+      cubit: lots,
+      loadingHeight: 56,
+      errorTitle: 'Không tải được danh sách bãi',
+      isEmpty: (d) => d.isEmpty,
+      empty: const PbmsEmptyView(icon: Icons.local_parking_rounded, title: 'Chưa có bãi đỗ nào'),
+      builder: (items) {
+        final chosen = items.where((l) => l.id == selectedId).firstOrNull;
+        final single = items.length == 1;
+        return Material(
+          color: chosen == null ? Colors.white : PbmsTokens.tealTint,
+          borderRadius: BorderRadius.circular(13),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(13),
+            onTap: single ? null : () => _open(context, items),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 56),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                border: Border.all(color: chosen == null ? PbmsTokens.border : PbmsTokens.teal),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.place_outlined, color: PbmsTokens.teal, size: 21),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(chosen?.name ?? 'Chọn bãi đỗ', style: PbmsText.bodyStrong),
+                        const SizedBox(height: 2),
+                        Text(
+                          single
+                              ? 'Hiện hệ thống có một bãi'
+                              : (chosen == null ? '${items.length} bãi, chạm để chọn' : 'Chạm để đổi bãi'),
+                          style: PbmsText.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!single) const Icon(Icons.expand_more_rounded, color: PbmsTokens.muted),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Hộp thoại chọn ô: các ô trống nhóm theo tầng, chạm một ô là chọn và đóng.
 class _SlotDialog extends StatelessWidget {
   final List<ParkingSlotModel> slots;

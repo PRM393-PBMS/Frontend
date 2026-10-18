@@ -576,6 +576,9 @@ class SubscriptionPackageModel {
   final int durationMonths;
   final double price;
   final bool requireFixedSlot;
+
+  /// Gói dùng được ở mọi bãi (không gắn bãi, không cố định ô).
+  final bool allParkings;
   final String? description;
   final String status;
 
@@ -587,12 +590,16 @@ class SubscriptionPackageModel {
     required this.durationMonths,
     required this.price,
     required this.requireFixedSlot,
+    this.allParkings = false,
     this.description,
     required this.status,
   });
 
   bool get isActive => _is(status, 'active');
   bool get isMotorbike => vehicleTypeName.toLowerCase().contains('máy');
+
+  /// Cần chọn ô cố định khi đăng ký.
+  bool get needsFixedSlot => requireFixedSlot && !isMotorbike && !allParkings;
 
   factory SubscriptionPackageModel.fromJson(J json) => SubscriptionPackageModel(
         packageId: JsonRead.str(json, 'packageId'),
@@ -602,6 +609,7 @@ class SubscriptionPackageModel {
         durationMonths: JsonRead.int_(json, 'durationMonths', 1),
         price: JsonRead.num_(json, 'price'),
         requireFixedSlot: JsonRead.bool_(json, 'requireFixedSlot'),
+        allParkings: JsonRead.bool_(json, 'allParkings'),
         description: JsonRead.strOrNull(json, 'description'),
         status: JsonRead.str(json, 'status', 'Active'),
       );
@@ -691,6 +699,10 @@ class MonthlySubscriptionModel {
   final double price;
   final String status;
   final String? fixedSlot;
+
+  /// Bãi áp dụng vé; null với gói mọi bãi hoặc máy chủ cũ.
+  final String? parkingName;
+  final bool allParkings;
   final int? durationMonths;
   final String? contractId;
   final String? contractNumber;
@@ -706,6 +718,8 @@ class MonthlySubscriptionModel {
     required this.price,
     required this.status,
     this.fixedSlot,
+    this.parkingName,
+    this.allParkings = false,
     this.durationMonths,
     this.contractId,
     this.contractNumber,
@@ -743,6 +757,8 @@ class MonthlySubscriptionModel {
         price: JsonRead.num_(json, 'price'),
         status: JsonRead.str(json, 'status'),
         fixedSlot: JsonRead.strOrNull(json, 'fixedSlot'),
+        parkingName: JsonRead.strOrNull(json, 'parkingName'),
+        allParkings: JsonRead.bool_(json, 'allParkings'),
         durationMonths: JsonRead.numOrNull(json, 'durationMonths')?.round(),
         contractId: JsonRead.strOrNull(json, 'contractId'),
         contractNumber: JsonRead.strOrNull(json, 'contractNumber'),

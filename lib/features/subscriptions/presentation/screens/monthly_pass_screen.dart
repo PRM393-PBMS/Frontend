@@ -383,9 +383,11 @@ class _PassCard extends StatelessWidget {
                         style: PbmsText.title),
                     const SizedBox(height: 3),
                     Text(
-                        s.fixedSlot == null
-                            ? '${PbmsFacility.name}, không cố định vị trí'
-                            : '${PbmsFacility.name}, ô cố định ${s.fixedSlot}',
+                        s.allParkings
+                            ? 'Mọi bãi PBMS, không cố định vị trí'
+                            : s.fixedSlot == null
+                                ? '${s.parkingName ?? PbmsFacility.name}, không cố định vị trí'
+                                : '${s.parkingName ?? PbmsFacility.name}, ô cố định ${s.fixedSlot}',
                         style: PbmsText.caption),
                   ],
                 ),
@@ -722,6 +724,10 @@ class _RegistrationFormState extends State<_RegistrationForm> {
   String? _packageId;
   AsyncCubit<List<ParkingSlotModel>>? _slots;
   String? _slotId;
+
+  /// Bãi áp dụng vé (gói một bãi). Hệ thống chỉ có một bãi thì tự chọn.
+  late final _lots = AsyncCubit<List<ParkingLotModel>>(_loadLots);
+  String? _parkingId;
   bool _busy = false;
   String? _error;
 
@@ -741,9 +747,30 @@ class _RegistrationFormState extends State<_RegistrationForm> {
   SubscriptionPackageModel? get _selected =>
       _plans.where((p) => p.packageId == _packageId).firstOrNull;
 
-  bool get _needsSlot {
+  bool get _needsSlot => _selected?.needsFixedSlot ?? false;
+
+  bool get _needsLot {
     final p = _selected;
-    return p != null && p.requireFixedSlot && !p.isMotorbike;
+    return p != null && !p.allParkings;
+  }
+
+  Future<List<ParkingLotModel>> _loadLots() async {
+    final lots = await _repo.getParkingLots();
+    if (lots.length == 1 && _parkingId == null && mounted) {
+      setState(() {
+        _parkingId = lots.first.id;
+        _syncSlots();
+      });
+    }
+    return lots;
+  }
+
+  void _selectLot(String id) {
+    setState(() {
+      _parkingId = id;
+      _error = null;
+      _syncSlots();
+    });
   }
 
   @override
@@ -756,6 +783,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
   @override
   void dispose() {
     _slots?.close();
+    _lots.close();
     super.dispose();
   }
 
@@ -764,7 +792,11 @@ class _RegistrationFormState extends State<_RegistrationForm> {
     _slots = null;
     _slotId = null;
     if (_needsSlot) {
-      _slots = AsyncCubit(() => _repo.getResidentSlots(_vehicleTypeId));
+      // Ô cố định phải thuộc bãi đã chọn.
+      final lot = _parkingId;
+      _slots = AsyncCubit(() async => (await _repo.getResidentSlots(_vehicleTypeId))
+          .where((s) => lot == null || s.parkingId.isEmpty || s.parkingId == lot)
+          .toList());
     }
   }
 
@@ -793,6 +825,10 @@ class _RegistrationFormState extends State<_RegistrationForm> {
       setState(() => _error = 'Chọn xe đăng ký vé.');
       return;
     }
+    if (_needsLot && _parkingId == null) {
+      setState(() => _error = 'Chọn bãi đỗ áp dụng vé.');
+      return;
+    }
     if (_needsSlot && _slotId == null) {
       setState(() => _error = 'Chọn một ô đỗ cố định.');
       return;
@@ -806,6 +842,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
         packageId: pkg.packageId,
         vehicleId: vehicle.id,
         fixedSlotId: _needsSlot ? _slotId : null,
+        parkingId: _needsLot ? _parkingId : null,
         // Gói có hợp đồng: chọn cách trả ở bước ký.
         paymentMethod: _payByWallet && pkg.durationMonths < 3 ? 'Wallet' : 'PayOS',
       );
@@ -906,13 +943,21 @@ class _RegistrationFormState extends State<_RegistrationForm> {
                 title: p.packageName,
                 subtitle: [
                   '${p.durationMonths} tháng',
-                  if (p.requireFixedSlot && !p.isMotorbike) 'ô cố định',
+                  if (p.allParkings) 'đỗ ở mọi bãi',
+                  if (p.needsFixedSlot) 'ô cố định',
                   if (p.durationMonths >= 3) 'kèm hợp đồng điện tử',
                   if (p.description != null) p.description!,
                 ].join(', '),
                 price: CurrencyFormatter.format(p.price),
                 onTap: () => _selectPlan(p.packageId),
               ),
+              const SizedBox(height: 8),
+            ],
+            if (_needsLot) ...[
+              const SizedBox(height: 6),
+              const Text('Bãi áp dụng vé', style: PbmsText.label),
+              const SizedBox(height: 6),
+              ParkingLotPicker(lots: _lots, selectedId: _parkingId, onSelected: _selectLot),
               const SizedBox(height: 8),
             ],
             if (_needsSlot && _slots != null) ...[

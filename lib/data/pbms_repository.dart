@@ -345,6 +345,7 @@ class PbmsRepository {
     required String packageId,
     required String vehicleId,
     String? fixedSlotId,
+    String? parkingId,
     String paymentMethod = 'PayOS',
   }) async =>
       RegistrationResultModel.fromJson(_obj(
@@ -353,6 +354,7 @@ class PbmsRepository {
           'vehicleId': vehicleId,
           'paymentMethod': paymentMethod,
           if (fixedSlotId != null) 'fixedSlotId': fixedSlotId,
+          if (parkingId != null) 'parkingId': parkingId,
         }),
         'đăng ký gói',
       ));
