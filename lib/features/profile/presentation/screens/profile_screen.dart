@@ -20,6 +20,7 @@ import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
 import 'package:prm393_frontend/features/legal/legal_documents.dart';
 import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/change_password_sheet.dart';
+import 'package:prm393_frontend/features/profile/presentation/widgets/delete_account_sheet.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
@@ -270,7 +271,17 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => DeleteAccountSheet.show(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: PbmsTokens.danger,
+                          minimumSize: const Size(48, 48),
+                        ),
+                        child: const Text('Xoá tài khoản'),
+                      ),
+                    ),
                     const Center(
                       child: Text(
                         'PBMS Smart Parking, phiên bản ${AppConfig.appVersion}',

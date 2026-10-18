@@ -568,6 +568,17 @@ class PbmsRepository {
     await _put(ApiEndpoints.profile, {'password': newPassword});
   }
 
+  /// Xoá tài khoản (máy chủ ẩn danh hoá hồ sơ). Máy chủ cũ chưa có API thì báo rõ.
+  Future<void> deleteAccount(String password) async {
+    try {
+      await _post(ApiEndpoints.deleteAccount, {'password': password});
+    } on NotFoundException catch (e) {
+      if (e.message.contains('người dùng')) rethrow;
+      throw const ValidationException(
+          message: 'Máy chủ chưa hỗ trợ xoá tài khoản trên app. Vui lòng liên hệ quản lý bãi.');
+    }
+  }
+
   Future<UserModel> updateProfile({
     required String fullName,
     required String phoneNumber,
