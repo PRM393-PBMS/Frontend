@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/widgets/push_toggle_tile.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -39,6 +40,7 @@ class NotificationsBottomSheet extends StatefulWidget {
 class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
   late final PbmsRepository _repo = context.read<PbmsRepository>();
   List<NotificationModel> _notifications = const [];
+  bool _available = true;
   bool _isLoading = true;
   String? _error;
 
@@ -56,7 +58,10 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
     try {
       final page = await _repo.getNotifications();
       if (!mounted) return;
-      setState(() => _notifications = page.items);
+      setState(() {
+        _notifications = page.items;
+        _available = page.available;
+      });
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));
     } finally {
@@ -194,7 +199,9 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          const PushToggleTile(),
+          const SizedBox(height: 4),
           const Divider(height: 1, color: PbmsTokens.border),
           const SizedBox(height: 12),
           Flexible(child: _buildBody()),
@@ -221,6 +228,17 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
         title: 'Không tải được thông báo',
         message: _error!,
         onRetry: _fetchLatest,
+      );
+    }
+    if (!_available) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: PbmsEmptyView(
+          icon: Icons.update_rounded,
+          title: 'Thông báo đang được cập nhật',
+          message:
+              'Máy chủ chưa bật dịch vụ thông báo. Khi bật, xác nhận đặt chỗ, thanh toán và vé tháng sẽ hiện ở đây.',
+        ),
       );
     }
     if (_notifications.isEmpty) {

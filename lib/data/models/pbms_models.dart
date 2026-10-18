@@ -447,12 +447,30 @@ class VehicleModel {
   final String vehicleTypeName;
   final String licensePlate;
 
+  /// Tên khách tự đặt, vd. "Xe của mẹ".
+  final String? nickname;
+
+  /// Mẫu xe / tên xe, vd. "Toyota Vios 2020".
+  final String? modelName;
+
   const VehicleModel({
     required this.id,
     required this.vehicleTypeId,
     required this.vehicleTypeName,
     required this.licensePlate,
+    this.nickname,
+    this.modelName,
   });
+
+  /// Tên hiển thị: tên tự đặt, chưa có thì dùng biển số.
+  String get displayName => nickname ?? licensePlate;
+
+  /// Dòng phụ: biển số (khi đã có tên), mẫu xe, loại xe.
+  String get details => [
+        if (nickname != null) licensePlate,
+        if (modelName != null) modelName!,
+        vehicleTypeName,
+      ].join(', ');
 
   bool get isMotorbike => vehicleTypeName.toLowerCase().contains('máy');
   bool get isCar {
@@ -465,7 +483,11 @@ class VehicleModel {
         vehicleTypeId: JsonRead.str(json, 'vehicleTypeId'),
         vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
         licensePlate: JsonRead.str(json, 'licensePlate'),
+        nickname: _blankToNull(JsonRead.strOrNull(json, 'nickname')),
+        modelName: _blankToNull(JsonRead.strOrNull(json, 'modelName')),
       );
+
+  static String? _blankToNull(String? v) => v == null || v.trim().isEmpty ? null : v.trim();
 }
 
 /// Loại xe khách được chọn (lấy từ bảng giá công khai).
@@ -984,7 +1006,12 @@ class NotificationPage {
   final List<NotificationModel> items;
   final int unreadCount;
 
-  const NotificationPage({required this.items, required this.unreadCount});
+  /// false: máy chủ chưa có dịch vụ thông báo (404), không phải lỗi mạng.
+  final bool available;
+
+  const NotificationPage({required this.items, required this.unreadCount, this.available = true});
+
+  static const unavailable = NotificationPage(items: [], unreadCount: 0, available: false);
 
   factory NotificationPage.fromJson(dynamic json) {
     if (json is List) {

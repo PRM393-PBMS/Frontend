@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/widgets/push_toggle_tile.dart';
 import 'package:prm393_frontend/core/config/app_config.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/services/app_lock_controller.dart';
@@ -23,7 +24,7 @@ typedef _Stats = ({
   int sessionsThisMonth,
   int activePasses,
   int upcomingReservations,
-  List<({String id, String plate, String type, bool monthly})> vehicles,
+  List<({VehicleModel vehicle, bool monthly})> vehicles,
 });
 
 class ProfileScreen extends StatefulWidget {
@@ -65,12 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
         passes.where((p) => p.isActive).map((p) => p.licensePlate).toSet();
     final vehicles = [
       for (final v in myVehicles)
-        (
-          id: v.id,
-          plate: v.licensePlate,
-          type: v.vehicleTypeName,
-          monthly: monthlyPlates.contains(v.licensePlate),
-        ),
+        (vehicle: v, monthly: monthlyPlates.contains(v.licensePlate)),
     ];
 
     return (
@@ -149,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                               ? const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 8),
                                   child: Text(
-                                    'Biển số xe sẽ hiện ở đây sau lượt gửi đầu tiên hoặc khi bạn đăng ký vé tháng.',
+                                    'Chưa có xe nào. Thêm biển số để đặt chỗ và đăng ký vé tháng.',
                                     style: PbmsText.caption,
                                   ),
                                 )
@@ -208,8 +204,12 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                     ),
                     const SizedBox(height: 12),
                     _buildSectionCard(
-                      title: 'Bảo mật',
-                      children: [_buildBiometricTile()],
+                      title: 'Bảo mật và thông báo',
+                      children: [
+                        _buildBiometricTile(),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        const PushToggleTile(),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
@@ -376,56 +376,75 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     );
   }
 
-  Widget _buildVehicleCard(({String id, String plate, String type, bool monthly}) v) {
-    final isMotorbike = v.type.toLowerCase().contains('máy');
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: PbmsTokens.surfaceLow,
-        border: Border.all(color: PbmsTokens.divider),
+  Widget _buildVehicleCard(({VehicleModel vehicle, bool monthly}) item) {
+    final v = item.vehicle;
+    return Material(
+      color: PbmsTokens.surfaceLow,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-                isMotorbike
-                    ? Icons.two_wheeler_rounded
-                    : Icons.directions_car_rounded,
-                size: 24,
-                color: PbmsTokens.teal),
+        onTap: () => _editVehicle(v),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: PbmsTokens.divider),
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(v.plate,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: PbmsText.bodyStrong),
-                const SizedBox(height: 2),
-                Text(v.type, style: PbmsText.caption),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                    v.isMotorbike
+                        ? Icons.two_wheeler_rounded
+                        : Icons.directions_car_rounded,
+                    size: 24,
+                    color: PbmsTokens.teal),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(v.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PbmsText.bodyStrong),
+                    const SizedBox(height: 2),
+                    Text(v.details,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: PbmsText.caption),
+                  ],
+                ),
+              ),
+              if (item.monthly)
+                const PbmsStatusPill(StatusInfo('Vé tháng', PbmsTokens.teal))
+              else
+                IconButton(
+                  tooltip: 'Xoá xe ${v.licensePlate}',
+                  onPressed: () => _removeVehicle(v.id, v.licensePlate),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: PbmsTokens.muted),
+                ),
+            ],
           ),
-          if (v.monthly)
-            const PbmsStatusPill(StatusInfo('Vé tháng', PbmsTokens.teal))
-          else
-            IconButton(
-              tooltip: 'Xoá xe ${v.plate}',
-              onPressed: () => _removeVehicle(v.id, v.plate),
-              icon: const Icon(Icons.delete_outline_rounded, color: PbmsTokens.muted),
-            ),
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> _editVehicle(VehicleModel vehicle) async {
+    final updated = await EditVehicleSheet.show(context, vehicle);
+    if (updated == null || !mounted) return;
+    showPbmsSnack(context, 'Đã lưu thông tin xe ${updated.displayName}.');
+    ShellScope.dataChanged(context);
+    reloadAll();
   }
 
   Future<void> _addVehicle() async {

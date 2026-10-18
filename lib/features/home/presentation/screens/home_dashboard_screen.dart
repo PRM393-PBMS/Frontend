@@ -16,7 +16,7 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart
 import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
-import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/home/presentation/widgets/promo_carousel.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
@@ -150,7 +150,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         final lots = _lots.state.data ?? const <LotView>[];
         final pos = _loc!.position;
         final near = lots.where((l) => l.distanceFrom(pos) != null).toList()
-          ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
+          ..sort(
+              (a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
         if (near.isEmpty) return 'Đã lấy vị trí của bạn';
         return 'Gần ${near.first.name}, ${LocationService.formatDistance(near.first.distanceFrom(pos)!)}';
       case LocationStatus.serviceOff:
@@ -190,8 +191,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
             children: [
               _buildHeader(context),
               const SizedBox(height: 22),
-              _buildSearchEntry(),
-              const SizedBox(height: 10),
+              _buildPromos(context),
+              const SizedBox(height: 14),
               PbmsAsync<List<LotView>>(
                 cubit: _lots,
                 loadingHeight: 58,
@@ -206,8 +207,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 builder: _buildActivity,
               ),
               const SizedBox(height: 22),
-              _buildQuickAccess(context),
-              const SizedBox(height: 22),
               PbmsAsync<List<LotView>>(
                 cubit: _lots,
                 loadingHeight: 180,
@@ -216,7 +215,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 empty: const PbmsEmptyView(
                   icon: Icons.local_parking_rounded,
                   title: 'Bãi chưa mở ô đỗ nào',
-                  message: 'Khi bãi cấu hình tầng và ô đỗ, chỗ trống sẽ hiện ở đây.',
+                  message:
+                      'Khi bãi cấu hình tầng và ô đỗ, chỗ trống sẽ hiện ở đây.',
                 ),
                 builder: (lots) => lots.length > 1
                     ? _buildLotSuggestions(lots)
@@ -227,7 +227,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                           for (final c in lots.first.capacities) ...[
                             _CapacityCard(
                                 capacity: c,
-                                onOpenMap: () => widget.onOpenMap(lots.first.id)),
+                                onOpenMap: () =>
+                                    widget.onOpenMap(lots.first.id)),
                             const SizedBox(height: 11),
                           ],
                         ],
@@ -248,7 +249,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
     final frequent = lots.where((l) => l.visits > 0).toList()
       ..sort((a, b) => b.visits.compareTo(a.visits));
-    final shown = {...nearby.take(3).map((l) => l.id), ...frequent.take(3).map((l) => l.id)};
+    final shown = {
+      ...nearby.take(3).map((l) => l.id),
+      ...frequent.take(3).map((l) => l.id)
+    };
     final others = lots.where((l) => !shown.contains(l.id)).toList()
       ..sort((a, b) => b.available.compareTo(a.available));
 
@@ -293,9 +297,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         if (others.isNotEmpty) ...[
           PbmsSectionTitle(
             shown.isEmpty ? 'Gợi ý bãi đỗ' : 'Các bãi khác',
-            trailing: Text('${others.where((l) => l.available > 0).length} bãi còn chỗ',
+            trailing: Text(
+                '${others.where((l) => l.available > 0).length} bãi còn chỗ',
                 style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600, color: PbmsTokens.teal)),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: PbmsTokens.teal)),
           ),
           ...others.map(card),
         ],
@@ -363,9 +370,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               backgroundColor: PbmsTokens.danger,
               offset: const Offset(-4, 4),
               child: IconButton(
-                tooltip: _unread > 0
-                    ? 'Thông báo, $_unread chưa đọc'
-                    : 'Thông báo',
+                tooltip:
+                    _unread > 0 ? 'Thông báo, $_unread chưa đọc' : 'Thông báo',
                 onPressed: () => NotificationsBottomSheet.show(
                   context,
                   onNotificationsUpdated: _loadUnread,
@@ -402,52 +408,39 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     );
   }
 
-  Widget _buildSearchEntry() {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+  /// Băng quảng cáo đầu trang: mỗi ảnh giới thiệu một tính năng và mở thẳng tới đó.
+  Widget _buildPromos(BuildContext context) {
+    final shell = ShellScope.maybeOf(context);
+    return PromoCarousel(items: [
+      PromoItem(
+        image: 'assets/images/promo/reserve.jpg',
+        title: 'Giữ chỗ ô tô trước tới 5 giờ',
+        subtitle: 'Chọn bãi trên bản đồ, cọc trừ vào phí khi ra',
+        action: 'Đặt chỗ',
         onTap: () => widget.onOpenMap(null),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 68),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            border: Border.all(color: PbmsTokens.border),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                    color: PbmsTokens.tealTint,
-                    borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.map_outlined,
-                    color: PbmsTokens.teal, size: 22),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Bạn muốn đỗ xe khi nào?', style: PbmsText.bodyStrong),
-                    SizedBox(height: 3),
-                    Text('Xem bãi trên bản đồ và giữ chỗ ô tô trước',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PbmsText.caption),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: PbmsTokens.muted),
-            ],
-          ),
-        ),
       ),
-    );
+      PromoItem(
+        image: 'assets/images/promo/monthly.jpg',
+        title: 'Vé tháng 3, 6, 9, 12 tháng',
+        subtitle: 'Ký hợp đồng điện tử ngay trên app',
+        action: 'Xem gói',
+        onTap: () => shell?.goTab(AppTab.pass),
+      ),
+      PromoItem(
+        image: 'assets/images/promo/wallet.jpg',
+        title: 'Nạp ví PBMS, ra bãi không chờ',
+        subtitle: 'Nạp qua ngân hàng, thẻ; trả phí một chạm',
+        action: 'Nạp ví',
+        onTap: () => WalletScreen.open(context),
+      ),
+      PromoItem(
+        image: 'assets/images/promo/prepay.jpg',
+        title: 'Trả phí trước, quét mã ra cổng',
+        subtitle: 'Mã ra cổng dùng tới khi xe rời bãi',
+        action: 'Lượt gửi',
+        onTap: () => shell?.goTab(AppTab.history),
+      ),
+    ]);
   }
 
   Widget _buildNearbyButton(List<LotView> lots) {
@@ -457,7 +450,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         ? '${lots.where((l) => l.available > 0).length}/${lots.length} bãi còn chỗ, xem trên bản đồ'
         : (single.capacities.isEmpty
             ? 'Chưa có dữ liệu ô đỗ'
-            : single.capacities.map((c) => '${c.vehicleTypeName} ${c.available}').join(', '));
+            : single.capacities
+                .map((c) => '${c.vehicleTypeName} ${c.available}')
+                .join(', '));
 
     return Material(
       color: PbmsTokens.teal,
@@ -478,7 +473,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(single == null
+                    Text(
+                        single == null
                             ? '${lots.length} bãi còn $available chỗ trống'
                             : '${single.name} còn $available chỗ trống',
                         style: const TextStyle(
@@ -505,13 +501,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   Widget _buildActivity(_Activity activity) {
     final session = activity.session;
-    if (session != null) return _buildActiveSession(session, activity.sessionPricing);
+    if (session != null) {
+      return _buildActiveSession(session, activity.sessionPricing);
+    }
     final reservation = activity.reservation;
     if (reservation != null) return _buildUpcomingReservation(reservation);
     return PbmsEmptyView(
       icon: Icons.directions_car_outlined,
       title: 'Chưa có xe trong bãi',
-      message: 'Giữ chỗ ô tô trước tối đa 5 giờ, tiền cọc trừ vào phí khi ra bãi.',
+      message:
+          'Giữ chỗ ô tô trước tối đa 5 giờ, tiền cọc trừ vào phí khi ra bãi.',
       action: TextButton.icon(
         onPressed: () => widget.onOpenMap(null),
         style: TextButton.styleFrom(
@@ -590,8 +589,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _activityHeader('Xe đang trong bãi',
-                _slotChip(s.slotCode ?? 'Chưa phân ô')),
+            _activityHeader(
+                'Xe đang trong bãi', _slotChip(s.slotCode ?? 'Chưa phân ô')),
             const SizedBox(height: 14),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,9 +640,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                   headline: s.licensePlateIn,
                   rows: [
                     (Icons.password_rounded, 'Mã', s.exitPass!.code),
-                    (Icons.local_parking_rounded, 'Vị trí đỗ',
-                        s.slotCode ?? 'Chưa phân ô'),
-                    (Icons.timer_outlined, 'Hiệu lực', 'Tới khi xe ra khỏi bãi'),
+                    (
+                      Icons.local_parking_rounded,
+                      'Vị trí đỗ',
+                      s.slotCode ?? 'Chưa phân ô'
+                    ),
+                    (
+                      Icons.timer_outlined,
+                      'Hiệu lực',
+                      'Tới khi xe ra khỏi bãi'
+                    ),
                   ],
                 ),
               )
@@ -696,7 +702,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
             )
           else
             _qrButton(
-              ticket == null ? 'Mã QR sẽ có sau khi xác nhận' : 'Mã QR vào cổng',
+              ticket == null
+                  ? 'Mã QR sẽ có sau khi xác nhận'
+                  : 'Mã QR vào cổng',
               ticket == null
                   ? null
                   : () => PbmsQrDialog.show(
@@ -705,103 +713,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                         payload: ticket.qrPayload,
                         headline: r.vehicleTypeName,
                         rows: [
-                          (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),
-                          (Icons.schedule_rounded, 'Giờ vào dự kiến',
-                              DateFormatter.formatDayTime(r.expectedEntryTime)),
+                          (
+                            Icons.location_on_outlined,
+                            'Địa điểm',
+                            PbmsFacility.name
+                          ),
+                          (
+                            Icons.schedule_rounded,
+                            'Giờ vào dự kiến',
+                            DateFormatter.formatDayTime(r.expectedEntryTime)
+                          ),
                         ],
                       ),
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildQuickAccess(BuildContext context) {
-    final shortcuts = [
-      (
-        icon: Icons.history_rounded,
-        name: 'Lịch sử',
-        context: 'Lượt gửi, đặt chỗ',
-        onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.history),
-      ),
-      (
-        icon: Icons.account_balance_wallet_rounded,
-        name: 'Ví PBMS',
-        context: 'Nạp tiền, trả phí',
-        onTap: () => WalletScreen.open(context),
-      ),
-      (
-        icon: Icons.card_membership_rounded,
-        name: 'Vé tháng',
-        context: 'Đăng ký, gia hạn',
-        onTap: () => ShellScope.maybeOf(context)?.goTab(AppTab.pass),
-      ),
-      (
-        icon: Icons.report_gmailerrorred_rounded,
-        name: 'Báo sự cố',
-        context: 'Gửi cho nhân viên',
-        onTap: () => IncidentsScreen.open(context),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const PbmsSectionTitle('Truy cập nhanh'),
-        SizedBox(
-          height: 66,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: shortcuts.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 9),
-            itemBuilder: (context, index) {
-              final item = shortcuts[index];
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(13),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(13),
-                  onTap: item.onTap,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                    decoration: BoxDecoration(
-                        border: Border.all(color: PbmsTokens.border),
-                        borderRadius: BorderRadius.circular(13)),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                              color: PbmsTokens.tealTint,
-                              borderRadius: BorderRadius.circular(9)),
-                          child:
-                              Icon(item.icon, size: 18, color: PbmsTokens.teal),
-                        ),
-                        const SizedBox(width: 9),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.name,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: PbmsTokens.ink)),
-                            const SizedBox(height: 2),
-                            Text(item.context, style: PbmsText.caption),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }
@@ -875,9 +801,7 @@ class _CapacityCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                            hasRoom
-                                ? '${c.available} chỗ trống'
-                                : 'Đã hết chỗ',
+                            hasRoom ? '${c.available} chỗ trống' : 'Đã hết chỗ',
                             style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -969,8 +893,10 @@ class _LotCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                    color: PbmsTokens.tealTint, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.local_parking_rounded, size: 26, color: PbmsTokens.teal),
+                    color: PbmsTokens.tealTint,
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.local_parking_rounded,
+                    size: 26, color: PbmsTokens.teal),
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -985,18 +911,25 @@ class _LotCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: PbmsText.bodyStrong)),
                         if (car?.pricing != null)
-                          Text('${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
+                          Text(
+                              '${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w700, color: PbmsTokens.teal)),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: PbmsTokens.teal)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                         [
-                          if (distance != null) 'Cách bạn ${LocationService.formatDistance(distance!)}',
+                          if (distance != null)
+                            'Cách bạn ${LocationService.formatDistance(distance!)}',
                           if (lot.visits > 0) 'Bạn đã gửi ${lot.visits} lần',
                           if (distance == null && lot.visits == 0)
-                            lot.area ?? (lot.point == null ? 'Chưa có vị trí trên bản đồ' : ''),
+                            lot.area ??
+                                (lot.point == null
+                                    ? 'Chưa có vị trí trên bản đồ'
+                                    : ''),
                         ].join(', '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1004,11 +937,17 @@ class _LotCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Text(hasRoom ? '${lot.available} chỗ trống' : 'Đã hết chỗ',
+                        Text(
+                            hasRoom
+                                ? '${lot.available} chỗ trống'
+                                : 'Đã hết chỗ',
                             style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w700, color: stateColor)),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: stateColor)),
                         const Spacer(),
-                        Text('Đã lấp ${lot.occupiedPercent}%', style: PbmsText.caption),
+                        Text('Đã lấp ${lot.occupiedPercent}%',
+                            style: PbmsText.caption),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -1028,7 +967,8 @@ class _LotCard extends StatelessWidget {
             ],
           ),
           const Padding(
-              padding: EdgeInsets.only(top: 6), child: Divider(height: 1, color: PbmsTokens.border)),
+              padding: EdgeInsets.only(top: 6),
+              child: Divider(height: 1, color: PbmsTokens.border)),
           Row(
             children: [
               if (car != null)
@@ -1037,7 +977,8 @@ class _LotCard extends StatelessWidget {
                   icon: const Icon(Icons.event_available_rounded, size: 17),
                   label: const Text('Đặt chỗ trước'),
                   style: TextButton.styleFrom(
-                      foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 44)),
+                      foregroundColor: PbmsTokens.teal,
+                      minimumSize: const Size(48, 44)),
                 ),
               const Spacer(),
               TextButton.icon(
@@ -1045,7 +986,8 @@ class _LotCard extends StatelessWidget {
                 icon: const Icon(Icons.navigation_rounded, size: 16),
                 label: const Text('Bản đồ'),
                 style: TextButton.styleFrom(
-                    foregroundColor: PbmsTokens.muted, minimumSize: const Size(48, 44)),
+                    foregroundColor: PbmsTokens.muted,
+                    minimumSize: const Size(48, 44)),
               ),
             ],
           ),

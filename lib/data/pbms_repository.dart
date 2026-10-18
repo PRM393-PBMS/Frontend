@@ -230,14 +230,52 @@ class PbmsRepository {
   Future<List<VehicleModel>> getMyVehicles() async =>
       _list(await _get(ApiEndpoints.myVehicles), VehicleModel.fromJson);
 
-  Future<VehicleModel> addVehicle({required String vehicleTypeId, required String licensePlate}) async =>
-      VehicleModel.fromJson(_obj(
-        await _post(ApiEndpoints.vehicles, {
-          'vehicleTypeId': vehicleTypeId,
-          'licensePlate': licensePlate,
+  /// Đăng ký xe. Tên tự đặt / mẫu xe chỉ gửi khi có nhập: máy chủ chưa cập nhật
+  /// sẽ từ chối trường lạ (400), khi đó lưu xe không kèm tên để khách vẫn thêm được xe.
+  Future<VehicleModel> addVehicle({
+    required String vehicleTypeId,
+    required String licensePlate,
+    String? nickname,
+    String? modelName,
+  }) async {
+    final base = {'vehicleTypeId': vehicleTypeId, 'licensePlate': licensePlate};
+    final names = {
+      if (nickname != null && nickname.trim().isNotEmpty) 'nickname': nickname.trim(),
+      if (modelName != null && modelName.trim().isNotEmpty) 'modelName': modelName.trim(),
+    };
+    try {
+      return VehicleModel.fromJson(
+          _obj(await _post(ApiEndpoints.vehicles, {...base, ...names}), 'xe'));
+    } on ValidationException catch (e) {
+      if (names.isEmpty || !_unknownField(e)) rethrow;
+      return VehicleModel.fromJson(_obj(await _post(ApiEndpoints.vehicles, base), 'xe'));
+    }
+  }
+
+  /// Đổi tên tự đặt / mẫu xe. Chuỗi rỗng là xoá.
+  Future<VehicleModel> renameVehicle(
+    String vehicleId, {
+    required String nickname,
+    required String modelName,
+  }) async {
+    try {
+      return VehicleModel.fromJson(_obj(
+        await _put(ApiEndpoints.vehicleById(vehicleId), {
+          'nickname': nickname.trim(),
+          'modelName': modelName.trim(),
         }),
         'xe',
       ));
+    } on ValidationException catch (e) {
+      if (!_unknownField(e)) rethrow;
+      throw const ValidationException(
+          message: 'Máy chủ chưa hỗ trợ đặt tên xe. Vui lòng thử lại sau khi hệ thống cập nhật.');
+    }
+  }
+
+  /// Lỗi 400 do máy chủ cũ không biết trường mới ("property x should not exist").
+  static bool _unknownField(AppException e) =>
+      '${e.message} ${e.details ?? ''}'.contains('should not exist');
 
   Future<void> removeVehicle(String vehicleId) async {
     await _api.delete<dynamic>(ApiEndpoints.vehicleById(vehicleId));
@@ -441,8 +479,13 @@ class PbmsRepository {
 
   // -------------------------------------------------------- notifications
 
-  Future<NotificationPage> getNotifications() async =>
-      NotificationPage.fromJson(await _get(ApiEndpoints.myNotifications));
+  Future<NotificationPage> getNotifications() async {
+    try {
+      return NotificationPage.fromJson(await _get(ApiEndpoints.myNotifications));
+    } on NotFoundException {
+      return NotificationPage.unavailable;
+    }
+  }
 
   Future<void> markNotificationRead(String id) async {
     await _put(ApiEndpoints.markNotificationRead(id));

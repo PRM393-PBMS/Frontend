@@ -131,7 +131,8 @@ class PlanOption extends StatelessWidget {
   }
 }
 
-/// Chọn ô đỗ cố định tại tầng cư dân.
+/// Chọn ô đỗ cố định tại tầng cư dân: một ô chọn gọn trong form,
+/// chạm vào mới mở hộp thoại liệt kê các ô còn trống theo tầng.
 class FixedSlotPicker extends StatelessWidget {
   final AsyncCubit<List<ParkingSlotModel>> slots;
   final String? selectedId;
@@ -144,11 +145,19 @@ class FixedSlotPicker extends StatelessWidget {
     required this.onSelected,
   });
 
+  Future<void> _open(BuildContext context, List<ParkingSlotModel> items) async {
+    final id = await showDialog<String>(
+      context: context,
+      builder: (_) => _SlotDialog(slots: items, selectedId: selectedId),
+    );
+    if (id != null) onSelected(id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PbmsAsync<List<ParkingSlotModel>>(
       cubit: slots,
-      loadingHeight: 48,
+      loadingHeight: 56,
       errorTitle: 'Không tải được ô đỗ',
       isEmpty: (d) => d.isEmpty,
       empty: const PbmsEmptyView(
@@ -158,43 +167,162 @@ class FixedSlotPicker extends StatelessWidget {
             'Tầng cư dân không còn ô trống cho loại xe này. Thử gói không cố định vị trí.',
       ),
       builder: (items) {
-        final byFloor = <String, List<ParkingSlotModel>>{};
-        for (final s in items) {
-          byFloor.putIfAbsent(s.floorName, () => []).add(s);
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final entry in byFloor.entries) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6, top: 4),
-                child: Text('${entry.key}, ${entry.value.length} ô trống',
-                    style: PbmsText.caption),
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final s in entry.value)
-                    ChoiceChip(
-                      label: Text(s.slotCode),
-                      selected: selectedId == s.slotId,
-                      selectedColor: PbmsTokens.tealTint,
-                      showCheckmark: false,
-                      side: BorderSide(
-                          color: selectedId == s.slotId
-                              ? PbmsTokens.teal
-                              : PbmsTokens.border),
-                      labelStyle: PbmsText.figure(13),
-                      onSelected: (_) => onSelected(s.slotId),
+        final chosen = items.where((s) => s.slotId == selectedId).firstOrNull;
+        return Semantics(
+          button: true,
+          label: chosen == null
+              ? 'Chọn ô đỗ cố định, còn ${items.length} ô trống'
+              : 'Ô đỗ đã chọn ${chosen.slotCode}, chạm để đổi',
+          excludeSemantics: true,
+          child: Material(
+            color: chosen == null ? Colors.white : PbmsTokens.tealTint,
+            borderRadius: BorderRadius.circular(13),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(13),
+              onTap: () => _open(context, items),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 56),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: chosen == null ? PbmsTokens.border : PbmsTokens.teal),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: chosen == null ? PbmsTokens.surfaceLow : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.local_parking_rounded,
+                          size: 20, color: PbmsTokens.teal),
                     ),
-                ],
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              chosen == null
+                                  ? 'Chọn ô đỗ'
+                                  : 'Ô ${chosen.slotCode}',
+                              style: PbmsText.bodyStrong),
+                          const SizedBox(height: 2),
+                          Text(
+                              chosen == null
+                                  ? 'Còn ${items.length} ô trống, chạm để xem'
+                                  : '${chosen.floorName}, chạm để đổi ô',
+                              style: PbmsText.caption),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.expand_more_rounded, color: PbmsTokens.muted),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-            ],
-          ],
+            ),
+          ),
         );
       },
+    );
+  }
+}
+
+/// Hộp thoại chọn ô: các ô trống nhóm theo tầng, chạm một ô là chọn và đóng.
+class _SlotDialog extends StatelessWidget {
+  final List<ParkingSlotModel> slots;
+  final String? selectedId;
+
+  const _SlotDialog({required this.slots, required this.selectedId});
+
+  @override
+  Widget build(BuildContext context) {
+    final byFloor = <String, List<ParkingSlotModel>>{};
+    for (final s in slots) {
+      byFloor.putIfAbsent(s.floorName, () => []).add(s);
+    }
+    for (final list in byFloor.values) {
+      list.sort((a, b) => a.slotCode.compareTo(b.slotCode));
+    }
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 440,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 12, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Chọn ô đỗ cố định', style: PbmsText.title),
+                  ),
+                  IconButton(
+                    tooltip: 'Đóng',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, color: PbmsTokens.muted),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                    'Ô này giữ riêng cho xe của bạn trong suốt thời hạn vé.',
+                    style: PbmsText.caption),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(right: 8, bottom: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final entry in byFloor.entries) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text('${entry.key}, ${entry.value.length} ô trống',
+                              style: PbmsText.label),
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final s in entry.value)
+                              ChoiceChip(
+                                label: Text(s.slotCode),
+                                selected: selectedId == s.slotId,
+                                selectedColor: PbmsTokens.tealTint,
+                                showCheckmark: false,
+                                side: BorderSide(
+                                    color: selectedId == s.slotId
+                                        ? PbmsTokens.teal
+                                        : PbmsTokens.border),
+                                labelStyle: PbmsText.figure(13),
+                                onSelected: (_) => Navigator.pop(context, s.slotId),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

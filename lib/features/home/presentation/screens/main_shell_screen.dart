@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/services/push_notification_service.dart';
+import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/widgets/pbms_bottom_bar.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +25,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   int _currentTab = AppTab.home;
   final Set<int> _visited = {AppTab.home};
   final ValueNotifier<int> _revision = ValueNotifier(0);
+
+  @override
+  void initState() {
+    super.initState();
+    // Chỉ khi đã đăng nhập mới kiểm tra thông báo mới để đẩy lên điện thoại.
+    PushNotificationService.instance.attach(context.read<PbmsRepository>());
+  }
 
   // ---- Main destinations ----
   static const _tabs = [

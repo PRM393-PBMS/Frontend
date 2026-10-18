@@ -156,9 +156,11 @@ class _VehicleOption extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(vehicle.licensePlate, style: PbmsText.bodyStrong),
+                      Text(vehicle.displayName,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.bodyStrong),
                       const SizedBox(height: 2),
-                      Text(vehicle.vehicleTypeName, style: PbmsText.caption),
+                      Text(vehicle.details,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
                     ],
                   ),
                 ),
@@ -197,6 +199,8 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
   late final _types = AsyncCubit(_repo.getVehicleTypeOptions);
   final _form = GlobalKey<FormState>();
   final _plate = TextEditingController();
+  final _nickname = TextEditingController();
+  final _model = TextEditingController();
   late String? _typeId = widget.preferredTypeId;
   bool _busy = false;
   String? _error;
@@ -205,6 +209,8 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
   void dispose() {
     _types.close();
     _plate.dispose();
+    _nickname.dispose();
+    _model.dispose();
     super.dispose();
   }
 
@@ -223,6 +229,8 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
       final v = await _repo.addVehicle(
         vehicleTypeId: typeId,
         licensePlate: normalizePlate(_plate.text),
+        nickname: _nickname.text,
+        modelName: _model.text,
       );
       if (mounted) Navigator.pop(context, v);
     } catch (e) {
@@ -271,12 +279,119 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
         const Text('Biển kiểm soát', style: PbmsText.label),
         const SizedBox(height: 6),
         Form(key: _form, child: PlateField(controller: _plate)),
+        const SizedBox(height: 14),
+        VehicleNameFields(nickname: _nickname, model: _model),
         if (_error != null) ...[
           const SizedBox(height: 10),
           Text(_error!, style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
         ],
         const SizedBox(height: 18),
         PbmsPrimaryButton(label: 'Lưu xe', busy: _busy, onPressed: _submit),
+      ],
+    );
+  }
+}
+
+/// Hai ô tuỳ chọn: tên tự đặt và mẫu xe (giới hạn theo cột trong DB).
+class VehicleNameFields extends StatelessWidget {
+  final TextEditingController nickname;
+  final TextEditingController model;
+
+  const VehicleNameFields({super.key, required this.nickname, required this.model});
+
+  @override
+  Widget build(BuildContext context) {
+    InputDecoration deco(String hint, IconData icon) => InputDecoration(
+          hintText: hint,
+          prefixIcon: Icon(icon, size: 20, color: PbmsTokens.muted),
+          counterText: '',
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('Tên xe (tuỳ chọn)', style: PbmsText.label),
+        const SizedBox(height: 6),
+        TextField(
+          controller: nickname,
+          maxLength: 40,
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.next,
+          decoration: deco('Vd. Xe của mẹ', Icons.label_outline_rounded),
+        ),
+        const SizedBox(height: 12),
+        const Text('Mẫu xe (tuỳ chọn)', style: PbmsText.label),
+        const SizedBox(height: 6),
+        TextField(
+          controller: model,
+          maxLength: 60,
+          textCapitalization: TextCapitalization.words,
+          decoration: deco('Vd. Toyota Vios 2020', Icons.directions_car_outlined),
+        ),
+      ],
+    );
+  }
+}
+
+/// Đổi tên tự đặt và mẫu xe của một xe đã đăng ký.
+class EditVehicleSheet extends StatefulWidget {
+  final VehicleModel vehicle;
+
+  const EditVehicleSheet({super.key, required this.vehicle});
+
+  static Future<VehicleModel?> show(BuildContext context, VehicleModel vehicle) =>
+      PbmsSheetFrame.show<VehicleModel>(context, (_) => EditVehicleSheet(vehicle: vehicle));
+
+  @override
+  State<EditVehicleSheet> createState() => _EditVehicleSheetState();
+}
+
+class _EditVehicleSheetState extends State<EditVehicleSheet> {
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+  late final _nickname = TextEditingController(text: widget.vehicle.nickname ?? '');
+  late final _model = TextEditingController(text: widget.vehicle.modelName ?? '');
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nickname.dispose();
+    _model.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final v = await _repo.renameVehicle(
+        widget.vehicle.id,
+        nickname: _nickname.text,
+        modelName: _model.text,
+      );
+      if (mounted) Navigator.pop(context, v);
+    } catch (e) {
+      if (mounted) setState(() => _error = errorText(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = widget.vehicle;
+    return PbmsSheetFrame(
+      title: 'Thông tin xe',
+      subtitle: '${v.licensePlate}, ${v.vehicleTypeName}',
+      children: [
+        VehicleNameFields(nickname: _nickname, model: _model),
+        if (_error != null) ...[
+          const SizedBox(height: 10),
+          Text(_error!, style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
+        ],
+        const SizedBox(height: 18),
+        PbmsPrimaryButton(label: 'Lưu', busy: _busy, onPressed: _submit),
       ],
     );
   }

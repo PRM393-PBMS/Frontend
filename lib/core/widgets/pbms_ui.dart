@@ -81,7 +81,8 @@ class PbmsCard extends StatelessWidget {
         border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: child,
+      // ListTile / InkWell bên trong vẽ hiệu ứng chạm lên nền thẻ, không bị nền trắng che.
+      child: Material(type: MaterialType.transparency, child: child),
     );
   }
 }
