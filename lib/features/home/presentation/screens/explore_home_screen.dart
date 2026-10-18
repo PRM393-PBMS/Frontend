@@ -275,14 +275,12 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
         ),
       ),
       children: [
-        // Nền bản đồ CARTO (dữ liệu OSM): máy chủ tile.openstreetmap.org chặn /
-        // không trả ảnh cho ứng dụng nên bản đồ chỉ hiện nền xám.
+        // Nền bản đồ OpenStreetMap France: tile.openstreetmap.org không trả ảnh
+        // cho ứng dụng (bản đồ chỉ hiện xám), CARTO thì đòi API key.
         TileLayer(
-          urlTemplate:
-              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-          retinaMode: RetinaMode.isHighDensity(context),
-          maxNativeZoom: 20,
+          urlTemplate: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
+          maxNativeZoom: 19,
           userAgentPackageName: 'com.prm393.parking.prm393_frontend',
         ),
         MarkerLayer(
@@ -296,7 +294,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           alignment: AttributionAlignment.bottomLeft,
           attributions: [
             TextSourceAttribution('OpenStreetMap contributors'),
-            TextSourceAttribution('CARTO'),
+            TextSourceAttribution('OpenStreetMap France'),
           ],
         ),
       ],
