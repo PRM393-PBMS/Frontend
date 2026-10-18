@@ -15,6 +15,7 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
 /// Số liệu hoạt động của khách hàng, tổng hợp từ lượt gửi, vé tháng, đặt chỗ.
@@ -22,7 +23,7 @@ typedef _Stats = ({
   int sessionsThisMonth,
   int activePasses,
   int upcomingReservations,
-  List<({String plate, String type, bool monthly})> vehicles,
+  List<({String id, String plate, String type, bool monthly})> vehicles,
 });
 
 class ProfileScreen extends StatefulWidget {
@@ -51,27 +52,26 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
       _repo.getMySessions(),
       _repo.getMySubscriptions(),
       _repo.getMyReservations(),
+      _repo.getMyVehicles(),
     ]);
     final sessions = results[0] as List<ParkingSessionModel>;
     final passes = results[1] as List<MonthlySubscriptionModel>;
     final reservations = results[2] as List<ReservationModel>;
+    final myVehicles = results[3] as List<VehicleModel>;
     final now = DateTime.now();
 
-    // Phương tiện = biển số từ vé tháng còn hiệu lực + các lượt gửi gần đây.
-    final vehicles = <String, ({String plate, String type, bool monthly})>{};
-    for (final p in passes.where((p) => p.isActive)) {
-      vehicles[p.licensePlate] =
-          (plate: p.licensePlate, type: p.vehicleType, monthly: true);
-    }
-    for (final s in sessions) {
-      vehicles.putIfAbsent(
-          s.licensePlateIn,
-          () => (
-                plate: s.licensePlateIn,
-                type: s.vehicleTypeName ?? 'Phương tiện',
-                monthly: false,
-              ));
-    }
+    // Xe đã đăng ký vào tài khoản; đánh dấu xe đang có vé tháng hiệu lực.
+    final monthlyPlates =
+        passes.where((p) => p.isActive).map((p) => p.licensePlate).toSet();
+    final vehicles = [
+      for (final v in myVehicles)
+        (
+          id: v.id,
+          plate: v.licensePlate,
+          type: v.vehicleTypeName,
+          monthly: monthlyPlates.contains(v.licensePlate),
+        ),
+    ];
 
     return (
       sessionsThisMonth: sessions
@@ -80,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
           .length,
       activePasses: passes.where((p) => p.isActive).length,
       upcomingReservations: reservations.where((r) => r.canModify).length,
-      vehicles: vehicles.values.take(5).toList(),
+      vehicles: vehicles,
     );
   }
 
@@ -166,10 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => ShellScope.maybeOf(context)
-                                ?.goTab(AppTab.pass),
+                            onPressed: _addVehicle,
                             icon: const Icon(Icons.add_circle_outline_rounded),
-                            label: const Text('Đăng ký vé tháng cho xe'),
+                            label: const Text('Thêm biển số xe mới'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: PbmsTokens.teal,
                               backgroundColor: PbmsTokens.tealTint,
@@ -378,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     );
   }
 
-  Widget _buildVehicleCard(({String plate, String type, bool monthly}) v) {
+  Widget _buildVehicleCard(({String id, String plate, String type, bool monthly}) v) {
     final isMotorbike = v.type.toLowerCase().contains('máy');
     return Container(
       padding: const EdgeInsets.all(12),
@@ -418,10 +417,51 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
             ),
           ),
           if (v.monthly)
-            const PbmsStatusPill(StatusInfo('Vé tháng', PbmsTokens.teal)),
+            const PbmsStatusPill(StatusInfo('Vé tháng', PbmsTokens.teal))
+          else
+            IconButton(
+              tooltip: 'Xoá xe ${v.plate}',
+              onPressed: () => _removeVehicle(v.id, v.plate),
+              icon: const Icon(Icons.delete_outline_rounded, color: PbmsTokens.muted),
+            ),
         ],
       ),
     );
+  }
+
+  Future<void> _addVehicle() async {
+    final added = await AddVehicleSheet.show(context);
+    if (added == null || !mounted) return;
+    showPbmsSnack(context, 'Đã thêm xe ${added.licensePlate}.');
+    ShellScope.dataChanged(context);
+    reloadAll();
+  }
+
+  Future<void> _removeVehicle(String id, String plate) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xoá xe?'),
+        content: Text('Xe $plate sẽ bị xoá khỏi tài khoản.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Giữ lại')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
+            child: const Text('Xoá xe'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _repo.removeVehicle(id);
+      if (!mounted) return;
+      showPbmsSnack(context, 'Đã xoá xe $plate.');
+      reloadAll();
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
   }
 
   Widget _buildActionTile({

@@ -103,17 +103,66 @@ class PbmsRepository {
 
   // ---------------------------------------------------------------- wallet
 
-  Future<WalletModel> getWallet() async =>
-      WalletModel.fromJson(_obj(await _get(ApiEndpoints.myWallet), 'ví'));
+  String? _walletId;
 
-  Future<PaymentLinkModel> topUpWallet(int amount) async => PaymentLinkModel.fromJson(
-        _obj(await _post(ApiEndpoints.walletTopUp, {'amount': amount}), 'nạp ví'),
-      );
+  /// Mở ví (tạo nếu chưa có) và nhớ walletId cho các lần gọi sau.
+  Future<String> _ensureWalletId() async {
+    final cached = _walletId;
+    if (cached != null) return cached;
+    final raw = _obj(await _post(ApiEndpoints.ensureWallet), 'ví');
+    final id = JsonRead.str(raw, 'walletId');
+    if (id.isEmpty) {
+      throw const ServerException(message: 'Không mở được ví.');
+    }
+    return _walletId = id;
+  }
 
-  /// Trả về `true` nếu PayOS đã xác nhận lệnh nạp.
+  Future<WalletModel> getWallet() async {
+    final id = await _ensureWalletId();
+    return WalletModel.fromJson(_obj(await _get(ApiEndpoints.walletById(id)), 'ví'));
+  }
+
+  Future<PaymentLinkModel> topUpWallet(int amount) async {
+    final id = await _ensureWalletId();
+    return PaymentLinkModel.fromJson(
+      _obj(await _post(ApiEndpoints.walletTopUp(id), {'amount': amount}), 'nạp ví'),
+    );
+  }
+
+  /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
   Future<bool> checkTopUp(String paymentId) async {
-    final raw = _obj(await _get(ApiEndpoints.walletTopUpStatus(paymentId)), 'nạp ví');
+    final raw = _obj(await _get(ApiEndpoints.syncPayment(paymentId)), 'thanh toán');
     return JsonRead.str(raw, 'paymentStatus').toLowerCase() == 'success';
+  }
+
+  /// Xoá walletId đã nhớ (gọi khi đăng xuất / đổi tài khoản).
+  void clearSessionCache() => _walletId = null;
+
+  // ---------------------------------------------------------------- vehicles
+
+  Future<List<VehicleModel>> getMyVehicles() async =>
+      _list(await _get(ApiEndpoints.myVehicles), VehicleModel.fromJson);
+
+  Future<VehicleModel> addVehicle({required String vehicleTypeId, required String licensePlate}) async =>
+      VehicleModel.fromJson(_obj(
+        await _post(ApiEndpoints.vehicles, {
+          'vehicleTypeId': vehicleTypeId,
+          'licensePlate': licensePlate,
+        }),
+        'xe',
+      ));
+
+  Future<void> removeVehicle(String vehicleId) async {
+    await _api.delete<dynamic>(ApiEndpoints.vehicleById(vehicleId));
+  }
+
+  /// Loại xe khách có thể đăng ký (từ bảng giá công khai; danh mục loại xe chỉ dành cho quản lý).
+  Future<List<VehicleTypeOption>> getVehicleTypeOptions() async {
+    final seen = <String, String>{};
+    for (final p in await getPricingPolicies()) {
+      seen.putIfAbsent(p.vehicleTypeId, () => p.vehicleTypeName);
+    }
+    return [for (final e in seen.entries) VehicleTypeOption(e.key, e.value)];
   }
 
   // --------------------------------------------------------- reservations
@@ -125,9 +174,10 @@ class PbmsRepository {
         _obj(await _get(ApiEndpoints.getReservationById(reservationId)), 'đặt chỗ'),
       );
 
-  Future<PaymentLinkModel> createReservation(DateTime expectedEntryTime) async =>
+  Future<PaymentLinkModel> createReservation(DateTime expectedEntryTime, String vehicleId) async =>
       PaymentLinkModel.fromJson(_obj(
         await _post(ApiEndpoints.reservations, {
+          'vehicleId': vehicleId,
           'expectedEntryTime': expectedEntryTime.toUtc().toIso8601String(),
         }),
         'đặt chỗ',
@@ -168,15 +218,15 @@ class PbmsRepository {
 
   Future<RegistrationResultModel> registerSubscription({
     required String packageId,
-    required String vehicleTypeId,
-    required String licensePlate,
+    required String vehicleId,
     String? fixedSlotId,
+    String paymentMethod = 'PayOS',
   }) async =>
       RegistrationResultModel.fromJson(_obj(
         await _post(ApiEndpoints.registerSubscription, {
           'packageId': packageId,
-          'vehicleTypeId': vehicleTypeId,
-          'licensePlate': licensePlate,
+          'vehicleId': vehicleId,
+          'paymentMethod': paymentMethod,
           if (fixedSlotId != null) 'fixedSlotId': fixedSlotId,
         }),
         'đăng ký gói',
@@ -248,10 +298,12 @@ class PbmsRepository {
     required String signerName,
     required String contentHash,
     required Uint8List signaturePng,
+    String paymentMethod = 'PayOS',
   }) async =>
       SignContractResultModel.fromJson(_obj(
         await _post(ApiEndpoints.signContract(contractId), {
           'agreed': true,
+          'paymentMethod': paymentMethod,
           'signerName': signerName,
           'contentHash': contentHash,
           'signatureImage': 'data:image/png;base64,${base64Encode(signaturePng)}',

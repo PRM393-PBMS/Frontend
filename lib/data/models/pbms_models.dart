@@ -301,9 +301,12 @@ class PrepayResultModel {
   }
 }
 
+/// Giao dịch ví (định dạng của module wallets): nạp (Credit) hoặc chi (Debit).
+/// Giao dịch ví (định dạng của module wallets): nạp (Credit) hoặc chi (Debit).
 class WalletTransactionModel {
   final String id;
   final String type;
+  final bool isCredit;
   final double amount;
   final double balanceAfter;
   final String? description;
@@ -312,48 +315,87 @@ class WalletTransactionModel {
   const WalletTransactionModel({
     required this.id,
     required this.type,
+    required this.isCredit,
     required this.amount,
     required this.balanceAfter,
     this.description,
     required this.createdAt,
   });
 
-  bool get isTopUp => _is(type, 'topup');
+  bool get isTopUp => isCredit;
 
-  factory WalletTransactionModel.fromJson(J json) => WalletTransactionModel(
-        id: JsonRead.str(json, 'transactionId'),
-        type: JsonRead.str(json, 'type'),
-        amount: JsonRead.num_(json, 'amount'),
-        balanceAfter: JsonRead.num_(json, 'balanceAfter'),
-        description: JsonRead.strOrNull(json, 'description'),
-        createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
-      );
+  factory WalletTransactionModel.fromJson(J json) {
+    final signed = JsonRead.num_(json, 'amount');
+    final direction = JsonRead.strOrNull(json, 'direction');
+    return WalletTransactionModel(
+      id: JsonRead.str(json, 'walletTransactionId'),
+      type: JsonRead.str(json, 'type'),
+      isCredit: direction == null ? signed > 0 : _is(direction, 'credit'),
+      amount: JsonRead.numOrNull(json, 'absoluteAmount') ?? signed.abs(),
+      balanceAfter: JsonRead.num_(json, 'balanceAfter'),
+      description: JsonRead.strOrNull(json, 'description'),
+      createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
+    );
+  }
 }
 
 class WalletModel {
+  /// Hạn mức nạp của backend (WalletsService: 2.000 - 10.000.000 VND, số nguyên).
+  static const double minTopUp = 2000;
+  static const double maxTopUp = 10000000;
+
+  final String walletId;
   final double balance;
   final List<WalletTransactionModel> transactions;
-  final int pendingTopUps;
-  final double topUpMin;
-  final double topUpMax;
 
-  const WalletModel({
-    required this.balance,
-    required this.transactions,
-    required this.pendingTopUps,
-    required this.topUpMin,
-    required this.topUpMax,
-  });
+  const WalletModel({required this.walletId, required this.balance, required this.transactions});
+
+  double get topUpMin => minTopUp;
+  double get topUpMax => maxTopUp;
 
   factory WalletModel.fromJson(J json) => WalletModel(
-        balance: JsonRead.num_(json, 'balance'),
+        walletId: JsonRead.str(json, 'walletId'),
+        balance: JsonRead.num_(json, 'walletBalance'),
         transactions: JsonRead.list(json['transactions'])
             .map(WalletTransactionModel.fromJson)
             .toList(),
-        pendingTopUps: JsonRead.list(json['pendingTopUps']).length,
-        topUpMin: JsonRead.num_(json, 'topUpMin', 10000),
-        topUpMax: JsonRead.num_(json, 'topUpMax', 5000000),
       );
+}
+
+/// Xe đã đăng ký vào tài khoản (`/api/vehicles/my`).
+class VehicleModel {
+  final String id;
+  final String vehicleTypeId;
+  final String vehicleTypeName;
+  final String licensePlate;
+
+  const VehicleModel({
+    required this.id,
+    required this.vehicleTypeId,
+    required this.vehicleTypeName,
+    required this.licensePlate,
+  });
+
+  bool get isMotorbike => vehicleTypeName.toLowerCase().contains('máy');
+  bool get isCar {
+    final n = vehicleTypeName.toLowerCase();
+    return n.contains('ô tô') || n.contains('oto') || n.contains('car');
+  }
+
+  factory VehicleModel.fromJson(J json) => VehicleModel(
+        id: JsonRead.str(json, 'vehicleId'),
+        vehicleTypeId: JsonRead.str(json, 'vehicleTypeId'),
+        vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
+        licensePlate: JsonRead.str(json, 'licensePlate'),
+      );
+}
+
+/// Loại xe khách được chọn (lấy từ bảng giá công khai).
+class VehicleTypeOption {
+  final String id;
+  final String name;
+
+  const VehicleTypeOption(this.id, this.name);
 }
 
 class FacilityAvailabilityModel {
@@ -608,7 +650,15 @@ class RegistrationResultModel {
   final String? contractId;
   final PaymentLinkModel? link;
 
-  const RegistrationResultModel({this.subscriptionId, this.contractId, this.link});
+  /// Trả bằng ví: gói được kích hoạt ngay, không có link PayOS.
+  final bool activated;
+
+  const RegistrationResultModel({
+    this.subscriptionId,
+    this.contractId,
+    this.link,
+    this.activated = false,
+  });
 
   bool get requiresContract => contractId != null;
 
@@ -616,10 +666,12 @@ class RegistrationResultModel {
     final contractId = JsonRead.bool_(json, 'requiresContract')
         ? JsonRead.strOrNull(json, 'contractId')
         : null;
+    final activated = _is(JsonRead.strOrNull(json, 'status'), 'active');
     return RegistrationResultModel(
       subscriptionId: JsonRead.strOrNull(json, 'subscriptionId'),
       contractId: contractId,
-      link: contractId == null ? PaymentLinkModel.fromJson(json) : null,
+      link: contractId == null && !activated ? PaymentLinkModel.fromJson(json) : null,
+      activated: activated,
     );
   }
 }

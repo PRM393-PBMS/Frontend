@@ -133,11 +133,6 @@ class _BalanceCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(CurrencyFormatter.format(wallet.balance),
               style: PbmsText.figure(30, color: Colors.white)),
-          if (wallet.pendingTopUps > 0) ...[
-            const SizedBox(height: 6),
-            Text('${wallet.pendingTopUps} lệnh nạp đang chờ PayOS xác nhận',
-                style: const TextStyle(fontSize: 12, color: Color(0xFFE4F7F8))),
-          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,

@@ -12,6 +12,7 @@ import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/screens/contract_screen.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/widgets/pass_sheets.dart';
+import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 
 class MonthlyPassScreen extends StatefulWidget {
   const MonthlyPassScreen({super.key});
@@ -84,6 +85,13 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
     if (r.requiresContract && subscriptionId != null) {
       setState(() => _activeTab = 0);
       await _openContract(subscriptionId);
+      return;
+    }
+    if (r.activated) {
+      _changed();
+      if (!mounted) return;
+      showPbmsSnack(context, 'Đã trả bằng ví và kích hoạt vé tháng.');
+      setState(() => _activeTab = 0);
       return;
     }
     final link = r.link;
@@ -706,9 +714,9 @@ class _RegistrationForm extends StatefulWidget {
 }
 
 class _RegistrationFormState extends State<_RegistrationForm> {
-  final _form = GlobalKey<FormState>();
-  final _plate = TextEditingController();
   late final PbmsRepository _repo = context.read<PbmsRepository>();
+  VehicleModel? _vehicle;
+  bool _payByWallet = false;
 
   late String _vehicleTypeId = widget.packages.first.vehicleTypeId;
   String? _packageId;
@@ -747,7 +755,6 @@ class _RegistrationFormState extends State<_RegistrationForm> {
 
   @override
   void dispose() {
-    _plate.dispose();
     _slots?.close();
     super.dispose();
   }
@@ -781,7 +788,11 @@ class _RegistrationFormState extends State<_RegistrationForm> {
   Future<void> _submit() async {
     final pkg = _selected;
     if (pkg == null) return;
-    if (!(_form.currentState?.validate() ?? false)) return;
+    final vehicle = _vehicle;
+    if (vehicle == null) {
+      setState(() => _error = 'Chọn xe đăng ký vé.');
+      return;
+    }
     if (_needsSlot && _slotId == null) {
       setState(() => _error = 'Chọn một ô đỗ cố định.');
       return;
@@ -793,12 +804,12 @@ class _RegistrationFormState extends State<_RegistrationForm> {
     try {
       final result = await _repo.registerSubscription(
         packageId: pkg.packageId,
-        vehicleTypeId: pkg.vehicleTypeId,
-        licensePlate: normalizePlate(_plate.text),
+        vehicleId: vehicle.id,
         fixedSlotId: _needsSlot ? _slotId : null,
+        // Gói có hợp đồng: chọn cách trả ở bước ký.
+        paymentMethod: _payByWallet && pkg.durationMonths < 3 ? 'Wallet' : 'PayOS',
       );
       if (!mounted) return;
-      _plate.clear();
       await widget.onRegistered(result);
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));
@@ -814,9 +825,8 @@ class _RegistrationFormState extends State<_RegistrationForm> {
 
     return PbmsCard(
       padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _form,
-        child: Column(
+      child: Builder(
+        builder: (context) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text('Đăng ký vé tháng mới', style: PbmsText.title),
@@ -875,9 +885,18 @@ class _RegistrationFormState extends State<_RegistrationForm> {
               ),
             ),
             const SizedBox(height: 14),
-            const Text('Biển kiểm soát', style: PbmsText.label),
+            const Text('Xe đăng ký vé', style: PbmsText.label),
             const SizedBox(height: 6),
-            PlateField(controller: _plate),
+            VehiclePicker(
+              selectedId: _vehicle?.id,
+              filter: (v) => v.vehicleTypeId == _vehicleTypeId,
+              preferredTypeId: _vehicleTypeId,
+              emptyMessage: 'Chưa có xe loại này trong tài khoản. Thêm xe để đăng ký vé.',
+              onChanged: (v) => setState(() {
+                _vehicle = v;
+                _error = null;
+              }),
+            ),
             const SizedBox(height: 14),
             const Text('Kỳ hạn cước', style: PbmsText.label),
             const SizedBox(height: 6),
@@ -927,6 +946,28 @@ class _RegistrationFormState extends State<_RegistrationForm> {
                 ],
               ),
             ),
+            if ((selected?.durationMonths ?? 0) < 3) ...[
+              const SizedBox(height: 14),
+              const Text('Thanh toán', style: PbmsText.label),
+              const SizedBox(height: 6),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                      value: false,
+                      label: Text('PayOS'),
+                      icon: Icon(Icons.credit_card_rounded)),
+                  ButtonSegment(
+                      value: true,
+                      label: Text('Ví PBMS'),
+                      icon: Icon(Icons.account_balance_wallet_rounded)),
+                ],
+                selected: {_payByWallet},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _payByWallet = s.first),
+                style: const ButtonStyle(
+                    minimumSize: WidgetStatePropertyAll(Size(48, 48))),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 10),
               Text(_error!,
@@ -936,8 +977,10 @@ class _RegistrationFormState extends State<_RegistrationForm> {
             PbmsPrimaryButton(
               label: (selected?.durationMonths ?? 0) >= 3
                   ? 'Tiếp tục ký hợp đồng'
-                  : 'Thanh toán & kích hoạt',
-              icon: Icons.credit_card_rounded,
+                  : (_payByWallet ? 'Trả bằng ví & kích hoạt' : 'Thanh toán & kích hoạt'),
+              icon: (selected?.durationMonths ?? 0) >= 3
+                  ? Icons.draw_rounded
+                  : Icons.credit_card_rounded,
               busy: _busy,
               onPressed: selected == null ? null : _submit,
             ),

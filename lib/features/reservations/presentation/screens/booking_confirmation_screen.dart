@@ -11,6 +11,7 @@ import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
+import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Xác nhận đặt chỗ ô tô: chọn giờ vào, đặt cọc qua PayOS, nhận vé QR.
@@ -32,6 +33,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
           .firstOrNull);
 
   DateTime? _time;
+  VehicleModel? _vehicle;
   bool _submitting = false;
   String? _formError;
 
@@ -45,6 +47,11 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   }
 
   Future<void> _submit() async {
+    final vehicle = _vehicle;
+    if (vehicle == null) {
+      setState(() => _formError = 'Chọn ô tô sẽ vào bãi.');
+      return;
+    }
     final time = _time;
     if (time == null) {
       setState(() => _formError = 'Chọn giờ dự kiến vào bãi.');
@@ -60,7 +67,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       _formError = null;
     });
     try {
-      final link = await _repo.createReservation(time);
+      final link = await _repo.createReservation(time, vehicle.id);
       if (!mounted) return;
       final paid = await ReservationActions.payNew(context, link, () {});
       if (!mounted) return;
@@ -116,6 +123,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               const SizedBox(height: 20),
               _buildTicketCard(confirmed),
               if (confirmed == null) ...[
+                const SizedBox(height: 14),
+                _buildVehicleCard(),
                 const SizedBox(height: 14),
                 _buildTimeCard(),
               ],
@@ -221,22 +230,22 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               errorTitle: 'Không tải được bảng giá',
               builder: (pricing) => Column(
                 children: [
-                  const Row(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
+                      const Expanded(
                         child: _BookingInfoField(
                           label: 'Bãi đỗ',
                           value: PbmsFacility.name,
                           detail: PbmsFacility.area,
                         ),
                       ),
-                      SizedBox(width: 14),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: _BookingInfoField(
-                          label: 'Vị trí đỗ',
-                          value: 'Phân ô khi vào bãi',
-                          detail: 'Camera nhận biển số tại cổng',
+                          label: 'Xe',
+                          value: _vehicle?.licensePlate ?? 'Chưa chọn',
+                          detail: 'Phân ô khi vào bãi',
                         ),
                       ),
                     ],
@@ -272,6 +281,30 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleCard() {
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Chọn xe của bạn', style: PbmsText.section),
+          const SizedBox(height: 4),
+          const Text('Bãi chỉ nhận đặt chỗ trước cho ô tô.', style: PbmsText.caption),
+          const SizedBox(height: 12),
+          VehiclePicker(
+            selectedId: _vehicle?.id,
+            filter: (v) => v.isCar,
+            emptyMessage: 'Tài khoản chưa có ô tô nào. Thêm xe để đặt chỗ.',
+            onChanged: (v) => setState(() {
+              _vehicle = v;
+              _formError = null;
+            }),
           ),
         ],
       ),

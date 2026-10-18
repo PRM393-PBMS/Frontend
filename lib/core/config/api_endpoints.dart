@@ -93,9 +93,17 @@ class ApiEndpoints {
   static String signContract(String id) => '/api/contracts/$id/sign';
   static String verifyContract(String id) => '/api/contracts/$id/verify';
 
-  // ================= Wallet (/api/wallet) =================
-  static const String myWallet = '/api/wallet/my';
-  static const String walletTopUp = '/api/wallet/top-up';
-  static String walletTopUpStatus(String paymentId) =>
-      '/api/wallet/top-up/$paymentId/status';
+  // ================= Wallet (/api/wallet, module wallets của nhóm) =================
+  /// POST: mở ví (tạo nếu chưa có), trả walletId.
+  static const String ensureWallet = '/api/wallet';
+  static String walletById(String walletId) => '/api/wallet/$walletId';
+  static String walletTopUp(String walletId) => '/api/wallet/$walletId/top-up';
+
+  /// Khách tự kiểm tra một thanh toán PayOS của mình (tra trực tiếp PayOS).
+  static String syncPayment(String paymentId) => '/api/payments/$paymentId/sync';
+
+  // ================= Vehicles (/api/vehicles) =================
+  static const String vehicles = '/api/vehicles';
+  static const String myVehicles = '/api/vehicles/my';
+  static String vehicleById(String id) => '/api/vehicles/$id';
 }

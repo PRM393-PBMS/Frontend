@@ -48,22 +48,63 @@ void main() {
     expect(paid.exitPass?.code, 'XY7K9M');
   });
 
-  test('Ví: số dư, giao dịch nạp/trả và lệnh nạp đang chờ', () {
+  test('Ví (module wallets): số dư, giao dịch Credit/Debit', () {
     final w = WalletModel.fromJson({
-      'balance': 120000,
+      'walletId': 'w1',
+      'userId': 'u1',
+      'walletBalance': 120000,
       'transactions': [
-        {'transactionId': 't1', 'type': 'TopUp', 'amount': 200000, 'balanceAfter': 200000,
-          'createdAt': '2026-10-17T04:00:00.000Z'},
-        {'transactionId': 't2', 'type': 'Payment', 'amount': 80000, 'balanceAfter': 120000,
-          'createdAt': '2026-10-17T05:00:00.000Z'},
+        {
+          'walletTransactionId': 't1',
+          'direction': 'Credit',
+          'type': 'TopUp',
+          'amount': 200000,
+          'absoluteAmount': 200000,
+          'balanceAfter': 200000,
+          'createdAt': '2026-10-17T04:00:00.000Z',
+          'description': 'Nạp ví qua PayOS',
+        },
+        {
+          'walletTransactionId': 't2',
+          'direction': 'Debit',
+          'type': 'ParkingFee',
+          'amount': -80000,
+          'absoluteAmount': 80000,
+          'balanceAfter': 120000,
+          'createdAt': '2026-10-17T05:00:00.000Z',
+          'description': 'Thanh toán phí gửi xe bằng ví',
+        },
       ],
-      'pendingTopUps': [{'paymentId': 'p'}],
-      'topUpMin': 10000,
-      'topUpMax': 5000000,
     });
+    expect(w.walletId, 'w1');
     expect(w.balance, 120000);
     expect(w.transactions.first.isTopUp, isTrue);
     expect(w.transactions.last.isTopUp, isFalse);
-    expect(w.pendingTopUps, 1);
+    expect(w.transactions.last.amount, 80000);
+  });
+
+  test('Xe của tôi (/api/vehicles/my)', () {
+    final v = VehicleModel.fromJson({
+      'vehicleId': 'v1',
+      'userId': 'u1',
+      'vehicleTypeId': 'vt1',
+      'vehicleTypeName': 'Ô tô 2',
+      'licensePlate': '51K12345',
+    });
+    expect(v.id, 'v1');
+    expect(v.isCar, isTrue);
+    expect(v.isMotorbike, isFalse);
+  });
+
+  test('Đăng ký vé trả bằng ví: kích hoạt ngay, không có link PayOS', () {
+    final r = RegistrationResultModel.fromJson({
+      'subscriptionId': 's1',
+      'paymentMethod': 'Wallet',
+      'walletBalance': 50000,
+      'status': 'Active',
+    });
+    expect(r.activated, isTrue);
+    expect(r.link, isNull);
+    expect(r.requiresContract, isFalse);
   });
 }

@@ -7,6 +7,7 @@ import 'core/services/app_lock_controller.dart';
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
+import 'data/pbms_repository.dart';
 import 'features/auth/presentation/blocs/auth_bloc.dart';
 import 'features/auth/presentation/blocs/auth_state.dart';
 import 'features/auth/presentation/screens/app_lock_screen.dart';
@@ -42,6 +43,7 @@ class _ParkingAppState extends State<ParkingApp> {
       case AuthStatus.unauthenticated:
       case AuthStatus.failure:
         _sawSignedOut = true;
+        context.read<PbmsRepository>().clearSessionCache();
         _lock.onSignedInChanged(false);
       case AuthStatus.initial:
       case AuthStatus.loading:

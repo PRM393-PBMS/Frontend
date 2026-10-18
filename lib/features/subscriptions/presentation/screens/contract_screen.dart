@@ -39,6 +39,7 @@ class _ContractScreenState extends State<ContractScreen> {
     text: (context.read<AuthBloc>().state.user?.fullName ?? '').trim(),
   );
   bool _agreed = false;
+  bool _payByWallet = false;
   bool _busy = false;
   String? _error;
   String? _paymentError;
@@ -126,9 +127,15 @@ class _ContractScreenState extends State<ContractScreen> {
         signerName: name,
         contentHash: c.contentHash,
         signaturePng: png,
+        paymentMethod: _payByWallet ? 'Wallet' : 'PayOS',
       );
       if (!mounted) return;
       _contract.patch((_) => result.contract);
+      if (_payByWallet && result.paymentError == null) {
+        // Trả bằng ví: gói được kích hoạt ngay sau khi ký.
+        Navigator.pop(context, true);
+        return;
+      }
       final link = result.payment;
       if (link != null && link.hasUrl) {
         await _pay(link);
@@ -250,8 +257,22 @@ class _ContractScreenState extends State<ContractScreen> {
             style: PbmsText.body,
           ),
         ),
+        const SizedBox(height: 6),
+        const Text('Thanh toán', style: PbmsText.label),
+        const SizedBox(height: 6),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('PayOS'), icon: Icon(Icons.credit_card_rounded)),
+            ButtonSegment(
+                value: true, label: Text('Ví PBMS'), icon: Icon(Icons.account_balance_wallet_rounded)),
+          ],
+          selected: {_payByWallet},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) => setState(() => _payByWallet = s.first),
+          style: const ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(48, 48))),
+        ),
         if (_error != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(_error!, style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
         ],
         const SizedBox(height: 14),
