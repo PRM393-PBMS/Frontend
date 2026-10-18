@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:prm393_frontend/core/services/location_service.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
@@ -43,15 +45,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         lots: _repo.getParkingLots,
         facility: _repo.getAvailability,
         pricing: _repo.getPricingPolicies,
+        sessions: _repo.getMySessions,
+        slots: _repo.getAllSlots,
       ));
   late final _activity = AsyncCubit<_Activity>(_loadActivity);
   int _unread = 0;
   Timer? _ticker;
 
+  /// Vị trí thực tế của khách để gợi ý bãi gần nhất.
+  LocationResult? _loc;
+  bool _locating = false;
+  StreamSubscription<AsyncState<List<LotView>>>? _lotsSub;
+
   @override
   void initState() {
     super.initState();
     _loadUnread();
+    _locate();
+    // Dòng "Gần bãi X" ở đầu trang cần danh sách bãi: vẽ lại khi tải xong.
+    _lotsSub = _lots.stream.listen((_) {
+      if (mounted) setState(() {});
+    });
     // Đồng hồ thời gian đỗ cập nhật mỗi phút.
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
@@ -68,6 +82,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   @override
   void dispose() {
     _ticker?.cancel();
+    _lotsSub?.cancel();
     _lots.close();
     _activity.close();
     super.dispose();
@@ -96,12 +111,57 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     );
   }
 
+  Future<void> _locate({bool fresh = false}) async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    final r = await LocationService.instance.current(fresh: fresh);
+    if (!mounted) return;
+    setState(() {
+      _loc = r;
+      _locating = false;
+    });
+  }
+
+  /// Bấm dòng vị trí: lấy lại vị trí, hoặc mở cài đặt nếu quyền / GPS đang tắt.
+  Future<void> _onLocationTap() async {
+    switch (_loc?.status) {
+      case LocationStatus.serviceOff:
+        await Geolocator.openLocationSettings();
+      case LocationStatus.deniedForever:
+        await Geolocator.openAppSettings();
+      default:
+        await _locate(fresh: true);
+    }
+  }
+
   Future<void> _loadUnread() async {
     try {
       final page = await _repo.getNotifications();
       if (mounted) setState(() => _unread = page.unreadCount);
     } catch (_) {
       // Huy hiệu chưa đọc không chặn trang chủ.
+    }
+  }
+
+  String get _locationLabel {
+    if (_locating) return 'Đang lấy vị trí của bạn...';
+    switch (_loc?.status) {
+      case LocationStatus.ok:
+        final lots = _lots.state.data ?? const <LotView>[];
+        final pos = _loc!.position;
+        final near = lots.where((l) => l.distanceFrom(pos) != null).toList()
+          ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
+        if (near.isEmpty) return 'Đã lấy vị trí của bạn';
+        return 'Gần ${near.first.name}, ${LocationService.formatDistance(near.first.distanceFrom(pos)!)}';
+      case LocationStatus.serviceOff:
+        return 'Bật GPS để gợi ý bãi gần bạn';
+      case LocationStatus.denied:
+      case LocationStatus.deniedForever:
+        return 'Cho phép vị trí để gợi ý bãi gần bạn';
+      case LocationStatus.failed:
+        return 'Chưa lấy được vị trí, chạm để thử lại';
+      case null:
+        return 'Vị trí của bạn';
     }
   }
 
@@ -159,23 +219,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                   message: 'Khi bãi cấu hình tầng và ô đỗ, chỗ trống sẽ hiện ở đây.',
                 ),
                 builder: (lots) => lots.length > 1
-                    // Nhiều bãi: "Gợi ý bãi" như thiết kế gốc, bãi còn chỗ lên trước.
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          PbmsSectionTitle('Gợi ý bãi đỗ',
-                              trailing: Text('${lots.where((l) => l.available > 0).length} bãi còn chỗ',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: PbmsTokens.teal))),
-                          for (final l in [...lots]
-                            ..sort((a, b) => b.available.compareTo(a.available))) ...[
-                            _LotCard(lot: l, onOpenMap: widget.onOpenMap),
-                            const SizedBox(height: 11),
-                          ],
-                        ],
-                      )
+                    ? _buildLotSuggestions(lots)
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -193,6 +237,69 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           ),
         ),
       ),
+    );
+  }
+
+  /// Nhiều bãi: "Bãi gần bạn" (theo GPS), "Bãi thường dùng" (theo lượt gửi),
+  /// rồi các bãi còn lại (còn chỗ lên trước).
+  Widget _buildLotSuggestions(List<LotView> lots) {
+    final pos = _loc?.position;
+    final nearby = lots.where((l) => l.distanceFrom(pos) != null).toList()
+      ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
+    final frequent = lots.where((l) => l.visits > 0).toList()
+      ..sort((a, b) => b.visits.compareTo(a.visits));
+    final shown = {...nearby.take(3).map((l) => l.id), ...frequent.take(3).map((l) => l.id)};
+    final others = lots.where((l) => !shown.contains(l.id)).toList()
+      ..sort((a, b) => b.available.compareTo(a.available));
+
+    Widget card(LotView l) => Padding(
+          padding: const EdgeInsets.only(bottom: 11),
+          child: _LotCard(
+            lot: l,
+            distance: l.distanceFrom(pos),
+            onOpenMap: widget.onOpenMap,
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (nearby.isNotEmpty) ...[
+          const PbmsSectionTitle('Bãi gần bạn'),
+          ...nearby.take(3).map(card),
+          const SizedBox(height: 11),
+        ] else if (_loc?.ok == true) ...[
+          const PbmsCard(
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: PbmsTokens.teal),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Các bãi chưa được nhập toạ độ nên chưa sắp xếp được theo khoảng cách.',
+                    style: PbmsText.caption,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (frequent.isNotEmpty) ...[
+          const PbmsSectionTitle('Bãi thường dùng'),
+          ...frequent.take(3).map(card),
+          const SizedBox(height: 11),
+        ],
+        if (others.isNotEmpty) ...[
+          PbmsSectionTitle(
+            shown.isEmpty ? 'Gợi ý bãi đỗ' : 'Các bãi khác',
+            trailing: Text('${others.where((l) => l.available > 0).length} bãi còn chỗ',
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w600, color: PbmsTokens.teal)),
+          ),
+          ...others.map(card),
+        ],
+      ],
     );
   }
 
@@ -215,18 +322,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: () => widget.onOpenMap(null),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
+                    onTap: _onLocationTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.near_me_rounded,
-                              size: 16, color: PbmsTokens.teal),
-                          SizedBox(width: 5),
-                          Text(PbmsFacility.area, style: PbmsText.caption),
-                          Icon(Icons.expand_more_rounded,
-                              size: 17, color: PbmsTokens.muted),
+                          Icon(
+                              _loc?.ok == true
+                                  ? Icons.near_me_rounded
+                                  : Icons.location_disabled_outlined,
+                              size: 16,
+                              color: PbmsTokens.teal),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(_locationLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: PbmsText.caption),
+                          ),
+                          const Icon(Icons.refresh_rounded,
+                              size: 15, color: PbmsTokens.muted),
                         ],
                       ),
                     ),
@@ -805,12 +921,14 @@ class _CapacityCard extends StatelessWidget {
                       minimumSize: const Size(48, 44)),
                 )
               else
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 13),
-                  child: Text('Không cần đặt trước, vào bãi trực tiếp',
-                      style: PbmsText.caption),
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 13),
+                    child: Text('Không cần đặt trước, vào bãi trực tiếp',
+                        maxLines: 2, style: PbmsText.caption),
+                  ),
                 ),
-              const Spacer(),
+              if (c.isCar) const Spacer(),
               TextButton.icon(
                 onPressed: onOpenMap,
                 icon: const Icon(Icons.navigation_rounded, size: 16),
@@ -830,9 +948,10 @@ class _CapacityCard extends StatelessWidget {
 /// Thẻ gợi ý một bãi (thiết kế "Gợi ý bãi gần nhất" của main).
 class _LotCard extends StatelessWidget {
   final LotView lot;
+  final double? distance;
   final ValueChanged<String?> onOpenMap;
 
-  const _LotCard({required this.lot, required this.onOpenMap});
+  const _LotCard({required this.lot, required this.onOpenMap, this.distance});
 
   @override
   Widget build(BuildContext context) {
@@ -872,8 +991,16 @@ class _LotCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(lot.area ?? (lot.point == null ? 'Chưa có vị trí trên bản đồ' : ''),
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
+                    Text(
+                        [
+                          if (distance != null) 'Cách bạn ${LocationService.formatDistance(distance!)}',
+                          if (lot.visits > 0) 'Bạn đã gửi ${lot.visits} lần',
+                          if (distance == null && lot.visits == 0)
+                            lot.area ?? (lot.point == null ? 'Chưa có vị trí trên bản đồ' : ''),
+                        ].join(', '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PbmsText.caption),
                     const SizedBox(height: 8),
                     Row(
                       children: [

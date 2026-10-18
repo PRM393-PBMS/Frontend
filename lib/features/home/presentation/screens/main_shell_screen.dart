@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
-import 'package:prm393_frontend/core/widgets/floating_bottom_nav_bar.dart';
+import 'package:prm393_frontend/core/widgets/pbms_bottom_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/features/history/presentation/screens/history_screen.dart';
@@ -8,8 +8,9 @@ import 'package:prm393_frontend/features/home/presentation/screens/home_dashboar
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/profile/presentation/screens/profile_screen.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/screens/monthly_pass_screen.dart';
+import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
-/// Thanh điều hướng dùng chung với Floating Glass Pill + Radial Arc Menu
+/// Khung chính: 4 tab và nút Ví của tôi ở giữa thanh dưới.
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key});
 
@@ -56,6 +57,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _revision.value++;
   }
 
+  Future<void> _openWallet() async {
+    await Navigator.of(context).push(WalletScreen.riseRoute());
+    // Có thể vừa nạp tiền / trả phí → làm mới các tab.
+    _revision.value++;
+  }
+
   // ---- Body pages per tab index ----
   Widget _bodyForTab(int idx) {
     switch (idx) {
@@ -99,13 +106,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     : const SizedBox.shrink(),
             ],
           ),
-          bottomNavigationBar: FloatingBottomNavBar(
+          bottomNavigationBar: PbmsBottomBar(
             currentIndex: _currentTab,
             onTabChanged: _goTab,
             tabs: _tabs,
-            radialOptions: const [],
-            onCenterTap: () {},
-            showCenterButton: false,
+            centerIcon: Icons.account_balance_wallet_rounded,
+            centerLabel: 'Ví của tôi',
+            onCenterTap: _openWallet,
           ),
         ),
       ),

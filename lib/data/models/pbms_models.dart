@@ -353,7 +353,15 @@ class WalletModel {
   final double balance;
   final List<WalletTransactionModel> transactions;
 
-  const WalletModel({required this.walletId, required this.balance, required this.transactions});
+  /// Máy chủ lỗi khi tải lịch sử: vẫn hiện số dư, báo riêng phần lịch sử.
+  final String? historyError;
+
+  const WalletModel({
+    required this.walletId,
+    required this.balance,
+    required this.transactions,
+    this.historyError,
+  });
 
   double get topUpMin => minTopUp;
   double get topUpMax => maxTopUp;
@@ -579,6 +587,8 @@ class SubscriptionPackageModel {
 
 class ParkingSlotModel {
   final String slotId;
+  final String parkingId;
+  final String vehicleTypeName;
   final String floorId;
   final String floorName;
   final String slotCode;
@@ -588,6 +598,8 @@ class ParkingSlotModel {
 
   const ParkingSlotModel({
     required this.slotId,
+    this.parkingId = '',
+    this.vehicleTypeName = '',
     required this.floorId,
     required this.floorName,
     required this.slotCode,
@@ -600,6 +612,8 @@ class ParkingSlotModel {
 
   factory ParkingSlotModel.fromJson(J json) => ParkingSlotModel(
         slotId: JsonRead.str(json, 'slotId'),
+        parkingId: JsonRead.str(json, 'parkingId'),
+        vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
         floorId: JsonRead.str(json, 'floorId'),
         floorName: JsonRead.str(json, 'floorName'),
         slotCode: JsonRead.str(json, 'slotCode'),

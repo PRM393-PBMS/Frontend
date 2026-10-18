@@ -18,6 +18,31 @@ class WalletScreen extends StatefulWidget {
   static Future<void> open(BuildContext context) => Navigator.of(context)
       .push(MaterialPageRoute(builder: (_) => const WalletScreen()));
 
+  /// Mở từ nút Ví ở giữa thanh dưới: trang trồi lên và nở ra từ đáy giữa màn hình.
+  static Route<void> riseRoute() => PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 320),
+        reverseTransitionDuration: const Duration(milliseconds: 240),
+        pageBuilder: (_, __, ___) => const WalletScreen(),
+        transitionsBuilder: (context, animation, _, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween(begin: const Offset(0, 0.06), end: Offset.zero).animate(curved),
+              child: ScaleTransition(
+                alignment: Alignment.bottomCenter,
+                scale: Tween(begin: 0.92, end: 1.0).animate(curved),
+                child: child,
+              ),
+            ),
+          );
+        },
+      );
+
   @override
   State<WalletScreen> createState() => _WalletScreenState();
 }
@@ -71,7 +96,13 @@ class _WalletScreenState extends State<WalletScreen> {
                       _BalanceCard(wallet: w, onTopUp: () => _topUp(w)),
                       const SizedBox(height: 22),
                       const PbmsSectionTitle('Giao dịch gần đây'),
-                      if (w.transactions.isEmpty)
+                      if (w.historyError != null)
+                        PbmsErrorView(
+                          title: 'Chưa tải được lịch sử giao dịch',
+                          message: '${w.historyError} Số dư và nạp tiền vẫn dùng được.',
+                          onRetry: _wallet.load,
+                        )
+                      else if (w.transactions.isEmpty)
                         const PbmsEmptyView(
                           icon: Icons.receipt_long_outlined,
                           title: 'Chưa có giao dịch',

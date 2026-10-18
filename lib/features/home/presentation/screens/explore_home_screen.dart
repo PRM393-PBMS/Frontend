@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
+import 'package:prm393_frontend/core/services/location_service.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
@@ -34,7 +35,8 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       ));
 
   late String? _selectedId = widget.initialLotId;
-  LatLng? _userLocation;
+  // Dùng vị trí trang chủ đã lấy (nếu có), không hỏi quyền lại.
+  LatLng? _userLocation = LocationService.instance.last;
   bool _isLocating = false;
   bool _showDetails = false;
 
@@ -45,8 +47,14 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     super.dispose();
   }
 
-  LotView? _selected(List<LotView> lots) =>
-      lots.where((l) => l.id == _selectedId).firstOrNull ?? lots.firstOrNull;
+  LotView? _selected(List<LotView> lots) {
+    final chosen = lots.where((l) => l.id == _selectedId).firstOrNull;
+    if (chosen != null) return chosen;
+    // Chưa chọn: lấy bãi gần vị trí của khách nhất, rồi đến bãi đầu danh sách.
+    final near = lots.where((l) => l.distanceFrom(_userLocation) != null).toList()
+      ..sort((a, b) => a.distanceFrom(_userLocation)!.compareTo(b.distanceFrom(_userLocation)!));
+    return near.firstOrNull ?? lots.firstOrNull;
+  }
 
   LatLng get _initialCenter {
     final lots = _lots.state.data ?? const <LotView>[];

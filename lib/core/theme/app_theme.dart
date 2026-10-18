@@ -156,6 +156,16 @@ class AppTheme {
           textStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
+      // Chip (chọn giờ, số tiền nạp, loại xe, ô đỗ...): chữ luôn đủ tương phản,
+      // mục đang chọn nền teal nhạt, chữ teal.
+      chipTheme: const ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: AppColors.brandTint,
+        checkmarkColor: AppColors.brand,
+        labelStyle: TextStyle(color: AppColors.textPrimaryLight, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700),
+        side: BorderSide(color: AppColors.borderLight),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,

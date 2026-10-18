@@ -118,8 +118,25 @@ class PbmsRepository {
   }
 
   Future<WalletModel> getWallet() async {
-    final id = await _ensureWalletId();
-    return WalletModel.fromJson(_obj(await _get(ApiEndpoints.walletById(id)), 'ví'));
+    final opened = _obj(await _post(ApiEndpoints.ensureWallet), 'ví');
+    final id = JsonRead.str(opened, 'walletId');
+    if (id.isEmpty) {
+      throw const ServerException(message: 'Không mở được ví.');
+    }
+    _walletId = id;
+    try {
+      return WalletModel.fromJson(_obj(await _get(ApiEndpoints.walletById(id)), 'ví'));
+    } on ServerException catch (e) {
+      // Lịch sử ví lỗi phía máy chủ: vẫn hiện số dư lấy từ lệnh mở ví.
+      return WalletModel(
+        walletId: id,
+        balance: JsonRead.num_(opened, 'walletBalance'),
+        transactions: const [],
+        historyError: e.message.trim().isEmpty || e.message.contains('Internal')
+            ? 'Máy chủ đang lỗi khi tải lịch sử giao dịch.'
+            : e.message,
+      );
+    }
   }
 
   Future<PaymentLinkModel> topUpWallet(int amount) async {
@@ -148,9 +165,64 @@ class PbmsRepository {
   Future<List<ParkingLotModel>> getParkingLots() async {
     try {
       return _list(await _get(ApiEndpoints.availableParkings), ParkingLotModel.fromJson);
-    } on NotFoundException {
-      return const [];
+    } on AppException catch (e) {
+      // Server chưa có API này: route bị bắt bởi GET /parkings/:id (chỉ quản lý,
+      // trả 403) hoặc không tồn tại (404 / 400). Dựng từ danh mục công khai.
+      if (e is ForbiddenException || e is NotFoundException || e is ValidationException) {
+        return _lotsFromCatalog();
+      }
+      rethrow;
     }
+  }
+
+  /// Ô đỗ công khai (có parkingId) để dựng bãi và đoán bãi của lượt gửi.
+  Future<List<ParkingSlotModel>> getAllSlots() async =>
+      _list(await _get(ApiEndpoints.parkingSlots), ParkingSlotModel.fromJson);
+
+  /// Bãi dựng từ /api/Floor (tên bãi) + /api/ParkingSlot (trạng thái ô). Không có toạ độ.
+  Future<List<ParkingLotModel>> _lotsFromCatalog() async {
+    final results = await Future.wait([_get(ApiEndpoints.floors), getAllSlots()]);
+    final names = <String, String>{};
+    for (final f in JsonRead.list(results[0])) {
+      final id = JsonRead.str(f, 'parkingId');
+      if (id.isNotEmpty) names.putIfAbsent(id, () => JsonRead.str(f, 'parkingName'));
+    }
+    final slots = results[1] as List<ParkingSlotModel>;
+    final byLot = <String, Map<String, ({String name, int total, int available})>>{};
+    for (final s in slots) {
+      if (s.parkingId.isEmpty) continue;
+      final types = byLot.putIfAbsent(s.parkingId, () => {});
+      final cur = types[s.vehicleTypeId] ?? (name: s.vehicleTypeName, total: 0, available: 0);
+      types[s.vehicleTypeId] = (
+        name: cur.name,
+        total: cur.total + 1,
+        available: cur.available + (s.isAvailable ? 1 : 0),
+      );
+    }
+    final ids = {...names.keys, ...byLot.keys};
+    return [
+      for (final id in ids)
+        () {
+          final types = byLot[id] ?? const {};
+          final availability = [
+            for (final e in types.entries)
+              LotTypeAvailability(
+                vehicleTypeId: e.key,
+                vehicleTypeName: e.value.name,
+                totalSlots: e.value.total,
+                availableSlots: e.value.available,
+              ),
+          ];
+          return ParkingLotModel(
+            id: id,
+            name: names[id] ?? 'Bãi đỗ',
+            location: '',
+            totalSlots: availability.fold(0, (s, a) => s + a.totalSlots),
+            availableSlots: availability.fold(0, (s, a) => s + a.availableSlots),
+            availability: availability,
+          );
+        }(),
+    ];
   }
 
   // ---------------------------------------------------------------- vehicles

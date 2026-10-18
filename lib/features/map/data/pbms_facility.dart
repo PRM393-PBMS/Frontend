@@ -21,13 +21,26 @@ class LotView {
   final LatLng? point;
   final List<VehicleTypeCapacity> capacities;
 
+  /// Số lượt khách đã gửi xe ở bãi này (để gợi ý "bãi thường dùng").
+  final int visits;
+  final DateTime? lastVisit;
+
   const LotView({
     required this.id,
     required this.name,
     required this.area,
     required this.point,
     required this.capacities,
+    this.visits = 0,
+    this.lastVisit,
   });
+
+  /// Khoảng cách (m) tới [from]; null nếu bãi chưa có toạ độ.
+  double? distanceFrom(LatLng? from) {
+    final p = point;
+    if (from == null || p == null) return null;
+    return const Distance().as(LengthUnit.Meter, from, p);
+  }
 
   int get available => capacities.fold(0, (s, c) => s + c.available);
   int get total => capacities.fold(0, (s, c) => s + c.total);
@@ -38,10 +51,13 @@ class LotView {
     required Future<List<ParkingLotModel>> Function() lots,
     required Future<List<FacilityAvailabilityModel>> Function() facility,
     required Future<List<PricingPolicyModel>> Function() pricing,
+    Future<List<ParkingSessionModel>> Function()? sessions,
+    Future<List<ParkingSlotModel>> Function()? slots,
   }) async {
     final results = await Future.wait([lots(), pricing()]);
     final lotList = results[0] as List<ParkingLotModel>;
     final prices = results[1] as List<PricingPolicyModel>;
+    final usage = await _usage(sessions, slots);
     if (lotList.isNotEmpty) {
       return [
         for (final l in lotList)
@@ -51,9 +67,12 @@ class LotView {
             area: l.displayLocation,
             point: l.hasCoordinates ? LatLng(l.latitude!, l.longitude!) : null,
             capacities: VehicleTypeCapacity.fromLot(l, prices),
+            visits: usage[l.id]?.count ?? 0,
+            lastVisit: usage[l.id]?.last,
           ),
       ];
     }
+    final all = usage.values.fold<int>(0, (s, u) => s + u.count);
     return [
       LotView(
         id: 'pbms',
@@ -61,8 +80,38 @@ class LotView {
         area: PbmsFacility.area,
         point: PbmsFacility.location,
         capacities: VehicleTypeCapacity.summarize(await facility(), prices),
+        visits: all,
       ),
     ];
+  }
+
+  /// Đếm lượt gửi theo bãi: mã ô của lượt gửi -> parkingId trong danh mục ô đỗ.
+  /// Lỗi tải (vd. chưa đăng nhập) thì bỏ qua, không chặn hiển thị bãi.
+  static Future<Map<String, ({int count, DateTime last})>> _usage(
+    Future<List<ParkingSessionModel>> Function()? sessions,
+    Future<List<ParkingSlotModel>> Function()? slots,
+  ) async {
+    if (sessions == null || slots == null) return const {};
+    try {
+      final r = await Future.wait([sessions(), slots()]);
+      final slotToLot = {
+        for (final s in r[1] as List<ParkingSlotModel>)
+          if (s.parkingId.isNotEmpty) s.slotCode: s.parkingId,
+      };
+      final out = <String, ({int count, DateTime last})>{};
+      for (final s in r[0] as List<ParkingSessionModel>) {
+        final lot = slotToLot[s.slotCode];
+        if (lot == null) continue;
+        final cur = out[lot];
+        out[lot] = (
+          count: (cur?.count ?? 0) + 1,
+          last: cur == null || s.entryTime.isAfter(cur.last) ? s.entryTime : cur.last,
+        );
+      }
+      return out;
+    } catch (_) {
+      return const {};
+    }
   }
 }
 
