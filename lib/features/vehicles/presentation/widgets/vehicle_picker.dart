@@ -301,8 +301,7 @@ class VehicleNameFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    InputDecoration deco(String hint, IconData icon) => InputDecoration(
-          hintText: hint,
+    InputDecoration deco(String hint, IconData icon) => pbmsInputDecoration(hint: hint).copyWith(
           prefixIcon: Icon(icon, size: 20, color: PbmsTokens.muted),
           counterText: '',
         );

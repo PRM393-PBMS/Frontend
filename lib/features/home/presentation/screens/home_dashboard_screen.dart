@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +9,7 @@ import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/utils/media_url.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -394,6 +396,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 child: CircleAvatar(
                   radius: 24,
                   backgroundColor: PbmsTokens.tealTint,
+                  // Có ảnh đại diện thì hiện ảnh, lỗi tải thì vẫn còn chữ cái đầu bên dưới.
+                  foregroundImage: resolveMediaUrl(user?.avatarUrl) == null
+                      ? null
+                      : CachedNetworkImageProvider(resolveMediaUrl(user?.avatarUrl)!),
+                  onForegroundImageError: (_, __) {},
                   child: Text(initial,
                       style: const TextStyle(
                           color: PbmsTokens.teal,
