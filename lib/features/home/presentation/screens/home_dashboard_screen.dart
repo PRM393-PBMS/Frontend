@@ -15,6 +15,7 @@ import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart';
+import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
 import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
@@ -518,12 +519,25 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       title: 'Chưa có xe trong bãi',
       message:
           'Giữ chỗ ô tô trước tối đa 5 giờ, tiền cọc trừ vào phí khi ra bãi.',
-      action: TextButton.icon(
-        onPressed: () => widget.onOpenMap(null),
-        style: TextButton.styleFrom(
-            foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 48)),
-        icon: const Icon(Icons.event_available_rounded, size: 18),
-        label: const Text('Đặt chỗ trước'),
+      action: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 4,
+        children: [
+          TextButton.icon(
+            onPressed: () => EntryPassScreen.open(context),
+            style: TextButton.styleFrom(
+                foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 48)),
+            icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+            label: const Text('Mã QR gửi 1 lần'),
+          ),
+          TextButton.icon(
+            onPressed: () => widget.onOpenMap(null),
+            style: TextButton.styleFrom(
+                foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 48)),
+            icon: const Icon(Icons.event_available_rounded, size: 18),
+            label: const Text('Đặt chỗ trước'),
+          ),
+        ],
       ),
     );
   }

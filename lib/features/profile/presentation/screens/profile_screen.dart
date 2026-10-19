@@ -16,7 +16,11 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_state.dart
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
+import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
+import 'package:prm393_frontend/features/legal/legal_documents.dart';
+import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/change_password_sheet.dart';
+import 'package:prm393_frontend/features/profile/presentation/widgets/delete_account_sheet.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
@@ -190,6 +194,13 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         ),
                         const Divider(height: 1, color: PbmsTokens.divider),
                         _buildActionTile(
+                          icon: Icons.qr_code_2_rounded,
+                          title: 'Mã QR gửi xe 1 lần',
+                          subtitle: 'Đưa mã ở cổng vào, dùng một lần trong 24 giờ',
+                          onTap: () => EntryPassScreen.open(context),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        _buildActionTile(
                           icon: Icons.receipt_long_outlined,
                           title: 'Lịch sử gửi xe & thanh toán',
                           subtitle: 'Lượt gửi, phí đã trả, đặt chỗ',
@@ -206,6 +217,25 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    _buildSectionCard(
+                      title: 'Điều khoản và chính sách',
+                      children: [
+                        _buildActionTile(
+                          icon: Icons.gavel_rounded,
+                          title: 'Điều khoản sử dụng dịch vụ',
+                          subtitle: 'Quyền và nghĩa vụ khi gửi xe, thanh toán',
+                          onTap: () => LegalScreen.open(context, termsOfService),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        _buildActionTile(
+                          icon: Icons.privacy_tip_outlined,
+                          title: 'Chính sách bảo mật',
+                          subtitle: 'Dữ liệu được thu thập, chia sẻ và quyền của bạn',
+                          onTap: () => LegalScreen.open(context, privacyPolicy),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     _buildSectionCard(
                       title: 'Bảo mật và thông báo',
                       children: [
@@ -241,7 +271,17 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => DeleteAccountSheet.show(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: PbmsTokens.danger,
+                          minimumSize: const Size(48, 48),
+                        ),
+                        child: const Text('Xoá tài khoản'),
+                      ),
+                    ),
                     const Center(
                       child: Text(
                         'PBMS Smart Parking, phiên bản ${AppConfig.appVersion}',

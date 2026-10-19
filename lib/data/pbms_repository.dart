@@ -365,9 +365,26 @@ class PbmsRepository {
         'thanh toán',
       ));
 
-  Future<PaymentLinkModel> renewSubscription(String subscriptionId, String packageId) async =>
-      PaymentLinkModel.fromJson(_obj(
-        await _post(ApiEndpoints.renewSubscription(subscriptionId), {'packageId': packageId}),
+  /// Thanh toán đơn vé đang chờ bằng PayOS (trả link) hoặc ví (kích hoạt ngay).
+  Future<RegistrationResultModel> paySubscription(String subscriptionId, String paymentMethod) async =>
+      RegistrationResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.subscriptionPayment(subscriptionId), {'paymentMethod': paymentMethod}),
+        'thanh toán',
+      ));
+
+  /// Gia hạn: PayOS trả link + mã QR; Wallet trừ ví và gia hạn ngay (activated).
+  Future<RegistrationResultModel> renewSubscription(
+    String subscriptionId,
+    String packageId, {
+    required String password,
+    String paymentMethod = 'PayOS',
+  }) async =>
+      RegistrationResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.renewSubscription(subscriptionId), {
+          'packageId': packageId,
+          'password': password,
+          'paymentMethod': paymentMethod,
+        }),
         'gia hạn',
       ));
 
@@ -376,8 +393,8 @@ class PbmsRepository {
         RenewalModel.fromJson,
       );
 
-  Future<void> cancelSubscription(String subscriptionId) async {
-    await _put(ApiEndpoints.cancelSubscription(subscriptionId));
+  Future<void> cancelSubscription(String subscriptionId, {required String password}) async {
+    await _put(ApiEndpoints.cancelSubscription(subscriptionId), {'password': password});
   }
 
   Future<List<VehicleChangeRequestModel>> getMyVehicleChangeRequests() async => _list(
@@ -389,11 +406,13 @@ class PbmsRepository {
     required String subscriptionId,
     required String newLicensePlate,
     required String reason,
+    required String password,
   }) async {
     await _post(ApiEndpoints.requestChangeVehicle, {
       'subscriptionId': subscriptionId,
       'newLicensePlate': newLicensePlate,
       'reason': reason,
+      'password': password,
     });
   }
 
@@ -401,10 +420,12 @@ class PbmsRepository {
     required String requestId,
     required String newLicensePlate,
     required String reason,
+    required String password,
   }) async {
     await _put(ApiEndpoints.vehicleChangeRequestById(requestId), {
       'newLicensePlate': newLicensePlate,
       'reason': reason,
+      'password': password,
     });
   }
 
@@ -501,6 +522,34 @@ class PbmsRepository {
     await _api.delete<dynamic>(ApiEndpoints.deleteNotification(id));
   }
 
+  // ------------------------------------------------------- mã vào bãi 1 lần
+
+  static const _entryPassUnavailable = NotFoundException(
+      message: 'Máy chủ chưa bật mã QR gửi xe 1 lần. Bạn vẫn có thể vào bãi bình thường.');
+
+  Future<List<EntryPassModel>> getMyEntryPasses() async {
+    try {
+      return _list(await _get(ApiEndpoints.myEntryPasses), EntryPassModel.fromJson);
+    } on NotFoundException {
+      throw _entryPassUnavailable;
+    }
+  }
+
+  Future<EntryPassModel> createEntryPass(String vehicleId) async {
+    try {
+      return EntryPassModel.fromJson(
+          _obj(await _post(ApiEndpoints.entryPasses, {'vehicleId': vehicleId}), 'mã vào bãi'));
+    } on NotFoundException catch (e) {
+      // 404 khi máy chủ chưa có API (khác 404 "không tìm thấy xe" có thông báo riêng).
+      if (e.message.contains('xe')) rethrow;
+      throw _entryPassUnavailable;
+    }
+  }
+
+  Future<void> cancelEntryPass(String id) async {
+    await _api.delete<dynamic>(ApiEndpoints.entryPassById(id));
+  }
+
   // -------------------------------------------------------------- profile
 
   Future<UserModel> getProfile() async =>
@@ -538,6 +587,17 @@ class PbmsRepository {
       throw const ValidationException(message: 'Mật khẩu hiện tại không đúng');
     }
     await _put(ApiEndpoints.profile, {'password': newPassword});
+  }
+
+  /// Xoá tài khoản (máy chủ ẩn danh hoá hồ sơ). Máy chủ cũ chưa có API thì báo rõ.
+  Future<void> deleteAccount(String password) async {
+    try {
+      await _post(ApiEndpoints.deleteAccount, {'password': password});
+    } on NotFoundException catch (e) {
+      if (e.message.contains('người dùng')) rethrow;
+      throw const ValidationException(
+          message: 'Máy chủ chưa hỗ trợ xoá tài khoản trên app. Vui lòng liên hệ quản lý bãi.');
+    }
   }
 
   Future<UserModel> updateProfile({

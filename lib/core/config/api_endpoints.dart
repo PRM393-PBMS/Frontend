@@ -15,6 +15,7 @@ class ApiEndpoints {
   static const String profile = '/api/profile';
   static const String profileAvatar = '/api/profile/avatar';
   static const String changePassword = '/api/profile/change-password';
+  static const String deleteAccount = '/api/profile/delete-account';
 
   // ================= Reservations (lowercase /api/reservations) =================
   static const String reservations = '/api/reservations';
@@ -106,6 +107,11 @@ class ApiEndpoints {
   // ================= Parkings (nhiều bãi) =================
   /// Bãi cho app khách: toạ độ + chỗ trống theo loại xe (mảng, không bọc envelope).
   static const String availableParkings = '/parkings/available';
+
+  // ================= Mã QR gửi xe một lần =================
+  static const String entryPasses = '/api/entry-passes';
+  static const String myEntryPasses = '/api/entry-passes/my';
+  static String entryPassById(String id) => '/api/entry-passes/$id';
 
   // ================= Vehicles (/api/vehicles) =================
   static const String vehicles = '/api/vehicles';

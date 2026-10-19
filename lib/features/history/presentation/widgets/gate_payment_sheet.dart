@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:prm393_frontend/core/widgets/payos_checkout_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
@@ -169,9 +169,12 @@ class _GatePaymentSheetState extends State<GatePaymentSheet> {
           SizedBox(
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: () => launchUrl(Uri.parse(online.paymentUrl),
-                  mode: LaunchMode.externalApplication),
-              icon: const Icon(Icons.open_in_new_rounded, size: 19),
+              onPressed: () async {
+                await PayosCheckoutScreen.open(context, online.paymentUrl);
+                // Trang PayOS đóng (trả xong, huỷ hoặc tự đóng): hỏi máy chủ ngay.
+                if (mounted) await _check(silent: true);
+              },
+              icon: const Icon(Icons.lock_rounded, size: 19),
               label: const Text('Mở trang PayOS (thẻ, ví, ngân hàng)'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: PbmsTokens.teal,

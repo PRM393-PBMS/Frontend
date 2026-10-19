@@ -14,6 +14,6 @@ class AppConfig {
   static const Duration receiveTimeout = Duration(seconds: 30);
   static const Duration sendTimeout = Duration(seconds: 30);
 
-  static const String appTitle = 'PRM393 Parking System';
+  static const String appTitle = 'PBMS Smart Parking';
   static const String appVersion = '1.0.0';
 }

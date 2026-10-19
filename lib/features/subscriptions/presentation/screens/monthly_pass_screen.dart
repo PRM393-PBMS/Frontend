@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/error/app_exception.dart';
+import 'package:prm393_frontend/core/widgets/password_confirm_dialog.dart';
+import 'package:prm393_frontend/features/subscriptions/presentation/widgets/pay_pending_sheet.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
@@ -98,12 +101,89 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
     if (link != null) await _payLink(link, subscriptionId);
   }
 
+  /// Thanh toán (hoặc đổi hình thức thanh toán) một đơn đang chờ.
   Future<void> _pay(MonthlySubscriptionModel sub) async {
+    if (sub.needsSignature) {
+      await _openContract(sub.subscriptionId);
+      return;
+    }
+    final method = await PayPendingSheet.show(context, sub);
+    if (method == null || !mounted) return;
     try {
-      final link = await _repo.repaySubscription(sub.subscriptionId);
-      if (mounted) await _payLink(link, sub.subscriptionId);
+      final result = await _repo.paySubscription(sub.subscriptionId, method);
+      if (!mounted) return;
+      if (result.activated) {
+        _changed();
+        showPbmsSnack(context, 'Đã trả bằng ví và kích hoạt vé tháng.');
+        setState(() => _activeTab = 0);
+        return;
+      }
+      final link = result.link;
+      if (link != null) await _payLink(link, sub.subscriptionId);
     } catch (e) {
       if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
+  }
+
+  /// Đăng ký trùng xe với một đơn đang chờ thanh toán: cho khách chọn trả đơn cũ
+  /// hoặc huỷ đơn cũ. Trả true nếu đã huỷ đơn cũ (form đăng ký thử lại).
+  Future<bool> _resolvePending(VehicleModel vehicle) async {
+    MonthlySubscriptionModel? old;
+    try {
+      old = (await _repo.getMySubscriptions())
+          .where((s) => s.isPendingPayment && s.licensePlate == vehicle.licensePlate)
+          .firstOrNull;
+    } catch (_) {}
+    if (old == null || !mounted) return false;
+    final pending = old;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xe đã có đơn chưa thanh toán'),
+        content: Text(
+          'Xe ${pending.licensePlate} đang có đơn "${pending.packageName}" '
+          '(${CurrencyFormatter.format(pending.price)}) chưa thanh toán. '
+          'Bạn muốn thanh toán đơn cũ hay huỷ đơn cũ để đăng ký đơn này?',
+        ),
+        actionsOverflowDirection: VerticalDirection.down,
+        actionsOverflowButtonSpacing: 4,
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Để sau')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
+            child: const Text('Huỷ đơn cũ, đăng ký đơn này'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'pay'),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.teal),
+            child: const Text('Thanh toán đơn cũ'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return false;
+    if (choice == 'pay') {
+      setState(() => _activeTab = 0);
+      await _pay(pending);
+      return false;
+    }
+    if (choice != 'cancel') return false;
+    final password = await PasswordConfirmDialog.ask(
+      context,
+      title: 'Huỷ đơn cũ',
+      message: 'Nhập mật khẩu để huỷ đơn "${pending.packageName}" của xe ${pending.licensePlate}.',
+      confirmLabel: 'Huỷ đơn cũ',
+      danger: true,
+    );
+    if (password == null || !mounted) return false;
+    try {
+      await _repo.cancelSubscription(pending.subscriptionId, password: password);
+      _changed();
+      return true;
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+      return false;
     }
   }
 
@@ -112,8 +192,15 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
         (_packages.state.data ?? const <SubscriptionPackageModel>[])
             .where((p) => p.vehicleTypeName == sub.vehicleType)
             .toList();
-    final link = await RenewPassSheet.show(context, sub, packages);
-    if (link == null || !mounted) return;
+    final result = await RenewPassSheet.show(context, sub, packages);
+    if (result == null || !mounted) return;
+    if (result.activated) {
+      _changed();
+      showPbmsSnack(context, 'Đã trừ ví và gia hạn vé tháng.');
+      return;
+    }
+    final link = result.link;
+    if (link == null) return;
     final oldEnd = sub.endDate;
     final paid = await PbmsPaymentSheet.show(
       context,
@@ -132,29 +219,19 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
   }
 
   Future<void> _cancel(MonthlySubscriptionModel sub) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Huỷ vé tháng?'),
-        content: Text(
-          'Vé của xe ${sub.licensePlate} sẽ ngừng hiệu lực'
-          '${sub.fixedSlot != null ? ' và ô ${sub.fixedSlot} được trả lại' : ''}.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Giữ vé')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
-            child: const Text('Huỷ vé'),
-          ),
-        ],
-      ),
+    final password = await PasswordConfirmDialog.ask(
+      context,
+      title: sub.isPendingPayment ? 'Huỷ đơn vé tháng?' : 'Huỷ vé tháng?',
+      message: sub.isPendingPayment
+          ? 'Đơn của xe ${sub.licensePlate} sẽ bị huỷ và link thanh toán cũ không dùng được nữa. Nhập mật khẩu để xác nhận.'
+          : 'Vé của xe ${sub.licensePlate} sẽ ngừng hiệu lực'
+              '${sub.fixedSlot != null ? ' và ô ${sub.fixedSlot} được trả lại' : ''}. Nhập mật khẩu để xác nhận.',
+      confirmLabel: 'Huỷ vé',
+      danger: true,
     );
-    if (ok != true) return;
+    if (password == null) return;
     try {
-      await _repo.cancelSubscription(sub.subscriptionId);
+      await _repo.cancelSubscription(sub.subscriptionId, password: password);
       _changed();
       if (mounted) showPbmsSnack(context, 'Đã huỷ vé tháng.');
     } catch (e) {
@@ -252,6 +329,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
                     builder: (packages) => _RegistrationForm(
                       packages: packages,
                       onRegistered: _onRegistered,
+                      onPendingConflict: _resolvePending,
                     ),
                   ),
               ],
@@ -709,7 +787,14 @@ class _RegistrationForm extends StatefulWidget {
   final List<SubscriptionPackageModel> packages;
   final Future<void> Function(RegistrationResultModel result) onRegistered;
 
-  const _RegistrationForm({required this.packages, required this.onRegistered});
+  /// Xe đã có đơn chờ thanh toán; trả true nếu đơn cũ đã huỷ để đăng ký lại.
+  final Future<bool> Function(VehicleModel vehicle) onPendingConflict;
+
+  const _RegistrationForm({
+    required this.packages,
+    required this.onRegistered,
+    required this.onPendingConflict,
+  });
 
   @override
   State<_RegistrationForm> createState() => _RegistrationFormState();
@@ -837,15 +922,31 @@ class _RegistrationFormState extends State<_RegistrationForm> {
       _busy = true;
       _error = null;
     });
+    Future<RegistrationResultModel> register() => _repo.registerSubscription(
+          packageId: pkg.packageId,
+          vehicleId: vehicle.id,
+          fixedSlotId: _needsSlot ? _slotId : null,
+          parkingId: _needsLot ? _parkingId : null,
+          // Gói có hợp đồng: chọn cách trả ở bước ký.
+          paymentMethod: _payByWallet && pkg.durationMonths < 3 ? 'Wallet' : 'PayOS',
+        );
     try {
-      final result = await _repo.registerSubscription(
-        packageId: pkg.packageId,
-        vehicleId: vehicle.id,
-        fixedSlotId: _needsSlot ? _slotId : null,
-        parkingId: _needsLot ? _parkingId : null,
-        // Gói có hợp đồng: chọn cách trả ở bước ký.
-        paymentMethod: _payByWallet && pkg.durationMonths < 3 ? 'Wallet' : 'PayOS',
-      );
+      RegistrationResultModel result;
+      try {
+        result = await register();
+      } on ConflictException catch (e) {
+        // Xe đang có đơn chờ thanh toán: khách chọn trả đơn cũ hoặc huỷ để đăng ký lại.
+        if (!mounted) return;
+        setState(() => _busy = false);
+        final cancelledOld = await widget.onPendingConflict(vehicle);
+        if (!cancelledOld) {
+          if (mounted) setState(() => _error = e.message);
+          return;
+        }
+        if (!mounted) return;
+        setState(() => _busy = true);
+        result = await register();
+      }
       if (!mounted) return;
       await widget.onRegistered(result);
     } catch (e) {

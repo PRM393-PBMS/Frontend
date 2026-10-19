@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
@@ -234,12 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Tiếp tục đồng nghĩa với việc bạn đồng ý với Điều khoản dịch vụ',
-                          textAlign: TextAlign.center,
-                          style:
-                              TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                        ),
+                        const LegalLinks(),
                       ],
                     ),
                   ),
