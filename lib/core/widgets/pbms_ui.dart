@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/features/payment/payment_result_screen.dart';
 import 'package:prm393_frontend/core/widgets/payos_checkout_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -635,17 +636,41 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
     final outcome = await PayosCheckoutScreen.open(context, widget.link.paymentUrl);
     if (!mounted) return;
     setState(() => _opened = true);
-    if (outcome?.cancelled == true) {
-      // Vẫn hỏi máy chủ để thanh toán được ghi nhận là đã huỷ.
-      await _check(silent: true);
-      if (!mounted) return;
-      setState(() {
-        _note = 'Bạn đã huỷ thanh toán, chưa bị trừ tiền. Có thể thanh toán lại.';
-        _noteIsError = false;
-      });
+    final verify = widget.verify;
+    if (outcome == null || verify == null) {
+      // Khách tự đóng trang PayOS: chỉ kiểm tra, không mở trang kết quả.
+      await _check();
       return;
     }
-    await _check();
+    // PayOS chuyển về: hỏi máy chủ trạng thái thật rồi mở trang kết quả trong app.
+    var paid = false;
+    try {
+      paid = await verify() == PaymentCheck.paid;
+    } catch (_) {}
+    if (!mounted) return;
+    final state = paid
+        ? PaymentResultState.success
+        : outcome.cancelled
+            ? PaymentResultState.cancelled
+            : PaymentResultState.pending;
+    await PaymentResultScreen.open(
+      context,
+      state: state,
+      orderCode: outcome.orderCode ?? widget.link.orderCode,
+      amount: widget.link.amount,
+      canRetry: !paid,
+    );
+    if (!mounted) return;
+    if (paid) {
+      Navigator.pop(context, true);
+      return;
+    }
+    setState(() {
+      _note = outcome.cancelled
+          ? 'Bạn đã huỷ thanh toán, chưa bị trừ tiền. Có thể thanh toán lại.'
+          : 'Chưa ghi nhận thanh toán. Hoàn tất trên trang PayOS rồi kiểm tra lại.';
+      _noteIsError = false;
+    });
   }
 
   Future<void> _check({bool silent = false}) async {

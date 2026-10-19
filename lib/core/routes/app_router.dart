@@ -12,6 +12,7 @@ import '../../features/home/presentation/screens/main_shell_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/home/presentation/screens/explore_home_screen.dart';
 import '../../features/reservations/presentation/screens/booking_confirmation_screen.dart';
+import '../../features/payment/payment_result_screen.dart';
 import 'route_names.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -31,6 +32,14 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 }
 
+/// Đường dẫn PayOS chuyển về (returnUrl / cancelUrl) khi app chạy trên web.
+const _paymentResultPaths = {
+  '/payment/success',
+  '/payment/cancel',
+  '/payment-success',
+  '/payment-cancel',
+};
+
 class AppRouter {
   static GoRouter createRouter(AuthBloc authBloc, bool showOnboarding) {
     return GoRouter(
@@ -39,6 +48,8 @@ class AppRouter {
       redirect: (context, state) {
         final authState = authBloc.state;
         final currentPath = state.uri.path;
+        // Trang kết quả PayOS (bản web): công khai, không chờ đăng nhập để giữ nguyên URL.
+        if (_paymentResultPaths.contains(currentPath)) return null;
 
         final isSplash = currentPath == RouteNames.splashPath;
         final isAuthFlow = currentPath == RouteNames.loginPath ||
@@ -68,6 +79,11 @@ class AppRouter {
         return null;
       },
       routes: [
+        for (final path in _paymentResultPaths)
+          GoRoute(
+            path: path,
+            builder: (context, state) => PaymentResultScreen.fromUri(state.uri),
+          ),
         GoRoute(
           path: RouteNames.splashPath,
           name: RouteNames.splash,

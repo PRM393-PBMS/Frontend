@@ -1093,3 +1093,27 @@ class EntryPassModel {
         qrPayload: JsonRead.strOrNull(json, 'qrPayload'),
       );
 }
+
+/// Trạng thái hiển thị trên trang kết quả thanh toán.
+enum PaymentResultState { success, pending, cancelled, failed, unknown }
+
+/// GET /payment/result?orderCode=... (máy chủ hỏi lại PayOS rồi trả kết quả).
+class PaymentResultModel {
+  final PaymentResultState state;
+  final double? amount;
+  final String? typeLabel;
+
+  const PaymentResultModel({required this.state, this.amount, this.typeLabel});
+
+  factory PaymentResultModel.fromJson(J json) => PaymentResultModel(
+        state: switch (JsonRead.str(json, 'state').toLowerCase()) {
+          'success' => PaymentResultState.success,
+          'pending' => PaymentResultState.pending,
+          'cancelled' => PaymentResultState.cancelled,
+          'failed' => PaymentResultState.failed,
+          _ => PaymentResultState.unknown,
+        },
+        amount: JsonRead.numOrNull(json, 'amount')?.toDouble(),
+        typeLabel: JsonRead.strOrNull(json, 'typeLabel'),
+      );
+}

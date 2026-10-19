@@ -522,6 +522,20 @@ class PbmsRepository {
     await _api.delete<dynamic>(ApiEndpoints.deleteNotification(id));
   }
 
+  // ------------------------------------------------------- kết quả thanh toán
+
+  /// Kết quả thanh toán theo mã đơn PayOS; máy chủ cũ chưa có API thì trả null.
+  Future<PaymentResultModel?> getPaymentResult(String orderCode, {bool cancelled = false}) async {
+    try {
+      return PaymentResultModel.fromJson(_obj(
+        await _get(ApiEndpoints.paymentResult, query: {'orderCode': orderCode, 'cancel': '$cancelled'}),
+        'kết quả thanh toán',
+      ));
+    } on AppException {
+      return null;
+    }
+  }
+
   // ------------------------------------------------------- mã vào bãi 1 lần
 
   static const _entryPassUnavailable = NotFoundException(

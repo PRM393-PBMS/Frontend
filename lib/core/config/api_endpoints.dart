@@ -108,6 +108,9 @@ class ApiEndpoints {
   /// Bãi cho app khách: toạ độ + chỗ trống theo loại xe (mảng, không bọc envelope).
   static const String availableParkings = '/parkings/available';
 
+  // ================= Kết quả thanh toán PayOS (công khai) =================
+  static const String paymentResult = '/payment/result';
+
   // ================= Mã QR gửi xe một lần =================
   static const String entryPasses = '/api/entry-passes';
   static const String myEntryPasses = '/api/entry-passes/my';
