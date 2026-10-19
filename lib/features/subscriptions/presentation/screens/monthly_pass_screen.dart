@@ -64,6 +64,9 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
       title: 'Thanh toán vé tháng',
       link: link,
       verify: () => _verifyActive(subscriptionId),
+      recreate: subscriptionId == null
+          ? null
+          : () async => (await _repo.paySubscription(subscriptionId, 'PayOS')).link,
     );
     _changed();
     if (!mounted) return;

@@ -233,16 +233,21 @@ class ReservationActions {
       context,
       title: 'Đặt cọc giữ chỗ',
       link: link,
-      verify: link.orderCode == null && link.reservationId == null
+      recreate: link.reservationId == null
           ? null
-          : () async {
-              // Kiểm tra theo mã đơn PayOS, sau đó đối chiếu trạng thái đặt chỗ.
-              if (link.orderCode != null) {
-                final st = await repo.checkPaymentStatus(link.orderCode!);
+          : () => repo.recreateReservationPayment(link.reservationId!),
+      verifyLink: link.orderCode == null && link.reservationId == null
+          ? null
+          : (current) async {
+              // Kiểm tra theo mã đơn PayOS đang mở (đơn mới khi thanh toán lại),
+              // sau đó đối chiếu trạng thái đặt chỗ.
+              if (current.orderCode != null) {
+                final st = await repo.checkPaymentStatus(current.orderCode!);
                 if (st.isPaid) return PaymentCheck.paid;
               }
-              if (link.reservationId != null) {
-                final r = await repo.getReservation(link.reservationId!);
+              final reservationId = current.reservationId ?? link.reservationId;
+              if (reservationId != null) {
+                final r = await repo.getReservation(reservationId);
                 if (r.isUpcoming) return PaymentCheck.paid;
               }
               return PaymentCheck.pending;

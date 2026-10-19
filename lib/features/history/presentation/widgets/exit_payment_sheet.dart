@@ -105,6 +105,8 @@ class _ExitPaymentSheetState extends State<ExitPaymentSheet> {
               pass = (await _repo.getExitPass(widget.session.sessionId)).exitPass;
               return pass != null ? PaymentCheck.paid : PaymentCheck.pending;
             },
+            // Đơn cũ đã huỷ: tạo thanh toán trước mới (đã trả rồi thì không có link).
+            recreate: () async => (await _repo.prepaySession(widget.session.sessionId, 'PayOS')).online,
           );
           if (mounted && paid) Navigator.pop(context, pass);
           return;

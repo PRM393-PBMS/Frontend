@@ -587,11 +587,20 @@ class PbmsPaymentSheet extends StatefulWidget {
   final PaymentLinkModel link;
   final Future<PaymentCheck> Function()? verify;
 
+  /// Kiểm tra theo đơn đang mở (dùng khi trạng thái gắn với link, vd. paymentId, orderCode).
+  final Future<PaymentCheck> Function(PaymentLinkModel link)? verifyLink;
+
+  /// Tạo đơn PayOS mới khi đơn hiện tại đã huỷ / thất bại ("Thanh toán lại").
+  /// Trả null nếu không cần tạo nữa (vd. đã được thanh toán bằng cách khác).
+  final Future<PaymentLinkModel?> Function()? recreate;
+
   const PbmsPaymentSheet({
     super.key,
     required this.title,
     required this.link,
     this.verify,
+    this.verifyLink,
+    this.recreate,
   });
 
   static Future<bool> show(
@@ -599,6 +608,8 @@ class PbmsPaymentSheet extends StatefulWidget {
     required String title,
     required PaymentLinkModel link,
     Future<PaymentCheck> Function()? verify,
+    Future<PaymentCheck> Function(PaymentLinkModel link)? verifyLink,
+    Future<PaymentLinkModel?> Function()? recreate,
   }) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -608,7 +619,13 @@ class PbmsPaymentSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => PbmsPaymentSheet(title: title, link: link, verify: verify),
+      builder: (_) => PbmsPaymentSheet(
+        title: title,
+        link: link,
+        verify: verify,
+        verifyLink: verifyLink,
+        recreate: recreate,
+      ),
     );
     return result ?? false;
   }
@@ -618,34 +635,79 @@ class PbmsPaymentSheet extends StatefulWidget {
 }
 
 class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
+  late PaymentLinkModel _link = widget.link;
   bool _opened = false;
   bool _checking = false;
+
+  /// Đơn hiện tại đã huỷ / thất bại trên PayOS: mở lại phải tạo đơn mới.
+  bool _needsNewOrder = false;
+  bool _creating = false;
   String? _note;
   bool _noteIsError = false;
 
+  bool get _canVerify => widget.verifyLink != null || widget.verify != null;
+
+  Future<PaymentCheck> _verify() =>
+      widget.verifyLink != null ? widget.verifyLink!(_link) : widget.verify!();
+
+  /// Tạo đơn PayOS mới thay cho đơn đã huỷ. Trả false nếu không tạo được.
+  Future<bool> _newOrder() async {
+    final recreate = widget.recreate;
+    if (recreate == null) return false;
+    setState(() {
+      _creating = true;
+      _note = null;
+    });
+    try {
+      final link = await recreate();
+      if (!mounted) return false;
+      if (link == null || !link.hasUrl) {
+        // Không còn gì để trả (vd. đã trả bằng cách khác): kiểm tra lại trạng thái.
+        await _check();
+        return false;
+      }
+      setState(() {
+        _link = link;
+        _needsNewOrder = false;
+      });
+      return true;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _note = errorText(e);
+          _noteIsError = true;
+        });
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _creating = false);
+    }
+  }
+
   /// Mở trang PayOS trong app; PayOS chuyển về returnUrl / cancelUrl thì app
-  /// đóng trang và hỏi máy chủ trạng thái thật.
+  /// đóng trang, hỏi máy chủ trạng thái thật và mở trang kết quả.
   Future<void> _open() async {
-    if (Uri.tryParse(widget.link.paymentUrl)?.hasScheme != true) {
+    if (_needsNewOrder && widget.recreate != null) {
+      if (!await _newOrder() || !mounted) return;
+    }
+    if (Uri.tryParse(_link.paymentUrl)?.hasScheme != true) {
       setState(() {
         _note = 'Liên kết thanh toán không hợp lệ.';
         _noteIsError = true;
       });
       return;
     }
-    final outcome = await PayosCheckoutScreen.open(context, widget.link.paymentUrl);
+    final outcome = await PayosCheckoutScreen.open(context, _link.paymentUrl);
     if (!mounted) return;
     setState(() => _opened = true);
-    final verify = widget.verify;
-    if (outcome == null || verify == null) {
+    if (outcome == null || !_canVerify) {
       // Khách tự đóng trang PayOS: chỉ kiểm tra, không mở trang kết quả.
       await _check();
       return;
     }
-    // PayOS chuyển về: hỏi máy chủ trạng thái thật rồi mở trang kết quả trong app.
     var paid = false;
     try {
-      paid = await verify() == PaymentCheck.paid;
+      paid = await _verify() == PaymentCheck.paid;
     } catch (_) {}
     if (!mounted) return;
     final state = paid
@@ -653,11 +715,11 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
         : outcome.cancelled
             ? PaymentResultState.cancelled
             : PaymentResultState.pending;
-    await PaymentResultScreen.open(
+    final retry = await PaymentResultScreen.open(
       context,
       state: state,
-      orderCode: outcome.orderCode ?? widget.link.orderCode,
-      amount: widget.link.amount,
+      orderCode: outcome.orderCode ?? _link.orderCode,
+      amount: _link.amount,
       canRetry: !paid,
     );
     if (!mounted) return;
@@ -666,22 +728,25 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
       return;
     }
     setState(() {
+      // Đơn đã huỷ trên PayOS không trả tiếp được: lần sau tạo đơn mới.
+      _needsNewOrder = outcome.cancelled;
       _note = outcome.cancelled
           ? 'Bạn đã huỷ thanh toán, chưa bị trừ tiền. Có thể thanh toán lại.'
           : 'Chưa ghi nhận thanh toán. Hoàn tất trên trang PayOS rồi kiểm tra lại.';
       _noteIsError = false;
     });
+    // "Thanh toán lại" trên trang kết quả: tạo đơn mới và mở luôn trang PayOS.
+    if (retry == true) await _open();
   }
 
   Future<void> _check({bool silent = false}) async {
-    final verify = widget.verify;
-    if (verify == null) {
+    if (!_canVerify) {
       if (!silent) Navigator.pop(context, false);
       return;
     }
     if (silent) {
       try {
-        if (await verify() == PaymentCheck.paid && mounted) Navigator.pop(context, true);
+        if (await _verify() == PaymentCheck.paid && mounted) Navigator.pop(context, true);
       } catch (_) {}
       return;
     }
@@ -690,7 +755,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
       _note = null;
     });
     try {
-      final result = await verify();
+      final result = await _verify();
       if (!mounted) return;
       if (result == PaymentCheck.paid) {
         Navigator.pop(context, true);
@@ -714,7 +779,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final link = widget.link;
+    final link = _link;
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
@@ -795,10 +860,18 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
             SizedBox(
               height: 50,
               child: FilledButton.icon(
-                onPressed: link.hasUrl ? _open : null,
-                icon: const Icon(Icons.lock_rounded, size: 19),
+                onPressed: link.hasUrl && !_creating ? _open : null,
+                icon: _creating
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.lock_rounded, size: 19),
                 label: Text(
-                    _opened ? 'Mở lại trang thanh toán' : 'Thanh toán với PayOS',
+                    _needsNewOrder && widget.recreate != null
+                        ? 'Tạo đơn mới và thanh toán'
+                        : _opened
+                            ? 'Mở lại trang thanh toán'
+                            : 'Thanh toán với PayOS',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 style: FilledButton.styleFrom(
                   backgroundColor: PbmsTokens.teal,
@@ -824,7 +897,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
                     ? const SizedBox.square(
                         dimension: 20,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(widget.verify == null
+                    : Text(!_canVerify
                         ? 'Để sau'
                         : 'Tôi đã thanh toán, kiểm tra'),
               ),

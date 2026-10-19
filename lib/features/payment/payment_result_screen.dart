@@ -41,7 +41,8 @@ class PaymentResultScreen extends StatefulWidget {
     );
   }
 
-  static Future<void> open(
+  /// Trả true khi khách bấm "Thanh toán lại".
+  static Future<bool?> open(
     BuildContext context, {
     required PaymentResultState state,
     String? orderCode,
@@ -49,7 +50,7 @@ class PaymentResultScreen extends StatefulWidget {
     String? typeLabel,
     bool canRetry = false,
   }) =>
-      Navigator.of(context).push(MaterialPageRoute(
+      Navigator.of(context).push<bool>(MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => PaymentResultScreen(
           initialState: state,
@@ -94,9 +95,9 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
     });
   }
 
-  void _close() {
+  void _close({bool retry = false}) {
     if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(retry);
     } else {
       // Bản web mở thẳng từ PayOS: không có trang trước, về trang chủ.
       context.go(RouteNames.homePath);
@@ -204,13 +205,21 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                 ),
                 const SizedBox(height: 10),
               ],
-              PbmsPrimaryButton(
-                label: widget.canRetry &&
-                        (_state == PaymentResultState.cancelled || _state == PaymentResultState.failed)
-                    ? 'Thanh toán lại'
-                    : 'Xong',
-                onPressed: _close,
-              ),
+              Builder(builder: (context) {
+                final retry = widget.canRetry &&
+                    (_state == PaymentResultState.cancelled || _state == PaymentResultState.failed);
+                return PbmsPrimaryButton(
+                  label: retry ? 'Thanh toán lại' : 'Xong',
+                  onPressed: () => _close(retry: retry),
+                );
+              }),
+              if (widget.canRetry &&
+                  (_state == PaymentResultState.cancelled || _state == PaymentResultState.failed))
+                TextButton(
+                  onPressed: _close,
+                  style: TextButton.styleFrom(foregroundColor: PbmsTokens.muted, minimumSize: const Size(48, 48)),
+                  child: const Text('Để sau'),
+                ),
             ],
           ),
         ),

@@ -293,11 +293,11 @@ class _TopUpSheetState extends State<TopUpSheet> {
         context,
         title: 'Nạp ví PBMS',
         link: link,
-        verify: link.paymentId == null
-            ? null
-            : () async => await repo.checkTopUp(link.paymentId!)
-                ? PaymentCheck.paid
-                : PaymentCheck.pending,
+        // Kiểm tra theo đơn đang mở (đơn mới có paymentId mới).
+        verifyLink: (current) async => current.paymentId != null && await repo.checkTopUp(current.paymentId!)
+            ? PaymentCheck.paid
+            : PaymentCheck.pending,
+        recreate: () => repo.topUpWallet(_value),
       );
       if (mounted) Navigator.pop(context, paid);
     } catch (e) {

@@ -71,6 +71,7 @@ class _ContractScreenState extends State<ContractScreen> {
       title: 'Thanh toán vé tháng',
       link: link,
       verify: _isActive,
+      recreate: () async => (await _repo.paySubscription(widget.subscriptionId, 'PayOS')).link,
     );
     if (paid && mounted) Navigator.pop(context, true);
   }
