@@ -365,9 +365,26 @@ class PbmsRepository {
         'thanh toán',
       ));
 
-  Future<PaymentLinkModel> renewSubscription(String subscriptionId, String packageId) async =>
-      PaymentLinkModel.fromJson(_obj(
-        await _post(ApiEndpoints.renewSubscription(subscriptionId), {'packageId': packageId}),
+  /// Thanh toán đơn vé đang chờ bằng PayOS (trả link) hoặc ví (kích hoạt ngay).
+  Future<RegistrationResultModel> paySubscription(String subscriptionId, String paymentMethod) async =>
+      RegistrationResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.subscriptionPayment(subscriptionId), {'paymentMethod': paymentMethod}),
+        'thanh toán',
+      ));
+
+  /// Gia hạn: PayOS trả link + mã QR; Wallet trừ ví và gia hạn ngay (activated).
+  Future<RegistrationResultModel> renewSubscription(
+    String subscriptionId,
+    String packageId, {
+    required String password,
+    String paymentMethod = 'PayOS',
+  }) async =>
+      RegistrationResultModel.fromJson(_obj(
+        await _post(ApiEndpoints.renewSubscription(subscriptionId), {
+          'packageId': packageId,
+          'password': password,
+          'paymentMethod': paymentMethod,
+        }),
         'gia hạn',
       ));
 
@@ -376,8 +393,8 @@ class PbmsRepository {
         RenewalModel.fromJson,
       );
 
-  Future<void> cancelSubscription(String subscriptionId) async {
-    await _put(ApiEndpoints.cancelSubscription(subscriptionId));
+  Future<void> cancelSubscription(String subscriptionId, {required String password}) async {
+    await _put(ApiEndpoints.cancelSubscription(subscriptionId), {'password': password});
   }
 
   Future<List<VehicleChangeRequestModel>> getMyVehicleChangeRequests() async => _list(
@@ -389,11 +406,13 @@ class PbmsRepository {
     required String subscriptionId,
     required String newLicensePlate,
     required String reason,
+    required String password,
   }) async {
     await _post(ApiEndpoints.requestChangeVehicle, {
       'subscriptionId': subscriptionId,
       'newLicensePlate': newLicensePlate,
       'reason': reason,
+      'password': password,
     });
   }
 
@@ -401,10 +420,12 @@ class PbmsRepository {
     required String requestId,
     required String newLicensePlate,
     required String reason,
+    required String password,
   }) async {
     await _put(ApiEndpoints.vehicleChangeRequestById(requestId), {
       'newLicensePlate': newLicensePlate,
       'reason': reason,
+      'password': password,
     });
   }
 

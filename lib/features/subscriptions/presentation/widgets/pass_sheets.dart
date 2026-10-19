@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/widgets/password_confirm_dialog.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
@@ -442,12 +443,14 @@ class RenewPassSheet extends StatefulWidget {
 
   const RenewPassSheet({super.key, required this.pass, required this.packages});
 
-  static Future<PaymentLinkModel?> show(
+  /// Trả kết quả gia hạn: [RegistrationResultModel.activated] khi trả bằng ví,
+  /// còn PayOS thì có [RegistrationResultModel.link] để quét QR / mở trang thanh toán.
+  static Future<RegistrationResultModel?> show(
     BuildContext context,
     MonthlySubscriptionModel pass,
     List<SubscriptionPackageModel> packages,
   ) =>
-      PbmsSheetFrame.show<PaymentLinkModel>(
+      PbmsSheetFrame.show<RegistrationResultModel>(
           context, (_) => RenewPassSheet(pass: pass, packages: packages));
 
   @override
@@ -456,6 +459,7 @@ class RenewPassSheet extends StatefulWidget {
 
 class _RenewPassSheetState extends State<RenewPassSheet> {
   String? _packageId;
+  bool _payByWallet = false;
   bool _busy = false;
   String? _error;
 
@@ -471,15 +475,25 @@ class _RenewPassSheetState extends State<RenewPassSheet> {
   Future<void> _submit() async {
     final id = _packageId;
     if (id == null) return;
+    final password = await PasswordConfirmDialog.ask(
+      context,
+      title: 'Xác nhận gia hạn',
+      message: 'Nhập mật khẩu để gia hạn vé xe ${widget.pass.licensePlate}.',
+      confirmLabel: 'Gia hạn',
+    );
+    if (password == null || !mounted) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final link = await context
-          .read<PbmsRepository>()
-          .renewSubscription(widget.pass.subscriptionId, id);
-      if (mounted) Navigator.pop(context, link);
+      final result = await context.read<PbmsRepository>().renewSubscription(
+            widget.pass.subscriptionId,
+            id,
+            password: password,
+            paymentMethod: _payByWallet ? 'Wallet' : 'PayOS',
+          );
+      if (mounted) Navigator.pop(context, result);
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));
     } finally {
@@ -512,10 +526,41 @@ class _RenewPassSheetState extends State<RenewPassSheet> {
             ),
             const SizedBox(height: 8),
           ],
+        if (widget.packages.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          const Text('Thanh toán', style: PbmsText.label),
+          const SizedBox(height: 6),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Quét mã QR'), icon: Icon(Icons.qr_code_2_rounded)),
+              ButtonSegment(value: true, label: Text('Trừ vào ví'), icon: Icon(Icons.account_balance_wallet_rounded)),
+            ],
+            selected: {_payByWallet},
+            showSelectedIcon: false,
+            onSelectionChanged: (v) => setState(() => _payByWallet = v.first),
+            style: ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                  (st) => st.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.muted),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                  (st) => st.contains(WidgetState.selected) ? PbmsTokens.tealTint : Colors.white),
+              side: WidgetStateProperty.resolveWith((st) =>
+                  BorderSide(color: st.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.border)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _payByWallet
+                ? 'Trừ thẳng số dư ví PBMS, vé được gia hạn ngay.'
+                : 'Quét mã VietQR bằng app ngân hàng hoặc thanh toán thẻ trên trang PayOS.',
+            style: PbmsText.caption,
+          ),
+        ],
         _inlineError(_error),
         const SizedBox(height: 14),
         PbmsPrimaryButton(
-          label: 'Gia hạn và thanh toán',
+          label: _payByWallet ? 'Gia hạn, trừ vào ví' : 'Gia hạn và quét mã QR',
+          icon: _payByWallet ? Icons.account_balance_wallet_rounded : Icons.qr_code_2_rounded,
           busy: _busy,
           onPressed: _packageId == null ? null : _submit,
         ),
@@ -622,6 +667,13 @@ class _VehicleChangeSheetState extends State<VehicleChangeSheet> {
   Future<void> _submit() async {
     if (!(_form.currentState?.validate() ?? false)) return;
     final repo = context.read<PbmsRepository>();
+    final password = await PasswordConfirmDialog.ask(
+      context,
+      title: 'Xác nhận đổi biển số',
+      message: 'Nhập mật khẩu để gửi yêu cầu đổi biển số của vé.',
+      confirmLabel: 'Gửi yêu cầu',
+    );
+    if (password == null || !mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -633,12 +685,14 @@ class _VehicleChangeSheetState extends State<VehicleChangeSheet> {
           requestId: request.requestId,
           newLicensePlate: normalizePlate(_plate.text),
           reason: _reason.text.trim(),
+          password: password,
         );
       } else {
         await repo.requestVehicleChange(
           subscriptionId: widget.pass!.subscriptionId,
           newLicensePlate: normalizePlate(_plate.text),
           reason: _reason.text.trim(),
+          password: password,
         );
       }
       if (mounted) Navigator.pop(context, true);
