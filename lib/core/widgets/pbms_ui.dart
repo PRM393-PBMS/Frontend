@@ -1,8 +1,8 @@
+import 'package:prm393_frontend/core/widgets/payos_checkout_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/pbms_models.dart';
 import '../error/error_text.dart';
@@ -622,30 +622,42 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
   String? _note;
   bool _noteIsError = false;
 
+  /// Mở trang PayOS trong app; PayOS chuyển về returnUrl / cancelUrl thì app
+  /// đóng trang và hỏi máy chủ trạng thái thật.
   Future<void> _open() async {
-    final uri = Uri.tryParse(widget.link.paymentUrl);
-    if (uri == null) {
+    if (Uri.tryParse(widget.link.paymentUrl)?.hasScheme != true) {
       setState(() {
         _note = 'Liên kết thanh toán không hợp lệ.';
         _noteIsError = true;
       });
       return;
     }
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final outcome = await PayosCheckoutScreen.open(context, widget.link.paymentUrl);
     if (!mounted) return;
-    setState(() {
-      _opened = ok;
-      _note = ok
-          ? null
-          : 'Không mở được trình duyệt. Hãy sao chép liên kết để thanh toán.';
-      _noteIsError = !ok;
-    });
+    setState(() => _opened = true);
+    if (outcome?.cancelled == true) {
+      // Vẫn hỏi máy chủ để thanh toán được ghi nhận là đã huỷ.
+      await _check(silent: true);
+      if (!mounted) return;
+      setState(() {
+        _note = 'Bạn đã huỷ thanh toán, chưa bị trừ tiền. Có thể thanh toán lại.';
+        _noteIsError = false;
+      });
+      return;
+    }
+    await _check();
   }
 
-  Future<void> _check() async {
+  Future<void> _check({bool silent = false}) async {
     final verify = widget.verify;
     if (verify == null) {
-      Navigator.pop(context, false);
+      if (!silent) Navigator.pop(context, false);
+      return;
+    }
+    if (silent) {
+      try {
+        if (await verify() == PaymentCheck.paid && mounted) Navigator.pop(context, true);
+      } catch (_) {}
       return;
     }
     setState(() {
@@ -759,7 +771,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
               height: 50,
               child: FilledButton.icon(
                 onPressed: link.hasUrl ? _open : null,
-                icon: const Icon(Icons.open_in_new_rounded, size: 19),
+                icon: const Icon(Icons.lock_rounded, size: 19),
                 label: Text(
                     _opened ? 'Mở lại trang thanh toán' : 'Thanh toán với PayOS',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -775,7 +787,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
             SizedBox(
               height: 46,
               child: OutlinedButton(
-                onPressed: _checking ? null : _check,
+                onPressed: _checking ? null : () => _check(),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: PbmsTokens.teal,
                   backgroundColor: PbmsTokens.tealTint,
