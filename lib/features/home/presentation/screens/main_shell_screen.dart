@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/services/push_notification_service.dart';
@@ -26,11 +29,35 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final Set<int> _visited = {AppTab.home};
   final ValueNotifier<int> _revision = ValueNotifier(0);
 
+  StreamSubscription<Uri>? _links;
+
   @override
   void initState() {
     super.initState();
     // Chỉ khi đã đăng nhập mới kiểm tra thông báo mới để đẩy lên điện thoại.
     PushNotificationService.instance.attach(context.read<PbmsRepository>());
+    // Trang kết quả PayOS mở lại app: tải lại dữ liệu và báo kết quả.
+    _links = AppLinks().uriLinkStream.listen(_onLink, onError: (_) {});
+  }
+
+  void _onLink(Uri uri) {
+    if (uri.scheme != 'pbms' || uri.host != 'payment-result' || !mounted) return;
+    _revision.value++;
+    final message = switch (uri.queryParameters['status']) {
+      'success' => 'Thanh toán thành công.',
+      'cancelled' => 'Đã huỷ thanh toán, bạn chưa bị trừ tiền.',
+      'failed' => 'Thanh toán không thành công, bạn chưa bị trừ tiền.',
+      'pending' => 'Đang chờ ngân hàng xác nhận thanh toán.',
+      _ => null,
+    };
+    if (message == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+      ));
   }
 
   // ---- Main destinations ----
@@ -89,6 +116,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   void dispose() {
+    _links?.cancel();
     _revision.dispose();
     super.dispose();
   }
