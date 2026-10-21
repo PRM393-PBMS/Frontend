@@ -633,7 +633,7 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-/// Một bãi: ảnh bên trái mờ dần sang phải hoà vào nền thẻ, tên và khoảng cách,
+/// Một bãi: ảnh bên trái mờ dần sang phải hoà vào nền trang, tên và khoảng cách,
 /// số chỗ trống lớn bên phải. Chạm để mở trên bản đồ.
 class _LotRow extends StatelessWidget {
   final LotView lot;
@@ -664,14 +664,12 @@ class _LotRow extends StatelessWidget {
         'ô tô ${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
       if (distance == null && lot.visits == 0 && lot.area != null) lot.area!,
     ].join(', ');
-    const surface = Colors.white;
+    // Không viền, không nền riêng: ảnh tan thẳng vào màu nền trang.
+    const surface = AppColors.bgLight;
     return Material(
-      color: surface,
+      color: Colors.transparent,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: PbmsTokens.border),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
@@ -679,7 +677,7 @@ class _LotRow extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Ảnh địa điểm bên trái, mờ dần về màu nền thẻ trước phần chữ.
+              // Ảnh địa điểm bên trái, mờ dần về màu nền trang trước phần chữ.
               FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: 0.5,
@@ -695,30 +693,33 @@ class _LotRow extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
-                    stops: [0.0, 0.14, 0.3, 0.44],
-                    colors: [Color(0x00FFFFFF), Color(0x1AFFFFFF), Color(0xB3FFFFFF), surface],
+                    stops: [0.0, 0.16, 0.34, 0.48],
+                    colors: [Color(0x00F8FAFC), Color(0x1FF8FAFC), Color(0xB8F8FAFC), surface],
                   ),
                 ),
               ),
+              // Chữ căn phải, thẳng hàng với mép phải của các khối phía trên.
               Padding(
-                padding: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.only(right: 2),
                 child: Row(
                   children: [
-                    const Spacer(flex: 40),
+                    const Spacer(flex: 42),
                     Expanded(
-                      flex: 60,
+                      flex: 58,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(lot.name,
                               maxLines: 1,
+                              textAlign: TextAlign.right,
                               overflow: TextOverflow.ellipsis,
                               style: PbmsText.bodyStrong),
                           if (detail.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(detail,
                                 maxLines: 1,
+                                textAlign: TextAlign.right,
                                 overflow: TextOverflow.ellipsis,
                                 style: PbmsText.caption),
                           ],
@@ -734,6 +735,7 @@ class _LotRow extends StatelessWidget {
                               if (hasRoom)
                                 const TextSpan(text: ' chỗ trống', style: PbmsText.caption),
                             ]),
+                            textAlign: TextAlign.right,
                           ),
                         ],
                       ),

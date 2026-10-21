@@ -34,7 +34,8 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
 - **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
   raised, bouncing wallet button (owner's choice).
-- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot rows show a
-  location photo on the left fading into the card surface; text sits on the clean right side.
+- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot rows have
+  no border or own background: the location photo on the left fades into the page background
+  (`#F8FAFC`), text is right-aligned on the clean side.
 - **Notifications:** flat full-width rows, no borders/radius; unread rows get a full-row teal tint.
 - **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.
