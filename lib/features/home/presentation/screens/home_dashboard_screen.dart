@@ -677,10 +677,11 @@ class _LotRow extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Ảnh địa điểm bên trái, mờ dần về màu nền trang trước phần chữ.
+              // Ảnh địa điểm bên trái; mép mờ là đường parabol từ 1/3 ô (trên)
+              // xuống 3/5 ô (dưới), tan vào màu nền trang trước phần chữ.
               FractionallySizedBox(
                 alignment: Alignment.centerLeft,
-                widthFactor: 0.5,
+                widthFactor: 0.75,
                 child: Image.asset(
                   photoFor(lot.id),
                   fit: BoxFit.cover,
@@ -688,16 +689,7 @@ class _LotRow extends StatelessWidget {
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: [0.0, 0.16, 0.34, 0.48],
-                    colors: [Color(0x00F8FAFC), Color(0x1FF8FAFC), Color(0xB8F8FAFC), surface],
-                  ),
-                ),
-              ),
+              const CustomPaint(painter: _ParabolaFade(color: surface)),
               // Chữ căn phải, thẳng hàng với mép phải của các khối phía trên.
               Padding(
                 padding: const EdgeInsets.only(right: 2),
@@ -749,6 +741,41 @@ class _LotRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Phủ màu nền lên phần bên phải của thẻ, mép trái là đường parabol
+/// (1/3 bề ngang ở trên, 3/5 ở dưới) được làm nhoè để ảnh tan dần.
+class _ParabolaFade extends CustomPainter {
+  final Color color;
+
+  const _ParabolaFade({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final top = w / 3;
+    final bottom = w * 3 / 5;
+    // Kéo vùng phủ ra ngoài thẻ để phần nhoè không làm lộ ảnh ở mép trên/dưới/phải.
+    const out = 60.0;
+    final path = Path()
+      ..moveTo(top, -out)
+      ..lineTo(top, 0)
+      ..quadraticBezierTo(top, h * 0.75, bottom, h)
+      ..lineTo(bottom + out, h + out)
+      ..lineTo(w + out, h + out)
+      ..lineTo(w + out, -out)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.05),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParabolaFade oldDelegate) => oldDelegate.color != color;
 }
 
 /// Một loại xe ở bãi duy nhất: giá và số chỗ trống.
