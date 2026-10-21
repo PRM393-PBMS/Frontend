@@ -196,7 +196,7 @@ class ResponsiveButton extends StatelessWidget {
       );
     }
 
-    final bg = backgroundColor ?? (type == ResponsiveButtonType.secondary ? AppColors.secondary : AppColors.primary);
+    final bg = backgroundColor ?? (type == ResponsiveButtonType.secondary ? AppColors.primaryDark : AppColors.primary);
 
     return Container(
       width: isFullWidth ? double.infinity : null,

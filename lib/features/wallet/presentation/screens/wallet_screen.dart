@@ -130,8 +130,6 @@ class _WalletScreenState extends State<WalletScreen> {
                       WalletHistoryFilter.spends => 'Chưa chi tiêu từ ví',
                       WalletHistoryFilter.all => 'Chưa có giao dịch',
                     },
-                    message:
-                        'Nạp tiền rồi dùng ví để thanh toán phí gửi xe chỉ với một chạm khi ra bãi.',
                   ),
                   builder: (items) => PbmsCard(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -163,44 +161,20 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: PbmsTokens.teal,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return PbmsCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.account_balance_wallet_rounded,
-                  color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Số dư khả dụng',
-                  style: TextStyle(fontSize: 13, color: Color(0xFFE4F7F8))),
-            ],
+          const Text('Số dư khả dụng', style: PbmsText.label),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(CurrencyFormatter.format(wallet.balance), style: PbmsText.display(48)),
           ),
-          const SizedBox(height: 8),
-          Text(CurrencyFormatter.format(wallet.balance),
-              style: PbmsText.figure(30, color: Colors.white)),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: onTopUp,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('Nạp tiền',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: PbmsTokens.teal,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13)),
-              ),
-            ),
-          ),
+          PbmsPrimaryButton(label: 'Nạp tiền', icon: Icons.add_rounded, onPressed: onTopUp),
         ],
       ),
     );

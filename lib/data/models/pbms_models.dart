@@ -274,6 +274,7 @@ class ParkingSessionModel {
     return norm(registered) != norm(licensePlateIn);
   }
   bool get isPrepaid => exitPass != null;
+  bool get isMotorbike => (vehicleTypeName ?? '').toLowerCase().contains('máy');
   String? get slotCode => actualSlotCode ?? assignedSlotCode;
 
   Duration get parkedDuration {

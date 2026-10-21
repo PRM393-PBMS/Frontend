@@ -1,14 +1,36 @@
 # PBMS customer app: design notes
 
-Base: the `main` branch UI (teal, white cards on slate-50). Refined with the repo-local
-`taste-skill` and `impeccable` rules. Shared primitives live in `lib/core/widgets/pbms_ui.dart`.
+Visual language: **"Cuống vé xe & biển báo bãi xe"** (parking stub and lot signage), on the
+`main` branch base (teal, white surfaces on slate-50). Refined with the repo-local `taste-skill`
+and `impeccable` rules. Shared primitives live in `lib/core/widgets/pbms_ui.dart`; parking-specific
+components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
 
-- **Accent:** one only, teal `#087B8C` (`AppColors.brand`), tint `#EFFBFC`, line `#97DFEB`.
-- **Status text colors** (>= 4.5:1 on white): ok `#047857`, warn `#B45309`, danger `#DC2626`.
-  Do not use `AppColors.success/error/warning` for text.
-- **Type:** Be Vietnam Pro everywhere (full Vietnamese diacritics). Scale in `PbmsText`;
-  nothing below 12sp. Figures use tabular numerals (`PbmsText.figure`).
-- **Surfaces:** cards are border-only (`PbmsCard`, radius 16), no border + shadow.
-- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, empty that teaches).
-- **Copy:** no em/en dashes, no uppercase eyebrows, no fake data. Labels above inputs.
-- **Touch targets:** 48dp minimum.
+- **Accent:** one only, teal `#087B8C` (`AppColors.brand` / `AppColors.primary`), tint `#EFFBFC`,
+  line `#97DFEB`. No other hues in `AppColors` (royal blue, sky, indigo, Material 3 set removed).
+- **Status colors** (>= 4.5:1 on white): ok `#047857`, warn `#B45309`, danger `#DC2626`
+  (`AppColors.success/warning/error` now use these values).
+- **Type:** Be Vietnam Pro everywhere (full Vietnamese diacritics), set once in the theme.
+  Scale in `PbmsText`; nothing below 12sp. Body is w400, w600 for labels/emphasis.
+  Headline numbers (time parked, fee, balance, exit code) use `PbmsText.display` (40-52sp, w800,
+  tabular). Lists use `PbmsText.figure`.
+  **Buttons:** never set `textStyle` inside `styleFrom` (it drops the theme font); style the
+  `Text` child instead.
+- **Domain components:**
+  - `PbmsPlate`: Vietnamese plate, white with ink outer and silver inner border; motorbikes on
+    two lines ("59-X2" / "123.45").
+  - `PbmsTicketStub`: paper `#F9F9F6` stub with notch cut-outs and a dashed tear line, soft
+    shadow (no border). For the active session, upcoming reservation and exit pass.
+  - `PbmsLedCounter`: dark panel with large tabular counts like the lot entrance board; "HẾT" when full.
+  - `PbmsSlotTag`: slot code painted like floor signage (white on ink).
+  - `PbmsPaidStamp`: "Đã thanh toán" stamp outline.
+  - `ExitQrScreen` (via `PbmsQrDialog.show`): full-screen white, QR >= 300px, max brightness and
+    wake-lock, single "Xong" button at the bottom, swipe down to close.
+- **Surfaces:** cards are border-only (`PbmsCard`, radius 16; list rows 14); only the ticket stub
+  carries a shadow. No glass, no gradients.
+- **Lists/settings:** `PbmsSettingsGroup` + `PbmsSettingsRow`: flat grouped rows, plain icon, no
+  subtitles, at most 4 rows per group.
+- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
+- **Copy:** short and factual, no teaching paragraphs. No em/en dashes, no uppercase eyebrows,
+  no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
+- **Motion:** carousels never auto-advance; no bouncing buttons.
+- **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.

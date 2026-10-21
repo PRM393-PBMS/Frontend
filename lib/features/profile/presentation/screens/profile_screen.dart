@@ -17,7 +17,6 @@ import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
 import 'package:prm393_frontend/features/incidents/presentation/screens/incidents_screen.dart';
 import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
-import 'package:prm393_frontend/features/legal/legal_documents.dart';
 import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:prm393_frontend/features/payments/payment_history_screen.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/change_email_sheet.dart';
@@ -136,13 +135,6 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                       onEdit: () => _showEditProfileSheet(
                           fullName, user?.phoneNumber ?? ''),
                     ),
-                    const SizedBox(height: 12),
-                    PbmsAsync<_Stats>(
-                      cubit: _stats,
-                      loadingHeight: 84,
-                      errorTitle: 'Không tải được số liệu',
-                      builder: _buildStats,
-                    ),
                     const SizedBox(height: 16),
                     _buildSectionCard(
                       title: 'Phương tiện của bạn',
@@ -185,94 +177,65 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildSectionCard(
-                      title: 'Hoạt động',
+                    const SizedBox(height: 24),
+                    PbmsSettingsGroup(
+                      title: 'Gửi xe',
                       children: [
-                        _buildActionTile(
-                          icon: Icons.account_balance_wallet_outlined,
-                          title: 'Ví PBMS',
-                          subtitle: 'Nạp tiền qua ngân hàng, thẻ; trả phí gửi xe',
-                          onTap: () => WalletScreen.open(context),
-                        ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
+                        PbmsSettingsRow(
                           icon: Icons.qr_code_2_rounded,
                           title: 'Mã QR gửi xe 1 lần',
-                          subtitle: 'Đưa mã ở cổng vào, dùng một lần trong 24 giờ',
                           onTap: () => EntryPassScreen.open(context),
                         ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
+                        PbmsSettingsRow(
                           icon: Icons.history_rounded,
                           title: 'Lịch sử gửi xe',
-                          subtitle: 'Lượt gửi, đặt chỗ',
                           onTap: () => ShellScope.maybeOf(context)
                               ?.goTab(AppTab.history),
                         ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Lịch sử thanh toán',
-                          subtitle: 'Tiền cọc, phí gửi xe, vé tháng, nạp ví',
-                          onTap: () => PaymentHistoryScreen.open(context),
-                        ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
-                          icon: Icons.description_outlined,
-                          title: 'Hợp đồng của tôi',
-                          subtitle: 'Hợp đồng vé tháng dài hạn đã ký',
-                          onTap: () => MyContractsScreen.open(context),
-                        ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
+                        PbmsSettingsRow(
                           icon: Icons.report_gmailerrorred_rounded,
                           title: 'Báo cáo sự cố',
-                          subtitle: 'Gửi và theo dõi phản hồi của bãi',
                           onTap: () => IncidentsScreen.open(context),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildSectionCard(
-                      title: 'Điều khoản và chính sách',
+                    const SizedBox(height: 24),
+                    PbmsSettingsGroup(
+                      title: 'Tiền và giấy tờ',
                       children: [
-                        _buildActionTile(
-                          icon: Icons.gavel_rounded,
-                          title: 'Điều khoản sử dụng dịch vụ',
-                          subtitle: 'Quyền và nghĩa vụ khi gửi xe, thanh toán',
-                          onTap: () => LegalScreen.open(context, termsOfService),
+                        PbmsSettingsRow(
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'Ví PBMS',
+                          onTap: () => WalletScreen.open(context),
                         ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
-                          icon: Icons.privacy_tip_outlined,
-                          title: 'Chính sách bảo mật',
-                          subtitle: 'Dữ liệu được thu thập, chia sẻ và quyền của bạn',
-                          onTap: () => LegalScreen.open(context, privacyPolicy),
+                        PbmsSettingsRow(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Lịch sử thanh toán',
+                          onTap: () => PaymentHistoryScreen.open(context),
+                        ),
+                        PbmsSettingsRow(
+                          icon: Icons.description_outlined,
+                          title: 'Hợp đồng vé tháng',
+                          onTap: () => MyContractsScreen.open(context),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildSectionCard(
-                      title: 'Bảo mật và thông báo',
+                    const SizedBox(height: 24),
+                    PbmsSettingsGroup(
+                      title: 'Tài khoản',
                       children: [
-                        _buildActionTile(
+                        PbmsSettingsRow(
                           icon: Icons.password_rounded,
                           title: 'Đổi mật khẩu',
-                          subtitle: 'Cần nhập mật khẩu hiện tại',
                           onTap: () => ChangePasswordSheet.show(context),
                         ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
-                        _buildActionTile(
+                        PbmsSettingsRow(
                           icon: Icons.alternate_email_rounded,
                           title: 'Đổi email',
-                          subtitle: 'Xác nhận bằng mã gửi tới email mới',
                           onTap: () => ChangeEmailSheet.show(
                               context, context.read<AuthBloc>().state.user?.email ?? ''),
                         ),
-                        const Divider(height: 1, color: PbmsTokens.divider),
                         _buildBiometricTile(),
-                        const Divider(height: 1, color: PbmsTokens.divider),
                         const PushToggleTile(),
                       ],
                     ),
@@ -303,9 +266,12 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         child: const Text('Xoá tài khoản'),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const LegalLinks(prefix: ''),
+                    const SizedBox(height: 6),
                     const Center(
                       child: Text(
-                        'PBMS Smart Parking, phiên bản ${AppConfig.appVersion}',
+                        'PBMS, phiên bản ${AppConfig.appVersion}',
                         style: PbmsText.caption,
                       ),
                     ),
@@ -380,43 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     );
   }
 
-  Widget _buildStats(_Stats s) {
-    return PbmsCard(
-      padding: const EdgeInsets.all(8),
-      child: Row(
-        children: [
-          _buildStat('${s.sessionsThisMonth}', 'Lượt gửi tháng này'),
-          const SizedBox(width: 4),
-          _buildStat('${s.activePasses}', 'Vé tháng hiệu lực',
-              highlighted: true),
-          const SizedBox(width: 4),
-          _buildStat('${s.upcomingReservations}', 'Đặt chỗ sắp tới'),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStat(String value, String label, {bool highlighted = false}) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        decoration: BoxDecoration(
-          color: highlighted ? PbmsTokens.tealTint : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Text(value, style: PbmsText.figure(22, color: PbmsTokens.teal)),
-            const SizedBox(height: 2),
-            Text(label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: PbmsText.caption),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSectionCard({
     required String title,
@@ -550,70 +480,34 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
     }
   }
 
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      minTileHeight: 56,
-      onTap: onTap,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-            color: PbmsTokens.tealTint, shape: BoxShape.circle),
-        child: Icon(icon, size: 20, color: PbmsTokens.teal),
-      ),
-      title: Text(title,
-          maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.bodyStrong),
-      subtitle: Text(subtitle,
-          maxLines: 1, overflow: TextOverflow.ellipsis, style: PbmsText.caption),
-      trailing: const Icon(Icons.chevron_right_rounded, color: PbmsTokens.muted),
-    );
-  }
 
   Widget _buildBiometricTile() {
     return ListenableBuilder(
       listenable: _lock,
       builder: (context, _) {
         final supported = _lock.isSupported;
-        return SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          value: _lock.isEnabled,
-          activeTrackColor: PbmsTokens.teal,
-          onChanged: !supported
-              ? null
-              : (value) async {
-                  final ok = await _lock.setEnabled(value);
-                  if (!context.mounted) return;
-                  showPbmsSnack(
-                    context,
-                    ok
-                        ? (value
-                            ? 'Đã bật khoá sinh trắc học.'
-                            : 'Đã tắt khoá sinh trắc học.')
-                        : 'Chưa xác thực được, cài đặt giữ nguyên.',
-                    error: !ok,
-                  );
-                },
-          secondary: Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-                color: PbmsTokens.tealTint, shape: BoxShape.circle),
-            child: const Icon(Icons.fingerprint_rounded,
-                size: 22, color: PbmsTokens.teal),
-          ),
-          title: const Text('Khoá bằng sinh trắc học',
-              style: PbmsText.bodyStrong),
-          subtitle: Text(
-            supported
-                ? 'Yêu cầu vân tay, khuôn mặt hoặc mã khoá máy (Windows Hello, Touch ID trên web) khi rời ứng dụng quá 1 phút'
-                : 'Thiết bị hoặc trình duyệt chưa có vân tay, khuôn mặt hay mã khoá màn hình',
-            style: PbmsText.caption,
+        final onChanged = !supported
+            ? null
+            : (bool value) async {
+                final ok = await _lock.setEnabled(value);
+                if (!context.mounted) return;
+                showPbmsSnack(
+                  context,
+                  ok
+                      ? (value ? 'Đã bật khoá sinh trắc học.' : 'Đã tắt khoá sinh trắc học.')
+                      : 'Chưa xác thực được, cài đặt giữ nguyên.',
+                  error: !ok,
+                );
+              };
+        return PbmsSettingsRow(
+          icon: Icons.fingerprint_rounded,
+          title: 'Khoá bằng vân tay, khuôn mặt',
+          detail: supported ? null : 'Máy chưa hỗ trợ',
+          onTap: onChanged == null ? null : () => onChanged(!_lock.isEnabled),
+          trailing: Switch.adaptive(
+            value: _lock.isEnabled,
+            activeTrackColor: PbmsTokens.teal,
+            onChanged: onChanged,
           ),
         );
       },

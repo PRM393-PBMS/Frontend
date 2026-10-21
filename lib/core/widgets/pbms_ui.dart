@@ -2,13 +2,19 @@ import 'package:prm393_frontend/core/widgets/payos_checkout_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../data/models/pbms_models.dart';
 import '../error/error_text.dart';
 import '../state/async_cubit.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_formatter.dart';
+import 'parking/exit_qr_screen.dart';
+
+export 'parking/exit_qr_screen.dart';
+export 'parking/pbms_led_counter.dart';
+export 'parking/pbms_plate.dart';
+export 'parking/pbms_slot_tag.dart';
+export 'parking/pbms_ticket_stub.dart';
 
 /// Bảng màu dùng chung cho các màn hình khách hàng (giữ thiết kế gốc).
 class PbmsTokens {
@@ -39,7 +45,8 @@ class PbmsText {
       fontSize: 17, height: 1.25, fontWeight: FontWeight.w700, color: PbmsTokens.ink);
   static const section = TextStyle(
       fontSize: 15, fontWeight: FontWeight.w600, color: PbmsTokens.ink);
-  static const body = TextStyle(fontSize: 14, height: 1.4, color: PbmsTokens.ink);
+  static const body =
+      TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w400, color: PbmsTokens.ink);
   static const bodyStrong = TextStyle(
       fontSize: 14, fontWeight: FontWeight.w600, color: PbmsTokens.ink);
   static const caption =
@@ -54,6 +61,40 @@ class PbmsText {
       color: color,
       letterSpacing: -0.3,
       fontFeatures: const [FontFeature.tabularFigures()]);
+
+  /// Con số chính của màn hình (giờ đỗ, phí, số dư, mã ra cổng): 40-52sp, w800.
+  static TextStyle display(double size, {Color color = PbmsTokens.ink}) => TextStyle(
+      fontSize: size,
+      height: 1.05,
+      fontWeight: FontWeight.w800,
+      color: color,
+      letterSpacing: -size * 0.02,
+      fontFeatures: const [FontFeature.tabularFigures()]);
+}
+
+/// Con dấu "Đã thanh toán" in nghiêng trên vé.
+class PbmsPaidStamp extends StatelessWidget {
+  final String label;
+
+  const PbmsPaidStamp({super.key, this.label = 'Đã thanh toán'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: -0.05,
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          border: Border.all(color: PbmsTokens.teal, width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(label,
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0.3, color: PbmsTokens.teal)),
+      ),
+    );
+  }
 }
 
 /// Thẻ trắng viền mảnh, bo 16, khối giao diện cơ bản.
@@ -83,6 +124,100 @@ class PbmsCard extends StatelessWidget {
       ),
       // ListTile / InkWell bên trong vẽ hiệu ứng chạm lên nền thẻ, không bị nền trắng che.
       child: Material(type: MaterialType.transparency, child: child),
+    );
+  }
+}
+
+/// Nhóm cài đặt phẳng: tiêu đề nhỏ phía trên, các dòng chung một khối, kẻ mảnh giữa dòng.
+class PbmsSettingsGroup extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+
+  const PbmsSettingsGroup({super.key, this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (title != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(title!, style: PbmsText.label.copyWith(fontSize: 13)),
+          ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: PbmsTokens.border),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: BorderRadius.circular(14),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const Divider(height: 1, indent: 52, color: PbmsTokens.divider),
+                  children[i],
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Một dòng cài đặt: icon mảnh, tên, mũi tên hoặc công tắc ở cuối.
+class PbmsSettingsRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? detail;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final Color iconColor;
+
+  const PbmsSettingsRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.detail,
+    this.onTap,
+    this.trailing,
+    this.iconColor = PbmsTokens.muted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 52),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: PbmsText.body.copyWith(fontSize: 15)),
+                    if (detail != null) Text(detail!, style: PbmsText.caption),
+                  ],
+                ),
+              ),
+              trailing ??
+                  (onTap == null
+                      ? const SizedBox.shrink()
+                      : const Icon(Icons.chevron_right_rounded, color: PbmsTokens.muted)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -342,24 +477,23 @@ class PbmsEmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PbmsCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-                color: PbmsTokens.tealTint, shape: BoxShape.circle),
-            child: Icon(icon, color: PbmsTokens.teal, size: 24),
+          Row(
+            children: [
+              Icon(icon, color: PbmsTokens.muted, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title, style: PbmsText.bodyStrong)),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(title, textAlign: TextAlign.center, style: PbmsText.bodyStrong),
           if (message != null) ...[
-            const SizedBox(height: 4),
-            Text(message!, textAlign: TextAlign.center, style: PbmsText.caption),
+            const SizedBox(height: 6),
+            Text(message!, style: PbmsText.caption),
           ],
           if (action != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             action!,
           ],
         ],
@@ -410,7 +544,7 @@ class PbmsAsync<T> extends StatelessWidget {
   }
 }
 
-/// Hộp thoại mã QR ra/vào cổng (payload do backend cấp).
+/// Mã QR ra/vào cổng (payload do backend cấp): mở màn hình toàn màn, sáng tối đa.
 class PbmsQrDialog {
   PbmsQrDialog._();
 
@@ -419,123 +553,22 @@ class PbmsQrDialog {
     required String title,
     required String payload,
     String? headline,
+    String? plate,
+    bool isMotorbike = false,
+    String? code,
     List<(IconData, String, String)> rows = const [],
   }) {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final qrSize =
-            (MediaQuery.sizeOf(dialogContext).width - 104).clamp(180.0, 252.0);
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 390,
-              maxHeight: MediaQuery.sizeOf(dialogContext).height - 48,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(title,
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: PbmsTokens.ink)),
-                      ),
-                      IconButton(
-                        tooltip: 'Đóng mã QR',
-                        onPressed: () => Navigator.pop(dialogContext),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                  if (headline != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: PbmsTokens.tealTint,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.directions_car_rounded,
-                              size: 17, color: PbmsTokens.teal),
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Text(headline,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: PbmsTokens.ink)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: PbmsTokens.border),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: QrImageView(
-                        data: payload,
-                        version: QrVersions.auto,
-                        size: qrSize,
-                        backgroundColor: Colors.white,
-                        semanticsLabel: title,
-                        eyeStyle: const QrEyeStyle(color: Colors.black),
-                        dataModuleStyle:
-                            const QrDataModuleStyle(color: Colors.black),
-                      ),
-                    ),
-                  ),
-                  if (rows.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 13, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: PbmsTokens.surfaceLow,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: PbmsTokens.border),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < rows.length; i++) ...[
-                            if (i > 0)
-                              const Divider(
-                                  height: 1, color: PbmsTokens.border),
-                            PbmsDetailRow(
-                                icon: rows[i].$1,
-                                label: rows[i].$2,
-                                value: rows[i].$3),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    return ExitQrScreen.open(
+      context,
+      ExitQrScreen(
+        title: title,
+        payload: payload,
+        plate: plate,
+        isMotorbike: isMotorbike,
+        code: code,
+        headline: headline,
+        rows: rows,
+      ),
     );
   }
 }
@@ -995,9 +1028,11 @@ class PbmsSegmentedTabs extends StatelessWidget {
                   onPressed: () => onChanged(i),
                   icon: Icon(tabs[i].$1, size: 18),
                   label: Text(tabs[i].$2,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   style: TextButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
+                    minimumSize: const Size.fromHeight(48),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     backgroundColor:
                         i == selected ? Colors.white : Colors.transparent,
@@ -1006,8 +1041,6 @@ class PbmsSegmentedTabs extends StatelessWidget {
                     elevation: i == selected ? 1 : 0,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
-                    textStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

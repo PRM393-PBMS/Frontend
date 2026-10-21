@@ -70,40 +70,25 @@ class _PushToggleTileState extends State<PushToggleTile> {
       valueListenable: _push.state,
       builder: (context, state, _) {
         final supported = state != PushState.unsupported;
-        final subtitle = switch (state) {
-          PushState.unsupported => 'Chỉ có trên ứng dụng Android và iOS',
-          PushState.off => 'Báo đặt chỗ, thanh toán, vé tháng ra khay thông báo của máy',
-          PushState.blocked => 'Điện thoại đang chặn thông báo của PBMS. Bật để mở Cài đặt',
-          PushState.on => 'Đang bật. Thông báo mới hiện lên khay của điện thoại',
-        };
-        return SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          value: state == PushState.on,
-          activeTrackColor: PbmsTokens.teal,
-          onChanged: !supported || _busy
-              ? null
-              : (value) => value && state == PushState.blocked
-                  ? _askOpenSettings()
-                  : _toggle(value),
-          secondary: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: state == PushState.blocked
-                  ? PbmsTokens.warn.withValues(alpha: 0.1)
-                  : PbmsTokens.tealTint,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              state == PushState.blocked
-                  ? Icons.notifications_off_outlined
-                  : Icons.notifications_active_outlined,
-              size: 21,
-              color: state == PushState.blocked ? PbmsTokens.warn : PbmsTokens.teal,
-            ),
+        final blocked = state == PushState.blocked;
+        final onChanged = !supported || _busy
+            ? null
+            : (bool value) => value && blocked ? _askOpenSettings() : _toggle(value);
+        return PbmsSettingsRow(
+          icon: blocked ? Icons.notifications_off_outlined : Icons.notifications_none_rounded,
+          iconColor: blocked ? PbmsTokens.warn : PbmsTokens.muted,
+          title: 'Thông báo đẩy',
+          detail: switch (state) {
+            PushState.unsupported => 'Chỉ có trên app Android, iOS',
+            PushState.blocked => 'Máy đang chặn, bật để mở Cài đặt',
+            _ => null,
+          },
+          onTap: onChanged == null ? null : () => onChanged(state != PushState.on),
+          trailing: Switch.adaptive(
+            value: state == PushState.on,
+            activeTrackColor: PbmsTokens.teal,
+            onChanged: onChanged,
           ),
-          title: const Text('Thông báo đẩy', style: PbmsText.bodyStrong),
-          subtitle: Text(subtitle, style: PbmsText.caption),
         );
       },
     );

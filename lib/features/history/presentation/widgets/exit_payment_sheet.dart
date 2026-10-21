@@ -251,16 +251,18 @@ class _ExitPaymentSheetState extends State<ExitPaymentSheet> {
 class ExitPassCard extends StatelessWidget {
   final ExitPassModel pass;
   final String plate;
+  final bool isMotorbike;
 
-  const ExitPassCard({super.key, required this.pass, required this.plate});
+  const ExitPassCard({super.key, required this.pass, required this.plate, this.isMotorbike = false});
 
   void _showQr(BuildContext context) => PbmsQrDialog.show(
         context,
         title: 'Mã ra cổng',
         payload: pass.qrPayload,
-        headline: plate,
+        plate: plate,
+        isMotorbike: isMotorbike,
+        code: pass.code,
         rows: [
-          (Icons.password_rounded, 'Mã', pass.code),
           if (pass.prepaidAt != null)
             (Icons.verified_rounded, 'Đã thanh toán', DateFormatter.formatDateTime(pass.prepaidAt)),
           (Icons.timer_outlined, 'Hiệu lực', 'Tới khi xe ra khỏi bãi'),
@@ -269,33 +271,21 @@ class ExitPassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PbmsCard(
-      color: PbmsTokens.tealTint,
-      borderColor: PbmsTokens.tealLine,
-      child: Column(
+    return PbmsTicketStub(
+      onTap: () => _showQr(context),
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.verified_rounded, color: PbmsTokens.teal, size: 20),
-              SizedBox(width: 8),
-              Expanded(child: Text('Đã thanh toán, sẵn sàng lấy xe', style: PbmsText.bodyStrong)),
-            ],
-          ),
+          const PbmsPaidStamp(),
           const SizedBox(height: 12),
-          Text(pass.code, style: PbmsText.figure(30, color: PbmsTokens.teal).copyWith(letterSpacing: 4)),
-          const SizedBox(height: 4),
-          const Text(
-            'Quét QR hoặc đọc mã này tại cổng ra. Mã dùng được tới khi xe rời bãi.',
-            style: PbmsText.caption,
-          ),
-          const SizedBox(height: 12),
-          PbmsPrimaryButton(
-            label: 'Mở mã QR ra cổng',
-            icon: Icons.qr_code_2_rounded,
-            onPressed: () => _showQr(context),
-          ),
+          const Text('Mã ra cổng', style: PbmsText.label),
+          Text(pass.code, style: PbmsText.display(40).copyWith(letterSpacing: 6)),
         ],
+      ),
+      stub: PbmsPrimaryButton(
+        label: 'Mở mã ra cổng',
+        icon: Icons.qr_code_2_rounded,
+        onPressed: () => _showQr(context),
       ),
     );
   }

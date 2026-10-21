@@ -202,14 +202,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     onPressed: () => _copyCode(confirmed.reservationId),
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     label: Text(
-                        'Mã đặt chỗ ${confirmed.reservationId.substring(0, confirmed.reservationId.length.clamp(0, 8)).toUpperCase()}'),
+                        'Mã đặt chỗ ${confirmed.reservationId.substring(0, confirmed.reservationId.length.clamp(0, 8)).toUpperCase()}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: PbmsTokens.teal,
                       backgroundColor: PbmsTokens.tealTint,
                       side: const BorderSide(color: PbmsTokens.tealLine),
-                      minimumSize: const Size(48, 44),
-                      textStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
+                      minimumSize: const Size(48, 48),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
