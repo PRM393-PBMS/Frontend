@@ -26,7 +26,7 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   - `ExitQrScreen` (via `PbmsQrDialog.show`): full-screen white, QR >= 300px, max brightness and
     wake-lock, single "Xong" button at the bottom, swipe down to close.
 - **Surfaces:** cards are border-only (`PbmsCard`, radius 16; list rows 14); only the ticket stub
-  carries a shadow. No glass, no gradients.
+  carries a shadow. Glass only on the bottom bar; gradients only for the lot photo fade.
 - **Lists/settings:** `PbmsSettingsGroup` + `PbmsSettingsRow`: flat grouped rows, plain icon, no
   subtitles, at most 4 rows per group.
 - **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
