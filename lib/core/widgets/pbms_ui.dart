@@ -198,6 +198,13 @@ class StatusInfo {
         _ => StatusInfo(s, _neutral),
       };
 
+  static StatusInfo contract(String s) => switch (_k(s)) {
+        'pendingsignature' => const StatusInfo('Chờ ký', _warn),
+        'signed' => const StatusInfo('Đã ký', _ok),
+        'void' => const StatusInfo('Đã huỷ', _neutral),
+        _ => StatusInfo(s, _neutral),
+      };
+
   static StatusInfo incident(String s) => switch (_k(s)) {
         'open' => const StatusInfo('Đã tiếp nhận', _warn),
         'assigned' || 'inprogress' => const StatusInfo('Đang xử lý', _accent),

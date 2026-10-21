@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/utils/media_url.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -116,7 +117,33 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
               icon: Icons.local_parking_rounded,
               label: 'Vị trí đỗ',
               value: s.slotCode ?? 'Chưa phân ô'),
+          if (s.registeredLicensePlate != null)
+            PbmsDetailRow(
+                icon: Icons.badge_outlined,
+                label: 'Biển đã đăng ký',
+                value: s.registeredLicensePlate!),
         ]),
+        if (s.plateMismatch) ...[
+          const SizedBox(height: 10),
+          _PlateMismatchNotice(
+            read: s.licensePlateIn,
+            registered: s.registeredLicensePlate!,
+            onReport: () => ReportIncidentSheet.show(context, sessionId: s.sessionId),
+          ),
+        ],
+        if (resolveMediaUrl(s.entryImageUrl) != null ||
+            resolveMediaUrl(s.exitImageUrl) != null) ...[
+          const SizedBox(height: 18),
+          const Text('Ảnh tại cổng', style: PbmsText.section),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _GatePhoto(label: 'Lúc vào', url: resolveMediaUrl(s.entryImageUrl))),
+              const SizedBox(width: 9),
+              Expanded(child: _GatePhoto(label: 'Lúc ra', url: resolveMediaUrl(s.exitImageUrl))),
+            ],
+          ),
+        ],
         if (s.isActive) ...[
           const SizedBox(height: 18),
           if (exitPass != null)
@@ -215,6 +242,109 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
         border: Border.all(color: PbmsTokens.border),
       ),
       child: Column(children: rows),
+    );
+  }
+}
+
+/// Biển camera đọc lúc vào khác biển xe đã đăng ký: nhắc khách kiểm tra.
+class _PlateMismatchNotice extends StatelessWidget {
+  final String read;
+  final String registered;
+  final VoidCallback onReport;
+
+  const _PlateMismatchNotice({required this.read, required this.registered, required this.onReport});
+
+  @override
+  Widget build(BuildContext context) {
+    return PbmsCard(
+      color: const Color(0xFFFFF7ED),
+      borderColor: const Color(0xFFFED7AA),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309), size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('Biển số đọc được khác biển đăng ký', style: PbmsText.bodyStrong)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Camera đọc "$read", xe đăng ký là "$registered". Nếu camera đọc sai, hãy báo để bãi chỉnh lại trước khi ra.',
+            style: PbmsText.caption,
+          ),
+          TextButton(
+            onPressed: onReport,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFB45309),
+              minimumSize: const Size(48, 44),
+              padding: EdgeInsets.zero,
+            ),
+            child: const Text('Báo sai biển số'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ảnh camera ở cổng; chạm để xem lớn.
+class _GatePhoto extends StatelessWidget {
+  final String label;
+  final String? url;
+
+  const _GatePhoto({required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final src = url;
+    final placeholder = Container(
+      height: 104,
+      decoration: BoxDecoration(
+        color: PbmsTokens.surfaceLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: PbmsTokens.border),
+      ),
+      alignment: Alignment.center,
+      child: Text(src == null ? 'Chưa có ảnh' : 'Không tải được ảnh', style: PbmsText.caption),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: PbmsText.caption),
+        const SizedBox(height: 4),
+        if (src == null)
+          placeholder
+        else
+          Semantics(
+            button: true,
+            label: 'Ảnh xe $label, chạm để phóng to',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (ctx) => Dialog(
+                  insetPadding: const EdgeInsets.all(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InteractiveViewer(
+                    child: Image.network(src, fit: BoxFit.contain, errorBuilder: (_, __, ___) => placeholder),
+                  ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  src,
+                  height: 104,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => placeholder,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

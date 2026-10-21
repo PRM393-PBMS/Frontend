@@ -6,13 +6,10 @@ import 'package:prm393_frontend/data/pbms_repository.dart';
 
 /// Đổi mật khẩu: nhập mật khẩu hiện tại, mật khẩu mới và nhập lại.
 class ChangePasswordSheet extends StatefulWidget {
-  /// Email / tên đăng nhập của tài khoản, để xác minh mật khẩu khi máy chủ cũ.
-  final String identifier;
+  const ChangePasswordSheet({super.key});
 
-  const ChangePasswordSheet({super.key, required this.identifier});
-
-  static Future<bool?> show(BuildContext context, String identifier) =>
-      PbmsSheetFrame.show<bool>(context, (_) => ChangePasswordSheet(identifier: identifier));
+  static Future<bool?> show(BuildContext context) =>
+      PbmsSheetFrame.show<bool>(context, (_) => const ChangePasswordSheet());
 
   @override
   State<ChangePasswordSheet> createState() => _ChangePasswordSheetState();
@@ -43,7 +40,6 @@ class _ChangePasswordSheetState extends State<ChangePasswordSheet> {
     });
     try {
       await context.read<PbmsRepository>().changePassword(
-            identifier: widget.identifier,
             currentPassword: _current.text,
             newPassword: _next.text,
           );

@@ -48,18 +48,32 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
+  static const _filters = [
+    (Icons.list_alt_rounded, 'Tất cả', WalletHistoryFilter.all),
+    (Icons.south_west_rounded, 'Nạp', WalletHistoryFilter.topUps),
+    (Icons.north_east_rounded, 'Chi', WalletHistoryFilter.spends),
+  ];
+
   late final PbmsRepository _repo = context.read<PbmsRepository>();
   late final _wallet = AsyncCubit(_repo.getWallet);
+  int _filter = 0;
+  late final _history = AsyncCubit(() => _repo.getWalletHistory(_filters[_filter].$3));
 
   @override
   void dispose() {
     _wallet.close();
+    _history.close();
     super.dispose();
+  }
+
+  void _reload() {
+    _wallet.load();
+    _history.load();
   }
 
   Future<void> _topUp(WalletModel wallet) async {
     final topped = await TopUpSheet.show(context, wallet);
-    _wallet.load();
+    _reload();
     if (topped == true && mounted) {
       showPbmsSnack(context, 'Đã nạp tiền vào ví.');
     }
@@ -78,7 +92,7 @@ class _WalletScreenState extends State<WalletScreen> {
       ),
       body: RefreshIndicator(
         color: PbmsTokens.teal,
-        onRefresh: () async => _wallet.load(),
+        onRefresh: () async => _reload(),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
@@ -88,42 +102,48 @@ class _WalletScreenState extends State<WalletScreen> {
               children: [
                 PbmsAsync<WalletModel>(
                   cubit: _wallet,
-                  loadingHeight: 420,
+                  loadingHeight: 180,
                   errorTitle: 'Không tải được ví',
-                  builder: (w) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _BalanceCard(wallet: w, onTopUp: () => _topUp(w)),
-                      const SizedBox(height: 22),
-                      const PbmsSectionTitle('Giao dịch gần đây'),
-                      if (w.historyError != null)
-                        PbmsErrorView(
-                          title: 'Chưa tải được lịch sử giao dịch',
-                          message: '${w.historyError} Số dư và nạp tiền vẫn dùng được.',
-                          onRetry: _wallet.load,
-                        )
-                      else if (w.transactions.isEmpty)
-                        const PbmsEmptyView(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Chưa có giao dịch',
-                          message:
-                              'Nạp tiền rồi dùng ví để thanh toán phí gửi xe chỉ với một chạm khi ra bãi.',
-                        )
-                      else
-                        PbmsCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Column(
-                            children: [
-                              for (var i = 0; i < w.transactions.length; i++) ...[
-                                if (i > 0)
-                                  const Divider(
-                                      height: 1, color: PbmsTokens.divider),
-                                _TransactionRow(tx: w.transactions[i]),
-                              ],
-                            ],
-                          ),
-                        ),
-                    ],
+                  builder: (w) => _BalanceCard(wallet: w, onTopUp: () => _topUp(w)),
+                ),
+                const SizedBox(height: 22),
+                const PbmsSectionTitle('Lịch sử giao dịch'),
+                PbmsSegmentedTabs(
+                  tabs: [for (final f in _filters) (f.$1, f.$2)],
+                  selected: _filter,
+                  onChanged: (i) {
+                    if (i == _filter) return;
+                    setState(() => _filter = i);
+                    _history.load();
+                  },
+                ),
+                const SizedBox(height: 12),
+                PbmsAsync<List<WalletTransactionModel>>(
+                  cubit: _history,
+                  loadingHeight: 220,
+                  errorTitle: 'Chưa tải được lịch sử giao dịch',
+                  isEmpty: (d) => d.isEmpty,
+                  empty: PbmsEmptyView(
+                    icon: Icons.receipt_long_outlined,
+                    title: switch (_filters[_filter].$3) {
+                      WalletHistoryFilter.topUps => 'Chưa có lần nạp nào',
+                      WalletHistoryFilter.spends => 'Chưa chi tiêu từ ví',
+                      WalletHistoryFilter.all => 'Chưa có giao dịch',
+                    },
+                    message:
+                        'Nạp tiền rồi dùng ví để thanh toán phí gửi xe chỉ với một chạm khi ra bãi.',
+                  ),
+                  builder: (items) => PbmsCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0)
+                            const Divider(height: 1, color: PbmsTokens.divider),
+                          _TransactionRow(tx: items[i]),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ],
