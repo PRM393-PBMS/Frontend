@@ -689,7 +689,7 @@ class _LotRow extends StatelessWidget {
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-              const CustomPaint(painter: _ParabolaFade(color: surface)),
+              const RepaintBoundary(child: CustomPaint(painter: _ParabolaFade(color: surface))),
               // Chữ căn phải, thẳng hàng với mép phải của các khối phía trên.
               Padding(
                 padding: const EdgeInsets.only(right: 2),
@@ -743,12 +743,24 @@ class _LotRow extends StatelessWidget {
   }
 }
 
-/// Phủ màu nền lên phần bên phải của thẻ, mép trái là đường parabol
-/// (1/3 bề ngang ở trên, 3/5 ở dưới) được làm nhoè để ảnh tan dần.
+/// Phủ màu nền lên phần bên phải của thẻ theo một mép parabol
+/// (1/3 bề ngang ở trên, 3/5 ở dưới). Mỗi hàng điểm ảnh có gradient ngang riêng
+/// đặt theo vị trí parabol ở hàng đó, chuyển theo đường cong smoothstep,
+/// nên ảnh tan đều, không có dải gắt và không cần blur.
 class _ParabolaFade extends CustomPainter {
   final Color color;
 
   const _ParabolaFade({required this.color});
+
+  /// Độ rộng vùng chuyển, tính theo bề ngang thẻ.
+  static const _feather = 0.28;
+
+  /// Mẫu smoothstep để gradient không có điểm gãy.
+  static final List<double> _stops = [for (var i = 0; i <= 8; i++) i / 8];
+
+  List<Color> _colors() => [
+        for (final t in _stops) color.withValues(alpha: t * t * (3 - 2 * t)),
+      ];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -756,22 +768,17 @@ class _ParabolaFade extends CustomPainter {
     final h = size.height;
     final top = w / 3;
     final bottom = w * 3 / 5;
-    // Kéo vùng phủ ra ngoài thẻ để phần nhoè không làm lộ ảnh ở mép trên/dưới/phải.
-    const out = 60.0;
-    final path = Path()
-      ..moveTo(top, -out)
-      ..lineTo(top, 0)
-      ..quadraticBezierTo(top, h * 0.75, bottom, h)
-      ..lineTo(bottom + out, h + out)
-      ..lineTo(w + out, h + out)
-      ..lineTo(w + out, -out)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.05),
-    );
+    final half = w * _feather / 2;
+    final colors = _colors();
+    final paint = Paint();
+    const step = 1.0;
+    for (var y = 0.0; y < h; y += step) {
+      final t = (y + step / 2) / h;
+      final edge = top + (bottom - top) * t * t;
+      paint.shader = LinearGradient(colors: colors, stops: _stops)
+          .createShader(Rect.fromLTRB(edge - half, y, edge + half, y + step));
+      canvas.drawRect(Rect.fromLTRB(edge - half, y, w, y + step + 0.5), paint);
+    }
   }
 
   @override
