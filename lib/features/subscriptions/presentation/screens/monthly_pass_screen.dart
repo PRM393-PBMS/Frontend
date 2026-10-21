@@ -471,7 +471,7 @@ class _PassCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              PbmsStatusPill(StatusInfo.subscription(s.status)),
+              PbmsStatusPill(StatusInfo.subscription(s.displayStatus)),
             ],
           ),
           const SizedBox(height: 13),
@@ -770,12 +770,15 @@ class _PastPassTile extends StatelessWidget {
               ],
             ),
           ),
-          PbmsStatusPill(StatusInfo.subscription(pass.status)),
+          PbmsStatusPill(StatusInfo.subscription(pass.displayStatus)),
           if (onRenew != null)
-            IconButton(
-              tooltip: 'Gia hạn',
+            TextButton.icon(
               onPressed: onRenew,
-              icon: const Icon(Icons.autorenew_rounded, color: PbmsTokens.teal),
+              style: TextButton.styleFrom(
+                  foregroundColor: PbmsTokens.teal,
+                  minimumSize: const Size(48, 44)),
+              icon: const Icon(Icons.autorenew_rounded, size: 18),
+              label: const Text('Gia hạn vé'),
             ),
         ],
       ),

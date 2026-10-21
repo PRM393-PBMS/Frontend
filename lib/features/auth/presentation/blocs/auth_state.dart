@@ -13,6 +13,9 @@ class AuthState extends Equatable {
   final bool resetPasswordSuccess;
   final String? pendingEmail;
 
+  /// Tài khoản nhân sự/quản trị vừa bị từ chối trên app tài xế (đã đăng xuất).
+  final bool staffAccountBlocked;
+
   const AuthState({
     this.status = AuthStatus.initial,
     this.user,
@@ -22,6 +25,7 @@ class AuthState extends Equatable {
     this.registeredSuccess = false,
     this.resetPasswordSuccess = false,
     this.pendingEmail,
+    this.staffAccountBlocked = false,
   });
 
   bool get isAuthenticated => status == AuthStatus.authenticated && user != null;
@@ -36,6 +40,7 @@ class AuthState extends Equatable {
     bool? registeredSuccess,
     bool? resetPasswordSuccess,
     String? pendingEmail,
+    bool staffAccountBlocked = false,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -46,6 +51,7 @@ class AuthState extends Equatable {
       registeredSuccess: registeredSuccess ?? this.registeredSuccess,
       resetPasswordSuccess: resetPasswordSuccess ?? this.resetPasswordSuccess,
       pendingEmail: pendingEmail ?? this.pendingEmail,
+      staffAccountBlocked: staffAccountBlocked,
     );
   }
 
@@ -59,5 +65,6 @@ class AuthState extends Equatable {
         registeredSuccess,
         resetPasswordSuccess,
         pendingEmail,
+        staffAccountBlocked,
       ];
 }

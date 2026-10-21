@@ -657,6 +657,11 @@ class ParkingSlotModel {
 class ReservationModel {
   final String reservationId;
   final String vehicleTypeName;
+  final String? vehicleId;
+  final String? licensePlate;
+
+  /// Tiền cọc đã/đang thu cho đơn; null với máy chủ cũ chưa trả trường này.
+  final double? depositAmount;
   final DateTime expectedEntryTime;
   final String status;
   final DateTime? createdAt;
@@ -665,23 +670,34 @@ class ReservationModel {
   const ReservationModel({
     required this.reservationId,
     required this.vehicleTypeName,
+    this.vehicleId,
+    this.licensePlate,
+    this.depositAmount,
     required this.expectedEntryTime,
     required this.status,
     this.createdAt,
     this.ticket,
   });
 
-  /// Còn trong khung giờ có thể vào bãi (trễ tối đa 1 giờ).
-  bool get _stillValid =>
-      expectedEntryTime.isAfter(DateTime.now().subtract(const Duration(hours: 1)));
+  /// Được vào trễ tối đa 30 phút; quá hạn máy chủ chuyển đơn sang NoShow.
+  static const lateGrace = Duration(minutes: 30);
+
+  /// Còn trong khung giờ có thể vào bãi.
+  bool get _stillValid => expectedEntryTime.isAfter(DateTime.now().subtract(lateGrace));
 
   bool get isPending => _is(status, 'pending') && _stillValid;
   bool get isUpcoming => (_is(status, 'confirmed') || _is(status, 'modified')) && _stillValid;
   bool get canModify => isPending || isUpcoming;
 
+  /// Máy chủ chỉ cho đổi giờ một lần, khi đơn đã đặt cọc (Confirmed, chưa Modified).
+  bool get canChangeTime => _is(status, 'confirmed') && _stillValid;
+
   factory ReservationModel.fromJson(J json) => ReservationModel(
         reservationId: JsonRead.str(json, 'reservationId'),
         vehicleTypeName: JsonRead.str(json, 'vehicleTypeName', 'Ô tô'),
+        vehicleId: JsonRead.strOrNull(json, 'vehicleId'),
+        licensePlate: JsonRead.strOrNull(json, 'licensePlate'),
+        depositAmount: JsonRead.numOrNull(json, 'depositAmount'),
         expectedEntryTime: JsonRead.date(json, 'expectedEntryTime') ?? DateTime.now(),
         status: JsonRead.str(json, 'status', 'Pending'),
         createdAt: JsonRead.date(json, 'createdAt'),
@@ -726,7 +742,18 @@ class MonthlySubscriptionModel {
     this.contractStatus,
   });
 
-  bool get isActive => _is(status, 'active');
+  /// Đã quá ngày hết hạn (máy chủ có thể chưa kịp chuyển trạng thái sang Expired).
+  bool get isExpired {
+    if (_is(status, 'expired')) return true;
+    final end = endDate;
+    return end != null && end.isBefore(DateTime.now());
+  }
+
+  bool get isActive => _is(status, 'active') && !isExpired;
+
+  /// Trạng thái để hiển thị: vé Active đã quá hạn hiện là Expired.
+  String get displayStatus => _is(status, 'active') && isExpired ? 'Expired' : status;
+
   bool get isPendingPayment => status.toLowerCase().contains('pending');
   bool get hasContract => contractId != null;
   bool get needsSignature => hasContract && _is(contractStatus, 'pendingsignature');

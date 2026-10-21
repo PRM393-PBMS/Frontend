@@ -36,7 +36,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           .getCurrentUser()
           // Kho lưu trữ đã tự dùng hồ sơ cũ khi máy chủ chậm; đây chỉ là chốt an toàn.
           .timeout(const Duration(seconds: 10), onTimeout: () => null);
-      if (user != null) {
+      if (user != null && !user.isCustomer) {
+        await _rejectNonCustomer(emit);
+      } else if (user != null) {
         emit(state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
@@ -62,6 +64,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
 
+      if (!user.isCustomer) {
+        await _rejectNonCustomer(emit);
+        return;
+      }
+
       emit(state.copyWith(
         status: AuthStatus.authenticated,
         user: user,
@@ -77,6 +84,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         errorMessage: 'Đăng nhập không thành công. Vui lòng kiểm tra lại.',
       ));
     }
+  }
+
+  /// App chỉ dành cho tài xế: nhân sự/quản trị bị đăng xuất ngay, không vào Dashboard.
+  Future<void> _rejectNonCustomer(Emitter<AuthState> emit) async {
+    await _authRepository.logout();
+    emit(const AuthState(
+      status: AuthStatus.unauthenticated,
+      staffAccountBlocked: true,
+    ));
   }
 
   Future<void> _onAuthLogoutRequested(

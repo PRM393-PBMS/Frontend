@@ -159,6 +159,7 @@ class StatusInfo {
         'active' => const StatusInfo('Đang gửi', _accent),
         'completed' => const StatusInfo('Đã ra bãi', _neutral),
         'cancelled' => const StatusInfo('Đã huỷ', _danger),
+        'exception' => const StatusInfo('Cần bãi xử lý', _warn),
         _ => StatusInfo(s, _neutral),
       };
 
@@ -177,7 +178,7 @@ class StatusInfo {
         'active' => const StatusInfo('Kích hoạt', _ok),
         'pendingpayment' || 'pending' =>
           const StatusInfo('Chờ thanh toán', _warn),
-        'expired' => const StatusInfo('Hết hạn', _neutral),
+        'expired' => const StatusInfo('Đã hết hạn', _neutral),
         'cancelled' => const StatusInfo('Đã huỷ', _danger),
         _ => StatusInfo(s, _neutral),
       };
@@ -202,6 +203,7 @@ class StatusInfo {
         'assigned' || 'inprogress' => const StatusInfo('Đang xử lý', _accent),
         'resolved' => const StatusInfo('Đã xử lý', _ok),
         'closed' => const StatusInfo('Đã đóng', _neutral),
+        'cancelled' => const StatusInfo('Đã huỷ', _neutral),
         _ => StatusInfo(s, _neutral),
       };
 }
