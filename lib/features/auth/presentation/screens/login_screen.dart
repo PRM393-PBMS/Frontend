@@ -23,6 +23,37 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Phiên cũ của tài khoản nhân sự bị từ chối ngay ở màn khởi động.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && context.read<AuthBloc>().state.staffAccountBlocked) {
+        _showStaffBlockedDialog();
+      }
+    });
+  }
+
+  Future<void> _showStaffBlockedDialog() async {
+    final bloc = context.read<AuthBloc>();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.badge_outlined),
+        title: const Text('Không thể đăng nhập'),
+        content: const Text(
+            'Tài khoản nhân sự/quản trị vui lòng sử dụng cổng Web nội bộ.'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+    bloc.add(AuthClearMessageRequested());
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -44,6 +75,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
+        if (state.staffAccountBlocked) {
+          _showStaffBlockedDialog();
+          return;
+        }
         if (state.status == AuthStatus.failure && state.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

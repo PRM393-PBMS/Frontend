@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
+import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
@@ -155,7 +156,12 @@ class ReservationCard extends StatelessWidget {
                         style: PbmsText.figure(20)),
                     const SizedBox(height: 2),
                     Text(
-                        '${DateFormatter.formatDay(r.expectedEntryTime)}, ${r.vehicleTypeName}',
+                        [
+                          DateFormatter.formatDay(r.expectedEntryTime),
+                          r.licensePlate ?? r.vehicleTypeName,
+                          if (r.depositAmount != null)
+                            'cọc ${CurrencyFormatter.format(r.depositAmount!)}',
+                        ].join(', '),
                         style: PbmsText.caption),
                   ],
                 ),
@@ -188,7 +194,7 @@ class ReservationCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (r.isUpcoming)
+                if (r.canChangeTime)
                   _action(Icons.edit_calendar_outlined, 'Đổi giờ',
                       () => ReservationActions.changeTime(context, r, onChanged)),
                 TextButton(

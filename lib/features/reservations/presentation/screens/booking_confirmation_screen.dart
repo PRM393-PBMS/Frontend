@@ -244,7 +244,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                       Expanded(
                         child: _BookingInfoField(
                           label: 'Xe',
-                          value: _vehicle?.licensePlate ?? 'Chưa chọn',
+                          value: confirmed?.licensePlate ?? _vehicle?.licensePlate ?? 'Chưa chọn',
                           detail: 'Phân ô khi vào bãi',
                         ),
                       ),
@@ -263,16 +263,20 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                               : (_time == null
                                   ? 'Chưa chọn'
                                   : DateFormatter.formatDayTime(_time!)),
-                          detail: 'Được vào trễ tối đa 1 giờ',
+                          detail:
+                              'Được vào trễ tối đa ${ReservationModel.lateGrace.inMinutes} phút',
                         ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: _BookingInfoField(
                           label: 'Tiền cọc',
-                          value: pricing == null
-                              ? 'Chưa có bảng giá'
-                              : CurrencyFormatter.format(pricing.basePrice),
+                          value: confirmed?.depositAmount != null
+                              ? CurrencyFormatter.format(
+                                  confirmed!.depositAmount!)
+                              : pricing == null
+                                  ? 'Chưa có bảng giá'
+                                  : CurrencyFormatter.format(pricing.basePrice),
                           detail: 'Trừ vào phí khi ra bãi',
                         ),
                       ),
