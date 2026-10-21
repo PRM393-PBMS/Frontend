@@ -139,6 +139,17 @@ class PbmsRepository {
     }
   }
 
+  /// Lịch sử ví theo loại; không phụ thuộc `GET /api/wallet/:id` (lấy cả số dư).
+  Future<List<WalletTransactionModel>> getWalletHistory(WalletHistoryFilter filter) async {
+    final id = await _ensureWalletId();
+    final path = switch (filter) {
+      WalletHistoryFilter.all => ApiEndpoints.walletTransactions(id),
+      WalletHistoryFilter.topUps => ApiEndpoints.walletTopUps(id),
+      WalletHistoryFilter.spends => ApiEndpoints.walletSpends(id),
+    };
+    return _list(await _get(path), WalletTransactionModel.fromJson);
+  }
+
   Future<PaymentLinkModel> topUpWallet(int amount) async {
     final id = await _ensureWalletId();
     return PaymentLinkModel.fromJson(
@@ -148,6 +159,17 @@ class PbmsRepository {
 
   /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
   Future<bool> checkPayment(String paymentId) => checkTopUp(paymentId);
+
+  /// Lịch sử thanh toán của tôi, mới nhất trước. [status]: Pending/Success/Failed.
+  Future<PaymentPage> getMyPayments({int page = 1, int pageSize = 20, String? status}) async =>
+      PaymentPage.fromJson(_obj(
+        await _get(ApiEndpoints.myPayments, query: {
+          'page': page,
+          'pageSize': pageSize,
+          if (status != null) 'status': status,
+        }),
+        'lịch sử thanh toán',
+      ));
 
   /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
   Future<bool> checkTopUp(String paymentId) async {
@@ -435,6 +457,9 @@ class PbmsRepository {
 
   // ----------------------------------------------------------- contracts
 
+  Future<List<ContractModel>> getMyContracts() async =>
+      _list(await _get(ApiEndpoints.myContracts), ContractModel.fromJson);
+
   Future<ContractModel> getContractForSubscription(String subscriptionId) async =>
       ContractModel.fromJson(
         _obj(await _get(ApiEndpoints.contractForSubscription(subscriptionId)), 'hợp đồng'),
@@ -470,8 +495,17 @@ class PbmsRepository {
         _obj(await _get(ApiEndpoints.incidentById(incidentId)), 'sự cố'),
       );
 
-  Future<List<IncidentModel>> getMyIncidents() async =>
-      _list(await _get(ApiEndpoints.myIncidentReports), IncidentModel.fromJson);
+  Future<List<IncidentModel>> getMyIncidents() async {
+    final items = _list(await _get(ApiEndpoints.myIncidentReports), IncidentModel.fromJson);
+    // Mới nhất trước; máy chủ cũ không có createdAt thì giữ thứ tự trả về.
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    items.sort((a, b) => (b.createdAt ?? epoch).compareTo(a.createdAt ?? epoch));
+    return items;
+  }
+
+  Future<IncidentModel> cancelIncident(String incidentId) async => IncidentModel.fromJson(
+        _obj(await _put(ApiEndpoints.cancelIncident(incidentId)), 'sự cố'),
+      );
 
   Future<String> uploadIncidentProof(Uint8List bytes, String fileName) async {
     final form = FormData.fromMap({
@@ -564,29 +598,26 @@ class PbmsRepository {
     return UserModel.fromJson(_obj(result.result, 'hồ sơ'));
   }
 
-  /// Đổi mật khẩu, có xác minh mật khẩu hiện tại.
-  /// Máy chủ chưa có API đổi mật khẩu (404): xác minh bằng cách đăng nhập với
-  /// mật khẩu hiện tại rồi mới cập nhật qua PUT /api/profile.
+  /// Đổi mật khẩu: máy chủ xác minh mật khẩu hiện tại.
   Future<void> changePassword({
-    required String identifier,
     required String currentPassword,
     required String newPassword,
   }) async {
-    try {
-      await _post(ApiEndpoints.changePassword, {
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-      });
-      return;
-    } on NotFoundException {
-      // Máy chủ cũ: đi đường dự phòng bên dưới.
-    }
-    try {
-      await _post(ApiEndpoints.login, {'email': identifier, 'password': currentPassword});
-    } on AppException {
-      throw const ValidationException(message: 'Mật khẩu hiện tại không đúng');
-    }
-    await _put(ApiEndpoints.profile, {'password': newPassword});
+    await _post(ApiEndpoints.changePassword, {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    });
+  }
+
+  /// Đổi email bước 1: xác minh mật khẩu, máy chủ gửi OTP tới [newEmail].
+  Future<void> requestEmailChange({required String newEmail, required String password}) async {
+    await _post(ApiEndpoints.requestEmailChange, {'newEmail': newEmail, 'password': password});
+  }
+
+  /// Đổi email bước 2: đúng OTP thì email đăng nhập đổi; trả email mới.
+  Future<String> verifyEmailChange(String otp) async {
+    final raw = _obj(await _post(ApiEndpoints.verifyEmailChange, {'otp': otp}), 'đổi email');
+    return JsonRead.str(raw, 'email');
   }
 
   /// Xoá tài khoản (máy chủ ẩn danh hoá hồ sơ). Máy chủ cũ chưa có API thì báo rõ.
@@ -603,13 +634,11 @@ class PbmsRepository {
   Future<UserModel> updateProfile({
     required String fullName,
     required String phoneNumber,
-    String? password,
   }) async =>
       UserModel.fromJson(_obj(
         await _put(ApiEndpoints.profile, {
           'fullName': fullName,
           'phoneNumber': phoneNumber,
-          if (password != null && password.isNotEmpty) 'password': password,
         }),
         'hồ sơ',
       ));

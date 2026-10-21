@@ -16,6 +16,8 @@ class ApiEndpoints {
   static const String profileAvatar = '/api/profile/avatar';
   static const String changePassword = '/api/profile/change-password';
   static const String deleteAccount = '/api/profile/delete-account';
+  static const String requestEmailChange = '/api/profile/change-email';
+  static const String verifyEmailChange = '/api/profile/change-email/verify';
 
   // ================= Reservations (lowercase /api/reservations) =================
   static const String reservations = '/api/reservations';
@@ -81,6 +83,7 @@ class ApiEndpoints {
   static const String myIncidentReports = '/api/IncidentReport/my-reports';
   static const String uploadIncidentProof = '/api/IncidentReport/upload-proof';
   static String incidentById(String id) => '/api/IncidentReport/$id';
+  static String cancelIncident(String id) => '/api/IncidentReport/$id/cancel';
 
   // ================= Notifications (/api/Notification) =================
   static const String myNotifications = '/api/Notification/my';
@@ -100,6 +103,12 @@ class ApiEndpoints {
   static const String ensureWallet = '/api/wallet';
   static String walletById(String walletId) => '/api/wallet/$walletId';
   static String walletTopUp(String walletId) => '/api/wallet/$walletId/top-up';
+  static String walletTransactions(String walletId) => '/api/wallet/$walletId/transactions';
+  static String walletTopUps(String walletId) => '/api/wallet/$walletId/top-ups';
+  static String walletSpends(String walletId) => '/api/wallet/$walletId/spends';
+
+  /// Lịch sử thanh toán của khách (phân trang: page, pageSize, status).
+  static const String myPayments = '/api/payments/my';
 
   /// Khách tự kiểm tra một thanh toán PayOS của mình (tra trực tiếp PayOS).
   static String syncPayment(String paymentId) => '/api/payments/$paymentId/sync';

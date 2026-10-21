@@ -98,6 +98,11 @@ class PaymentModel {
   final DateTime? paymentTime;
   final String? transactionReference;
 
+  /// Chỉ có trong lịch sử thanh toán của tôi (`GET /api/payments/my`).
+  final String? paymentTypeLabel;
+  final String? licensePlate;
+  final String? packageName;
+
   const PaymentModel({
     required this.paymentId,
     required this.amount,
@@ -106,6 +111,9 @@ class PaymentModel {
     required this.paymentStatus,
     this.paymentTime,
     this.transactionReference,
+    this.paymentTypeLabel,
+    this.licensePlate,
+    this.packageName,
   });
 
   factory PaymentModel.fromJson(J json) => PaymentModel(
@@ -116,6 +124,31 @@ class PaymentModel {
         paymentStatus: JsonRead.str(json, 'paymentStatus', 'Pending'),
         paymentTime: JsonRead.date(json, 'paymentTime'),
         transactionReference: JsonRead.strOrNull(json, 'transactionReference'),
+        paymentTypeLabel: JsonRead.strOrNull(json, 'paymentTypeLabel'),
+        licensePlate: JsonRead.strOrNull(json, 'licensePlate'),
+        packageName: JsonRead.strOrNull(json, 'packageName'),
+      );
+}
+
+/// Một trang của `GET /api/payments/my`.
+class PaymentPage {
+  final List<PaymentModel> items;
+  final int page;
+  final int total;
+  final bool hasMore;
+
+  const PaymentPage({
+    required this.items,
+    required this.page,
+    required this.total,
+    required this.hasMore,
+  });
+
+  factory PaymentPage.fromJson(J json) => PaymentPage(
+        items: JsonRead.list(json['items']).map(PaymentModel.fromJson).toList(),
+        page: JsonRead.int_(json, 'page', 1),
+        total: JsonRead.int_(json, 'total'),
+        hasMore: JsonRead.bool_(json, 'hasMore'),
       );
 }
 
@@ -202,6 +235,11 @@ class ParkingSessionModel {
   final TicketModel? ticket;
   final ExitPassModel? exitPass;
 
+  /// Ảnh camera lúc vào/ra và biển số của xe đã đăng ký (để đối chiếu khi OCR đọc sai).
+  final String? entryImageUrl;
+  final String? exitImageUrl;
+  final String? registeredLicensePlate;
+
   const ParkingSessionModel({
     required this.sessionId,
     this.reservationId,
@@ -221,9 +259,20 @@ class ParkingSessionModel {
     this.paymentTime,
     this.ticket,
     this.exitPass,
+    this.entryImageUrl,
+    this.exitImageUrl,
+    this.registeredLicensePlate,
   });
 
   bool get isActive => _is(status, 'active');
+
+  /// Biển camera đọc khác biển xe đã đăng ký (bỏ qua dấu, khoảng trắng, hoa thường).
+  bool get plateMismatch {
+    final registered = registeredLicensePlate;
+    if (registered == null || registered.isEmpty) return false;
+    String norm(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    return norm(registered) != norm(licensePlateIn);
+  }
   bool get isPrepaid => exitPass != null;
   String? get slotCode => actualSlotCode ?? assignedSlotCode;
 
@@ -251,6 +300,9 @@ class ParkingSessionModel {
         paymentTime: JsonRead.date(json, 'paymentTime'),
         ticket: TicketModel.fromJson(json['ticket']),
         exitPass: ExitPassModel.fromJson(JsonRead.map(json, 'exitPass')),
+        entryImageUrl: JsonRead.strOrNull(json, 'entryImageUrl'),
+        exitImageUrl: JsonRead.strOrNull(json, 'exitImageUrl'),
+        registeredLicensePlate: JsonRead.strOrNull(json, 'registeredLicensePlate'),
       );
 }
 
@@ -306,7 +358,9 @@ class PrepayResultModel {
   }
 }
 
-/// Giao dịch ví (định dạng của module wallets): nạp (Credit) hoặc chi (Debit).
+/// Bộ lọc lịch sử ví, ứng với `/transactions`, `/top-ups`, `/spends`.
+enum WalletHistoryFilter { all, topUps, spends }
+
 /// Giao dịch ví (định dạng của module wallets): nạp (Credit) hoặc chi (Debit).
 class WalletTransactionModel {
   final String id;
@@ -837,6 +891,7 @@ class ContractModel {
   final String? signatureImageDataUrl;
   final DateTime? signedAt;
   final String? sealKeyId;
+  final DateTime? createdAt;
 
   const ContractModel({
     required this.id,
@@ -849,6 +904,7 @@ class ContractModel {
     this.signatureImageDataUrl,
     this.signedAt,
     this.sealKeyId,
+    this.createdAt,
   });
 
   bool get isSigned => _is(status, 'signed');
@@ -865,6 +921,7 @@ class ContractModel {
         signatureImageDataUrl: JsonRead.strOrNull(json, 'signatureImage'),
         signedAt: JsonRead.date(json, 'signedAt'),
         sealKeyId: JsonRead.strOrNull(json, 'sealKeyId'),
+        createdAt: JsonRead.date(json, 'createdAt'),
       );
 }
 
@@ -983,6 +1040,9 @@ class IncidentModel {
   final DateTime? resolvedAt;
   final String? resolutionNotes;
 
+  /// Thời điểm khách báo (máy chủ cũ không có).
+  final DateTime? createdAt;
+
   const IncidentModel({
     required this.incidentId,
     this.sessionId,
@@ -993,7 +1053,11 @@ class IncidentModel {
     this.handledByStaffFullName,
     this.resolvedAt,
     this.resolutionNotes,
+    this.createdAt,
   });
+
+  /// Khách chỉ huỷ được khi bãi chưa xử lý xong.
+  bool get canCancel => _is(status, 'open') || _is(status, 'inprogress');
 
   factory IncidentModel.fromJson(J json) => IncidentModel(
         incidentId: JsonRead.str(json, 'incidentId'),
@@ -1005,6 +1069,7 @@ class IncidentModel {
         handledByStaffFullName: JsonRead.strOrNull(json, 'handledByStaffFullName'),
         resolvedAt: JsonRead.date(json, 'resolvedAt'),
         resolutionNotes: JsonRead.strOrNull(json, 'resolutionNotes'),
+        createdAt: JsonRead.date(json, 'createdAt'),
       );
 }
 

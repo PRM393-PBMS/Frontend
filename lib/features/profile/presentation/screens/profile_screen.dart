@@ -19,6 +19,9 @@ import 'package:prm393_frontend/features/incidents/presentation/screens/incident
 import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
 import 'package:prm393_frontend/features/legal/legal_documents.dart';
 import 'package:prm393_frontend/features/legal/legal_screen.dart';
+import 'package:prm393_frontend/features/payments/payment_history_screen.dart';
+import 'package:prm393_frontend/features/profile/presentation/widgets/change_email_sheet.dart';
+import 'package:prm393_frontend/features/subscriptions/presentation/screens/my_contracts_screen.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/change_password_sheet.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/delete_account_sheet.dart';
 import 'package:prm393_frontend/features/profile/presentation/widgets/profile_avatar.dart';
@@ -201,11 +204,25 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                         ),
                         const Divider(height: 1, color: PbmsTokens.divider),
                         _buildActionTile(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Lịch sử gửi xe & thanh toán',
-                          subtitle: 'Lượt gửi, phí đã trả, đặt chỗ',
+                          icon: Icons.history_rounded,
+                          title: 'Lịch sử gửi xe',
+                          subtitle: 'Lượt gửi, đặt chỗ',
                           onTap: () => ShellScope.maybeOf(context)
                               ?.goTab(AppTab.history),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        _buildActionTile(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Lịch sử thanh toán',
+                          subtitle: 'Tiền cọc, phí gửi xe, vé tháng, nạp ví',
+                          onTap: () => PaymentHistoryScreen.open(context),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        _buildActionTile(
+                          icon: Icons.description_outlined,
+                          title: 'Hợp đồng của tôi',
+                          subtitle: 'Hợp đồng vé tháng dài hạn đã ký',
+                          onTap: () => MyContractsScreen.open(context),
                         ),
                         const Divider(height: 1, color: PbmsTokens.divider),
                         _buildActionTile(
@@ -243,11 +260,15 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                           icon: Icons.password_rounded,
                           title: 'Đổi mật khẩu',
                           subtitle: 'Cần nhập mật khẩu hiện tại',
-                          onTap: () {
-                            final u = context.read<AuthBloc>().state.user;
-                            final id = (u?.email ?? '').isNotEmpty ? u!.email : (u?.userName ?? '');
-                            ChangePasswordSheet.show(context, id);
-                          },
+                          onTap: () => ChangePasswordSheet.show(context),
+                        ),
+                        const Divider(height: 1, color: PbmsTokens.divider),
+                        _buildActionTile(
+                          icon: Icons.alternate_email_rounded,
+                          title: 'Đổi email',
+                          subtitle: 'Xác nhận bằng mã gửi tới email mới',
+                          onTap: () => ChangeEmailSheet.show(
+                              context, context.read<AuthBloc>().state.user?.email ?? ''),
                         ),
                         const Divider(height: 1, color: PbmsTokens.divider),
                         _buildBiometricTile(),

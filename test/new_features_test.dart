@@ -209,7 +209,7 @@ void main() {
   });
 
   testWidgets('đổi mật khẩu: kiểm tra mật khẩu mới trước khi gửi', (tester) async {
-    await tester.pumpWidget(_app(const ChangePasswordSheet(identifier: 'a@b.com')));
+    await tester.pumpWidget(_app(const ChangePasswordSheet()));
     final fields = find.byType(TextFormField);
     await tester.enterText(fields.at(0), 'matkhaucu');
     await tester.enterText(fields.at(1), '123');

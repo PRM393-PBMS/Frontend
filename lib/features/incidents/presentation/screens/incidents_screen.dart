@@ -7,6 +7,7 @@ import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
+import 'package:prm393_frontend/core/utils/media_url.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -139,14 +140,19 @@ class _IncidentTile extends StatelessWidget {
               PbmsStatusPill(StatusInfo.incident(item.status)),
             ],
           ),
+          if (item.createdAt != null) ...[
+            const SizedBox(height: 2),
+            Text('Báo lúc ${DateFormatter.formatDateTime(item.createdAt)}',
+                style: PbmsText.caption),
+          ],
           const SizedBox(height: 6),
           Text(item.description, style: PbmsText.caption),
-          if (item.proofImageUrl != null) ...[
+          if (resolveMediaUrl(item.proofImageUrl) case final proofUrl?) ...[
             const SizedBox(height: 11),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                item.proofImageUrl!,
+                proofUrl,
                 height: 140,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -217,13 +223,43 @@ class IncidentDetailSheet extends StatefulWidget {
 }
 
 class _IncidentDetailSheetState extends State<IncidentDetailSheet> {
-  late final _item = AsyncCubit(
-      () => context.read<PbmsRepository>().getIncident(widget.incidentId));
+  late final PbmsRepository _repo = context.read<PbmsRepository>();
+  late final _item = AsyncCubit(() => _repo.getIncident(widget.incidentId));
+  bool _cancelling = false;
 
   @override
   void dispose() {
     _item.close();
     super.dispose();
+  }
+
+  Future<void> _cancel() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Huỷ báo cáo này?'),
+        content: const Text('Bãi sẽ ngừng xử lý báo cáo. Bạn có thể gửi báo cáo mới nếu vấn đề còn.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Giữ lại')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
+            child: const Text('Huỷ báo cáo'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _cancelling = true);
+    try {
+      final updated = await _repo.cancelIncident(widget.incidentId);
+      _item.patch((_) => updated);
+      if (mounted) showPbmsSnack(context, 'Đã huỷ báo cáo.');
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
   }
 
   @override
@@ -238,11 +274,23 @@ class _IncidentDetailSheetState extends State<IncidentDetailSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _IncidentTile(item: item),
-              if (item.resolutionNotes == null) ...[
+              if (item.resolutionNotes == null && item.canCancel) ...[
                 const SizedBox(height: 11),
                 const Text(
                   'Nhân viên chưa phản hồi. Bạn sẽ nhận thông báo khi có cập nhật.',
                   style: PbmsText.caption,
+                ),
+              ],
+              if (item.canCancel) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _cancelling ? null : _cancel,
+                  icon: const Icon(Icons.cancel_outlined, size: 20),
+                  label: Text(_cancelling ? 'Đang huỷ...' : 'Huỷ báo cáo'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: PbmsTokens.danger,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
                 ),
               ],
             ],
