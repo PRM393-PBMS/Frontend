@@ -114,7 +114,7 @@ void main() {
     });
   });
 
-  testWidgets('thanh dưới: nút Ví có nhãn hiện rõ và bấm được', (tester) async {
+  testWidgets('thanh dưới (bản cũ khôi phục): nút ví giữa bấm được, có nhãn cho trình đọc màn hình', (tester) async {
     _phone(tester);
     var opened = 0;
     await tester.pumpWidget(MaterialApp(
@@ -123,22 +123,22 @@ void main() {
           currentIndex: 0,
           onTabChanged: (_) {},
           tabs: const [
-            NavTab(icon: Icons.local_parking_outlined, activeIcon: Icons.local_parking, label: 'Gửi xe'),
+            NavTab(icon: Icons.local_parking_outlined, activeIcon: Icons.local_parking, label: 'Đặt chỗ'),
             NavTab(icon: Icons.history, activeIcon: Icons.history, label: 'Lịch sử'),
             NavTab(icon: Icons.card_membership, activeIcon: Icons.card_membership, label: 'Vé tháng'),
             NavTab(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Cá nhân'),
           ],
           centerIcon: Icons.account_balance_wallet_rounded,
-          centerLabel: 'Ví',
+          centerLabel: 'Ví của tôi',
           onCenterTap: () => opened++,
         ),
       ),
     ));
-    expect(find.text('Ví'), findsOneWidget);
-    expect(find.text('Gửi xe'), findsOneWidget);
-    await tester.tap(find.text('Ví'));
+    expect(find.text('Đặt chỗ'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ví của tôi'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.account_balance_wallet_rounded));
-    expect(opened, 2);
+    await tester.pumpAndSettle();
+    expect(opened, 1);
   });
 
   test('carousel không tự trượt nếu không truyền interval', () {

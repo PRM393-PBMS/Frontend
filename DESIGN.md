@@ -32,5 +32,9 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
 - **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
 - **Copy:** short and factual, no teaching paragraphs. No em/en dashes, no uppercase eyebrows,
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
-- **Motion:** carousels never auto-advance; no bouncing buttons.
+- **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
+  raised, bouncing wallet button (owner's choice).
+- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot rows show a
+  location photo on the left fading into the card surface; text sits on the clean right side.
+- **Notifications:** flat full-width rows, no borders/radius; unread rows get a full-row teal tint.
 - **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.

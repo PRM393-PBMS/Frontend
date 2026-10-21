@@ -69,7 +69,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     super.initState();
     _loadUnread();
     _locate();
-    // Bảng chỗ trống và dòng "Gần bãi X" cần danh sách bãi; carousel ẩn khi có xe trong bãi.
+    // Dòng "Gần bãi X" cần danh sách bãi; phí tạm tính cần biết xe nào đang trong bãi.
     _subs
       ..add(_lots.stream.listen((_) {
         if (mounted) setState(() {});
@@ -200,7 +200,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final parked = _activeSession != null;
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
@@ -216,24 +215,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
             children: [
               _buildHeader(context),
               const SizedBox(height: 20),
-              // Xe đang trong bãi / đặt chỗ sắp tới luôn đứng đầu: đây là việc ở cổng.
+              _buildPromos(context),
+              const SizedBox(height: 20),
               PbmsAsync<_Activity>(
                 cubit: _activity,
                 loadingHeight: 220,
                 errorTitle: 'Không tải được lượt gửi xe',
                 builder: _buildActivity,
               ),
-              const SizedBox(height: 20),
-              PbmsAsync<List<LotView>>(
-                cubit: _lots,
-                loadingHeight: 120,
-                errorTitle: 'Không tải được chỗ trống',
-                builder: _buildLedBoard,
-              ),
-              if (!parked) ...[
-                const SizedBox(height: 20),
-                _buildPromos(context),
-              ],
               const SizedBox(height: 24),
               PbmsAsync<List<LotView>>(
                 cubit: _lots,
@@ -447,26 +436,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     ]);
   }
 
-  /// Bảng LED chỗ trống, cộng dồn theo loại xe trên mọi bãi.
-  Widget _buildLedBoard(List<LotView> lots) {
-    final caps = lots.expand((l) => l.capacities);
-    int sum(bool car) =>
-        caps.where((c) => c.isCar == car).fold(0, (s, c) => s + c.available);
-    final hasMoto = caps.any((c) => !c.isCar);
-    final hasCar = caps.any((c) => c.isCar);
-    if (!hasMoto && !hasCar) return const SizedBox.shrink();
-    return PbmsLedCounter(
-      caption: lots.length == 1
-          ? lots.first.name
-          : '${lots.where((l) => l.available > 0).length}/${lots.length} bãi còn chỗ',
-      entries: [
-        if (hasMoto) (label: 'Xe máy', available: sum(false)),
-        if (hasCar) (label: 'Ô tô', available: sum(true)),
-      ],
-      onTap: () => widget.onOpenMap(lots.length == 1 ? lots.first.id : null),
-    );
-  }
-
   Widget _buildActivity(_Activity activity) {
     final session = activity.session;
     if (session != null) return _buildActiveSession(session);
@@ -664,13 +633,25 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-/// Một bãi: tên, khoảng cách, số chỗ trống lớn bên phải. Chạm để mở trên bản đồ.
+/// Một bãi: ảnh bên trái mờ dần sang phải hoà vào nền thẻ, tên và khoảng cách,
+/// số chỗ trống lớn bên phải. Chạm để mở trên bản đồ.
 class _LotRow extends StatelessWidget {
   final LotView lot;
   final double? distance;
   final VoidCallback onTap;
 
   const _LotRow({required this.lot, required this.onTap, this.distance});
+
+  /// Bãi chưa có ảnh riêng trên máy chủ: gán cố định một ảnh bãi đỗ theo mã bãi.
+  static const _photos = [
+    'assets/images/promo/reserve.jpg',
+    'assets/images/promo/prepay.jpg',
+    'assets/images/promo/monthly.jpg',
+    'assets/images/promo/wallet.jpg',
+  ];
+
+  static String photoFor(String lotId) =>
+      _photos[lotId.codeUnits.fold<int>(0, (s, c) => s + c) % _photos.length];
 
   @override
   Widget build(BuildContext context) {
@@ -683,47 +664,82 @@ class _LotRow extends StatelessWidget {
         'ô tô ${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
       if (distance == null && lot.visits == 0 && lot.area != null) lot.area!,
     ].join(', ');
+    const surface = Colors.white;
     return Material(
-      color: Colors.white,
+      color: surface,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: PbmsTokens.border),
         borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Row(
+        child: SizedBox(
+          height: 100,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(lot.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PbmsText.bodyStrong),
-                    if (detail.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(detail,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: PbmsText.caption),
-                    ],
-                  ],
+              // Ảnh địa điểm bên trái, mờ dần về màu nền thẻ trước phần chữ.
+              FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: 0.5,
+                child: Image.asset(
+                  photoFor(lot.id),
+                  fit: BoxFit.cover,
+                  excludeFromSemantics: true,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(hasRoom ? '${lot.available}' : 'Hết',
-                      style: PbmsText.figure(24,
-                              color: hasRoom ? PbmsTokens.ink : PbmsTokens.danger)
-                          .copyWith(fontWeight: FontWeight.w800)),
-                  Text(hasRoom ? 'chỗ trống' : 'chỗ', style: PbmsText.caption),
-                ],
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    stops: [0.0, 0.14, 0.3, 0.44],
+                    colors: [Color(0x00FFFFFF), Color(0x1AFFFFFF), Color(0xB3FFFFFF), surface],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Row(
+                  children: [
+                    const Spacer(flex: 40),
+                    Expanded(
+                      flex: 60,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(lot.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: PbmsText.bodyStrong),
+                          if (detail.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(detail,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: PbmsText.caption),
+                          ],
+                          const SizedBox(height: 6),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(
+                                text: hasRoom ? '${lot.available}' : 'Hết chỗ',
+                                style: PbmsText.figure(18,
+                                        color: hasRoom ? PbmsTokens.teal : PbmsTokens.danger)
+                                    .copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              if (hasRoom)
+                                const TextSpan(text: ' chỗ trống', style: PbmsText.caption),
+                            ]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

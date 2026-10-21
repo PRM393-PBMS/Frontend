@@ -65,7 +65,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     NavTab(
         icon: Icons.local_parking_outlined,
         activeIcon: Icons.local_parking_rounded,
-        label: 'Gửi xe'),
+        label: 'Đặt chỗ'),
     NavTab(
         icon: Icons.history_outlined,
         activeIcon: Icons.history_rounded,
@@ -149,7 +149,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onTabChanged: _goTab,
             tabs: _tabs,
             centerIcon: Icons.account_balance_wallet_rounded,
-            centerLabel: 'Ví',
+            centerLabel: 'Ví của tôi',
             onCenterTap: _openWallet,
           ),
         ),
