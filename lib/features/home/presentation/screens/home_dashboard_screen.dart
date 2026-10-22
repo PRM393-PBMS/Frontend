@@ -289,7 +289,29 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PbmsSectionTitle(title),
+        // Nút "Xem thêm" nằm cùng dòng tiêu đề, phía đối diện.
+        PbmsSectionTitle(
+          title,
+          trailing: more > 0
+              ? TextButton.icon(
+                  onPressed: () => setState(() => _showAllLots = !_showAllLots),
+                  iconAlignment: IconAlignment.end,
+                  icon: AnimatedRotation(
+                    turns: _showAllLots ? 0.5 : 0,
+                    duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
+                    child: const Icon(Icons.expand_more_rounded, size: 20),
+                  ),
+                  label: Text(_showAllLots ? 'Thu gọn' : 'Xem thêm $more bãi',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: PbmsTokens.teal,
+                    minimumSize: const Size(48, 40),
+                    padding: const EdgeInsets.only(left: 8),
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                  ),
+                )
+              : null,
+        ),
         card(ordered.first),
         AnimatedSize(
           duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 240),
@@ -302,24 +324,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 )
               : const SizedBox(width: double.infinity),
         ),
-        if (more > 0)
-          Center(
-            child: TextButton.icon(
-              onPressed: () => setState(() => _showAllLots = !_showAllLots),
-              iconAlignment: IconAlignment.end,
-              icon: AnimatedRotation(
-                turns: _showAllLots ? 0.5 : 0,
-                duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
-                child: const Icon(Icons.expand_more_rounded),
-              ),
-              label: Text(_showAllLots ? 'Thu gọn' : 'Xem thêm $more bãi',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              style: TextButton.styleFrom(
-                foregroundColor: PbmsTokens.teal,
-                minimumSize: const Size(48, 48),
-              ),
-            ),
-          ),
       ],
     );
   }
