@@ -687,11 +687,11 @@ class _LotRow extends StatelessWidget {
       child: Material(
         color: PbmsTokens.teal,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 125,
+            height: 100,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -709,14 +709,14 @@ class _LotRow extends StatelessWidget {
                 // Lớp teal 40% của theme: vẫn nhìn thấy ảnh bên dưới.
                 ColoredBox(color: PbmsTokens.teal.withValues(alpha: 0.4)),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Một dòng, không xuống hàng: thẻ cao cố định 125.
+                          // Một dòng, không xuống hàng: thẻ cao cố định 100.
                           Expanded(
                             child: Row(
                               children: [
@@ -755,7 +755,7 @@ class _LotRow extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Icon(Icons.place_outlined, size: 15, color: Colors.white),
+                            const Icon(Icons.place_outlined, size: 13, color: Colors.white),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(where,
@@ -763,7 +763,7 @@ class _LotRow extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(
-                                      fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xF2FFFFFF))),
+                                      fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xF2FFFFFF))),
                             ),
                           ],
                         ),
@@ -773,7 +773,7 @@ class _LotRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
-                              fontSize: 20, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white)),
+                              fontSize: 17, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white)),
                     ],
                   ),
                 ),
@@ -817,7 +817,7 @@ class _GlassPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0x29FFFFFF),
         border: Border.all(color: const Color(0x99FFFFFF), width: 0.8),
@@ -857,7 +857,7 @@ class _AvailabilityPill extends StatelessWidget {
     final fg = full ? PbmsTokens.danger : PbmsTokens.ok;
     final bg = full ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
