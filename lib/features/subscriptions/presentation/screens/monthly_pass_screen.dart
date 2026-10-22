@@ -349,7 +349,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
       empty: PbmsEmptyView(
         icon: Icons.card_membership_outlined,
         title: 'Bạn chưa có vé tháng',
-        message: 'Vé tháng cho phép ra vào không giới hạn, cổng tự mở theo biển số.',
+        message: 'Ra vào không giới hạn, cổng tự mở theo biển số.',
         action: TextButton.icon(
           onPressed: () => setState(() => _activeTab = 1),
           style: TextButton.styleFrom(

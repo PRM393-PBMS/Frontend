@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:prm393_frontend/core/widgets/pbms_logo.dart';
 
@@ -17,8 +18,8 @@ class AuthScreenHeader extends StatelessWidget {
     required this.onSelectLogin,
   });
 
-  static const _ink = Color(0xFF111C2D);
-  static const _muted = Color(0xFF3E484B);
+  static const _ink = AppColors.textPrimaryLight;
+  static const _muted = AppColors.textSecondaryLight;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +58,7 @@ class AuthScreenHeader extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFFE7EEFF),
+              color: AppColors.brandTint,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Row(
@@ -107,13 +108,12 @@ class _AuthTab extends StatelessWidget {
           minimumSize: const Size.fromHeight(36),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           backgroundColor:
-              selected ? const Color(0xFF00616E) : Colors.transparent,
-          foregroundColor: selected ? Colors.white : const Color(0xFF3E484B),
+              selected ? AppColors.brand : Colors.transparent,
+          foregroundColor: selected ? Colors.white : AppColors.textSecondaryLight,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
-        child: Text(label),
+        child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -147,10 +147,10 @@ class AuthTextField extends StatelessWidget {
     this.onChanged,
   });
 
-  static const _brand = Color(0xFF00616E);
-  static const _ink = Color(0xFF111C2D);
-  static const _muted = Color(0xFF64748B);
-  static const _border = Color(0xFFBEC8CB);
+  static const _brand = AppColors.brand;
+  static const _ink = AppColors.textPrimaryLight;
+  static const _muted = AppColors.textSecondaryLight;
+  static const _border = AppColors.borderLight;
 
   @override
   Widget build(BuildContext context) {
@@ -166,12 +166,12 @@ class AuthTextField extends StatelessWidget {
           TextSpan(
             text: label,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: _muted,
             ),
             children: const [
-              TextSpan(text: ' *', style: TextStyle(color: Color(0xFFBA1A1A))),
+              TextSpan(text: ' *', style: TextStyle(color: AppColors.error)),
             ],
           ),
         ),
@@ -189,7 +189,7 @@ class AuthTextField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle:
-                  const TextStyle(fontSize: 13, color: Color(0xFF6E797C)),
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
               prefixIcon: Icon(icon, size: 20, color: _brand),
               prefix: prefix,
               suffixIcon: suffix,
@@ -203,11 +203,11 @@ class AuthTextField extends StatelessWidget {
                 borderSide: const BorderSide(color: _brand, width: 1.6),
               ),
               errorBorder: outline.copyWith(
-                borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
+                borderSide: const BorderSide(color: AppColors.error),
               ),
               focusedErrorBorder: outline.copyWith(
                 borderSide:
-                    const BorderSide(color: Color(0xFFBA1A1A), width: 1.6),
+                    const BorderSide(color: AppColors.error, width: 1.6),
               ),
             ),
           ),
@@ -220,25 +220,25 @@ class AuthTextField extends StatelessWidget {
 class AuthDivider extends StatelessWidget {
   final String label;
 
-  const AuthDivider({super.key, this.label = 'HOẶC'});
+  const AuthDivider({super.key, this.label = 'hoặc'});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFFDEE8FF))),
+        const Expanded(child: Divider(color: AppColors.brandTint)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
+              color: AppColors.textSecondaryLight,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: Color(0xFFDEE8FF))),
+        const Expanded(child: Divider(color: AppColors.brandTint)),
       ],
     );
   }

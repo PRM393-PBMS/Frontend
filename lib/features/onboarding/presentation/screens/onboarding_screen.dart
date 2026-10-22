@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/features/legal/legal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -16,30 +17,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const _heroImage =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBcBr4h8KuaIDqw9BzmKTLbcNwVrwtrzTKx1bFt0Uud5pCYl4oW0yMF56Xh7yB2Vh820R-WQn9lhywqw4R5JMRlD-4SDv8w2n1y7qj-OfmgaOiPkxOQtmOql0V3iW2L2YjUNc2eIUaTw-dyBPgV5RhH0qtJs05mPNwQhQ3zffXX5bIjBADh1IROW0vpY0WqZo6k0nOvncTYX5fmxmEtPCZqH761Pv__VHs_ULz8wf2Dtcmjwr9t82yd';
-
   final List<OnboardingSlideData> _slides = const [
     OnboardingSlideData(
-      title: 'Đỗ xe thông minh, trọn vẹn thảnh thơi',
+      title: 'Camera đọc biển số, barie tự mở',
       description:
-          'Tìm và đặt trước vị trí đỗ xe còn trống theo thời gian thực. Dẫn đường chuẩn xác, thanh toán tiện lợi cùng ưu đãi mỗi ngày.',
-      imageUrl: _heroImage,
-      sensorTag: 'Vị trí #402 • Đã giữ chỗ',
+          'Thêm biển số xe vào tài khoản. Xe có vé tháng hoặc đã đặt chỗ được nhận ra ngay ở cổng.',
+      illustration: OnboardingIllustrations.plate,
     ),
     OnboardingSlideData(
-      title: 'Đến đúng chỗ, không mất thời gian',
-      description:
-          'Xem chỗ trống được cập nhật liên tục và đi theo chỉ dẫn đến bãi đỗ đã chọn.',
-      imageUrl: _heroImage,
-      sensorTag: 'Bãi xe cập nhật trực tiếp',
+      title: 'Biết còn chỗ trước khi đến',
+      description: 'Số chỗ trống xe máy và ô tô của từng bãi, cập nhật theo lượt xe ra vào.',
+      illustration: OnboardingIllustrations.board,
     ),
     OnboardingSlideData(
-      title: 'Thanh toán gọn nhẹ, ưu đãi mỗi ngày',
+      title: 'Trả phí trước, quét mã ra cổng',
       description:
-          'Sử dụng mã QR để ra vào thuận tiện, theo dõi chi phí và nhận ưu đãi dành riêng cho hội viên.',
-      imageUrl: _heroImage,
-      sensorTag: 'Mã QR • Ưu đãi hội viên',
+          'Trả bằng ví PBMS hoặc chuyển khoản ngay trên app, rồi đưa mã ở cổng ra. Không cần đợi ở quầy.',
+      illustration: OnboardingIllustrations.ticket,
     ),
   ];
 
@@ -69,7 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7FAFC),
+      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -92,16 +86,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               _PrimaryButton(
-                label: _currentPage == _slides.length - 1
-                    ? 'Bắt đầu ngay'
-                    : _currentPage == 0
-                        ? 'Bắt đầu ngay'
-                        : 'Tiếp tục',
+                label: _currentPage == _slides.length - 1 ? 'Bắt đầu' : 'Tiếp tục',
                 onPressed: _onGetStarted,
               ),
               const SizedBox(height: 14),
               const LegalLinks(
-                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
               ),
               const SizedBox(height: 20),
             ],
@@ -128,7 +118,7 @@ class _TopBar extends StatelessWidget {
             onPressed: onSkip,
             style: TextButton.styleFrom(
               minimumSize: const Size(48, 48),
-              foregroundColor: const Color(0xFF64748B),
+              foregroundColor: AppColors.textSecondaryLight,
             ),
             child: const Text('Bỏ qua', style: TextStyle(fontSize: 14)),
           ),
@@ -152,10 +142,9 @@ class _PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF087B8C),
+          backgroundColor: AppColors.brand,
           foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor: const Color(0x1A0F172A),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),

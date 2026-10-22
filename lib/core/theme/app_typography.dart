@@ -62,27 +62,26 @@ class AppTypography {
         fontWeight: FontWeight.w600,
       );
 
-  // Material 3 typography (Inter — onboarding / auth)
+  // Kiểu chữ cho màn đăng nhập / onboarding
   static TextStyle get headlineMd => GoogleFonts.beVietnamPro(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         height: 28 / 22,
         letterSpacing: -0.01 * 22,
-        color: AppColors.m3OnSurface,
+        color: AppColors.textPrimaryLight,
       );
 
   static TextStyle get bodyMd => GoogleFonts.beVietnamPro(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         height: 20 / 15,
-        color: AppColors.m3OnSurfaceVariant,
+        color: AppColors.textSecondaryLight,
       );
 
   static TextStyle get labelSm => GoogleFonts.beVietnamPro(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w500,
-        height: 14 / 11,
-        letterSpacing: 0.03 * 11,
+        height: 16 / 12,
       );
 
   static TextStyle get labelMd => GoogleFonts.beVietnamPro(
@@ -103,6 +102,6 @@ class AppTypography {
         fontWeight: FontWeight.w700,
         height: 34 / 28,
         letterSpacing: -0.015 * 28,
-        color: AppColors.m3OnSurface,
+        color: AppColors.textPrimaryLight,
       );
 }

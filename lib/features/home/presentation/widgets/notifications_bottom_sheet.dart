@@ -145,7 +145,7 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
         maxHeight: MediaQuery.sizeOf(context).height * 0.78,
       ),
       padding: EdgeInsets.fromLTRB(
-          20, 12, 20, 16 + MediaQuery.paddingOf(context).bottom),
+          0, 12, 0, 16 + MediaQuery.paddingOf(context).bottom),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -165,45 +165,48 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Thông báo', style: PbmsText.title),
-                    const SizedBox(height: 2),
-                    Text(
-                      unreadCount > 0
-                          ? '$unreadCount thông báo chưa đọc'
-                          : 'Bạn đã đọc hết thông báo',
-                      style: PbmsText.caption.copyWith(
-                        color:
-                            unreadCount > 0 ? PbmsTokens.teal : PbmsTokens.muted,
-                        fontWeight: unreadCount > 0
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Thông báo', style: PbmsText.title),
+                      const SizedBox(height: 2),
+                      Text(
+                        unreadCount > 0
+                            ? '$unreadCount thông báo chưa đọc'
+                            : 'Bạn đã đọc hết thông báo',
+                        style: PbmsText.caption.copyWith(
+                          color: unreadCount > 0
+                              ? PbmsTokens.teal
+                              : PbmsTokens.muted,
+                          fontWeight: unreadCount > 0
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              if (unreadCount > 0)
-                TextButton(
-                  onPressed: _markAllAsRead,
-                  style: TextButton.styleFrom(
-                    foregroundColor: PbmsTokens.teal,
-                    minimumSize: const Size(48, 48),
+                    ],
                   ),
-                  child: const Text('Đọc tất cả'),
                 ),
-            ],
+                if (unreadCount > 0)
+                  TextButton(
+                    onPressed: _markAllAsRead,
+                    style: TextButton.styleFrom(
+                      foregroundColor: PbmsTokens.teal,
+                      minimumSize: const Size(48, 48),
+                    ),
+                    child: const Text('Đọc tất cả'),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 4),
           const PushToggleTile(),
           const SizedBox(height: 4),
           const Divider(height: 1, color: PbmsTokens.border),
-          const SizedBox(height: 12),
           Flexible(child: _buildBody()),
         ],
       ),
@@ -214,6 +217,7 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
     if (_isLoading && _notifications.isEmpty) {
       return ListView(
         shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         children: const [
           PbmsLoadingBox(height: 72),
           SizedBox(height: 8),
@@ -224,15 +228,18 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
       );
     }
     if (_error != null && _notifications.isEmpty) {
-      return PbmsErrorView(
-        title: 'Không tải được thông báo',
-        message: _error!,
-        onRetry: _fetchLatest,
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: PbmsErrorView(
+          title: 'Không tải được thông báo',
+          message: _error!,
+          onRetry: _fetchLatest,
+        ),
       );
     }
     if (!_available) {
       return const Padding(
-        padding: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
         child: PbmsEmptyView(
           icon: Icons.update_rounded,
           title: 'Thông báo đang được cập nhật',
@@ -243,7 +250,7 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
     }
     if (_notifications.isEmpty) {
       return const Padding(
-        padding: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
         child: PbmsEmptyView(
           icon: Icons.notifications_off_outlined,
           title: 'Chưa có thông báo',
@@ -258,7 +265,8 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
       child: ListView.separated(
         shrinkWrap: true,
         itemCount: _notifications.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) =>
+            const Divider(height: 1, color: PbmsTokens.divider),
         itemBuilder: (context, index) {
           final item = _notifications[index];
           return Dismissible(
@@ -267,11 +275,8 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
             onDismissed: (_) => _delete(item),
             background: Container(
               alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 18),
-              decoration: BoxDecoration(
-                color: PbmsTokens.danger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              padding: const EdgeInsets.only(right: 24),
+              color: PbmsTokens.danger.withValues(alpha: 0.1),
               child: const Icon(Icons.delete_outline_rounded,
                   color: PbmsTokens.danger),
             ),
@@ -304,19 +309,11 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: item.isRead ? Colors.white : PbmsTokens.tealTint,
-      borderRadius: BorderRadius.circular(12),
+      color: item.isRead ? Colors.white : const Color(0xFFE3F6F8),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: item.isRead ? PbmsTokens.divider : PbmsTokens.tealLine,
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -241,7 +241,7 @@ class _ActivePass extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           // Mã ngắn để nhân viên nhập tay khi máy quét không đọc được.
-          Text(pass.code, style: PbmsText.figure(26).copyWith(letterSpacing: 6)),
+          Text(pass.code, style: PbmsText.display(40).copyWith(letterSpacing: 6)),
           const SizedBox(height: 4),
           Text('$leftText, hết hạn ${DateFormatter.formatDateTime(pass.expiresAt)}',
               textAlign: TextAlign.center, style: PbmsText.caption),

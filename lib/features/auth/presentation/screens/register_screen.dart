@@ -103,14 +103,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7FAFC),
+        backgroundColor: AppColors.bgLight,
         body: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFEFFBFC), Color(0xFFF7FAFC)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            color: AppColors.bgLight,
           ),
           child: SafeArea(
             child: LayoutBuilder(
@@ -138,13 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(18),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0A0F172A),
-                                  blurRadius: 14,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
+                              border: Border.all(color: AppColors.borderLight),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,7 +172,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     child: Text('+84  |',
                                         style: TextStyle(
                                             fontSize: 13,
-                                            color: Color(0xFF111C2D))),
+                                            color: AppColors.textPrimaryLight)),
                                   ),
                                   validator: (value) =>
                                       value == null || value.trim().isEmpty
@@ -264,13 +254,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ListTileControlAffinity.leading,
                                   contentPadding: EdgeInsets.zero,
                                   dense: true,
-                                  activeColor: const Color(0xFF00616E),
+                                  activeColor: AppColors.brand,
                                   title: const LegalLinks(
                                     prefix: 'Tôi đã đọc và đồng ý với ',
                                     textAlign: TextAlign.start,
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFF3E484B)),
+                                        color: AppColors.textSecondaryLight),
                                   ),
                                 ),
                                 const SizedBox(height: 7),
@@ -293,17 +283,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               size: 19),
                                       label: Text(state.isLoading
                                           ? 'Đang gửi mã...'
-                                          : 'Gửi mã xác thực OTP'),
+                                          : 'Gửi mã xác thực OTP',
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600)),
                                       style: FilledButton.styleFrom(
                                         backgroundColor:
-                                            const Color(0xFF00616E),
+                                            AppColors.brand,
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12)),
-                                        textStyle: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ),
@@ -319,7 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             children: [
                               const Text('Đã có tài khoản? ',
                                   style: TextStyle(
-                                      fontSize: 12, color: Color(0xFF64748B))),
+                                      fontSize: 12, color: AppColors.textSecondaryLight)),
                               TextButton(
                                 onPressed: _openLogin,
                                 style: TextButton.styleFrom(
@@ -329,7 +319,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF00616E))),
+                                        color: AppColors.brand)),
                               ),
                             ],
                           ),
@@ -338,12 +328,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Container(
                           padding: const EdgeInsets.all(13),
                           decoration: BoxDecoration(
-                              color: const Color(0xFFE7EEFF),
+                              color: AppColors.brandTint,
                               borderRadius: BorderRadius.circular(15)),
                           child: const Row(
                             children: [
                               Icon(Icons.local_parking_rounded,
-                                  color: Color(0xFF00616E), size: 22),
+                                  color: AppColors.brand, size: 22),
                               SizedBox(width: 10),
                               Expanded(
                                 child: Column(
@@ -353,13 +343,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFF111C2D))),
+                                            color: AppColors.textPrimaryLight)),
                                     SizedBox(height: 3),
                                     Text(
                                         'Nhận diện biển số, thanh toán nhanh chóng',
                                         style: TextStyle(
-                                            fontSize: 10,
-                                            color: Color(0xFF3E484B))),
+                                            fontSize: 12,
+                                            color: AppColors.textSecondaryLight)),
                                   ],
                                 ),
                               ),
@@ -397,7 +387,7 @@ class _PasswordStrength extends StatelessWidget {
       _ => 'Mạnh',
     };
     final color =
-        strength < 2 ? const Color(0xFFBA1A1A) : const Color(0xFF087B8C);
+        strength < 2 ? AppColors.error : AppColors.brand;
 
     return Column(
       children: [
@@ -405,12 +395,12 @@ class _PasswordStrength extends StatelessWidget {
           children: [
             const Expanded(
                 child: Text('Độ bảo mật mật khẩu',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF64748B)))),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight))),
             Text(label,
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: strength == 0 ? const Color(0xFF64748B) : color)),
+                    color: strength == 0 ? AppColors.textSecondaryLight : color)),
           ],
         ),
         const SizedBox(height: 5),
@@ -423,7 +413,7 @@ class _PasswordStrength extends StatelessWidget {
                       margin: EdgeInsets.only(right: index == 2 ? 0 : 6),
                       decoration: BoxDecoration(
                         color:
-                            index < strength ? color : const Color(0xFFE7EEFF),
+                            index < strength ? color : AppColors.brandTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),

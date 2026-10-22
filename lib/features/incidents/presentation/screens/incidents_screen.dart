@@ -77,11 +77,6 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(16, 14, 16, 96 + bottomInset),
               children: [
-                const Text(
-                  'Nhân viên bãi tiếp nhận và phản hồi trong giờ vận hành. Kèm ảnh để xử lý nhanh hơn.',
-                  style: PbmsText.caption,
-                ),
-                const SizedBox(height: 14),
                 PbmsAsync<List<IncidentModel>>(
                   cubit: _items,
                   loadingHeight: 120,
@@ -90,8 +85,6 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   empty: const PbmsEmptyView(
                     icon: Icons.verified_user_outlined,
                     title: 'Chưa có báo cáo nào',
-                    message:
-                        'Nếu gặp vấn đề trong bãi, nhấn "Báo sự cố" để gửi cho nhân viên vận hành.',
                   ),
                   builder: (items) => Column(
                     children: [

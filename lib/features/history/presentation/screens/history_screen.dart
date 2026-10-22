@@ -94,8 +94,6 @@ class _HistoryScreenState extends State<HistoryScreen> with ReloadOnDataChange {
       empty: const PbmsEmptyView(
         icon: Icons.receipt_long_outlined,
         title: 'Chưa có lượt gửi xe',
-        message:
-            'Mỗi lần xe vào bãi, camera nhận biển số và lượt gửi sẽ hiện ở đây.',
       ),
       builder: (items) {
         final total = items
@@ -145,7 +143,6 @@ class _HistoryScreenState extends State<HistoryScreen> with ReloadOnDataChange {
           empty: const PbmsEmptyView(
             icon: Icons.event_busy_outlined,
             title: 'Chưa có đặt chỗ nào',
-            message: 'Giữ chỗ ô tô trước tối đa 5 giờ để chắc chắn có chỗ khi tới.',
           ),
           builder: (items) {
             final active = items.where((r) => r.canModify).toList()

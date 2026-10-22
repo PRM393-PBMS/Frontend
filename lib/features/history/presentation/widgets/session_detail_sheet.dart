@@ -87,7 +87,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
                 Text(s.isActive ? 'Đã đỗ' : 'Thời lượng',
                     style: PbmsText.caption),
                 Text(DateFormatter.clock(s.parkedDuration),
-                    style: PbmsText.figure(22, color: PbmsTokens.teal)),
+                    style: PbmsText.display(40)),
               ],
             ),
           ],
@@ -147,7 +147,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
         if (s.isActive) ...[
           const SizedBox(height: 18),
           if (exitPass != null)
-            ExitPassCard(pass: exitPass, plate: s.licensePlateIn)
+            ExitPassCard(pass: exitPass, plate: s.licensePlateIn, isMotorbike: s.isMotorbike)
           else ...[
             const Text('Phí tạm tính', style: PbmsText.section),
             const SizedBox(height: 8),
@@ -173,7 +173,8 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
                           context,
                           title: 'Vé gửi xe',
                           payload: ticket.qrPayload,
-                          headline: s.licensePlateIn,
+                          plate: s.licensePlateIn,
+                          isMotorbike: s.isMotorbike,
                           rows: [
                             (Icons.local_parking_rounded, 'Vị trí đỗ',
                                 s.slotCode ?? 'Chưa phân ô'),
@@ -403,7 +404,7 @@ class _FeeBreakdown extends StatelessWidget {
                   child: Text('Cần trả nếu ra bây giờ',
                       style: PbmsText.bodyStrong)),
               Text(CurrencyFormatter.format(fee.amount),
-                  style: PbmsText.figure(19, color: PbmsTokens.teal)),
+                  style: PbmsText.display(32)),
             ],
           ),
           const SizedBox(height: 4),

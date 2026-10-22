@@ -1,17 +1,18 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:prm393_frontend/core/theme/app_colors.dart';
+import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 
 class OnboardingSlideData {
   final String title;
   final String description;
-  final String imageUrl;
-  final String sensorTag;
+
+  /// Hình minh hoạ dựng từ chính các thành phần của app (biển số, bảng chỗ trống, vé).
+  final WidgetBuilder illustration;
 
   const OnboardingSlideData({
     required this.title,
     required this.description,
-    required this.imageUrl,
-    required this.sensorTag,
+    required this.illustration,
   });
 }
 
@@ -29,125 +30,73 @@ class OnboardingSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _HeroStage(imageUrl: data.imageUrl, sensorTag: data.sensorTag),
-                const SizedBox(height: 22),
-                _PageIndicator(count: pageCount, activeIndex: activeIndex),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Column(
-                    children: [
-                      Text(
-                        data.title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        data.description,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.55,
-                          color: Color(0xFF334155),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Stage(child: data.illustration(context)),
+            const SizedBox(height: 28),
+            _PageIndicator(count: pageCount, activeIndex: activeIndex),
+            const SizedBox(height: 16),
+            Text(
+              data.title,
+              style: const TextStyle(
+                fontSize: 26,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: AppColors.textPrimaryLight,
+              ),
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 10),
+            Text(
+              data.description,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.5,
+                color: AppColors.textSecondaryLight,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _HeroStage extends StatelessWidget {
-  final String imageUrl;
-  final String sensorTag;
+/// Khung chứa hình minh hoạ, ghi rõ đây là ví dụ.
+class _Stage extends StatelessWidget {
+  final Widget child;
 
-  const _HeroStage({required this.imageUrl, required this.sensorTag});
+  const _Stage({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final imageHeight = (constraints.maxWidth / 1.6).clamp(160.0, 260.0);
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xCCE2E8F0)),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 12,
-                offset: Offset(0, 2),
-              ),
-            ],
+    return Container(
+      width: double.infinity,
+      height: 240,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Stack(
+        children: [
+          const Positioned(
+            left: 14,
+            top: 12,
+            child: Text('Ví dụ', style: TextStyle(fontSize: 12, color: AppColors.textMutedLight)),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: AspectRatio(
-            aspectRatio: 1.6,
-            child: SizedBox(
-              height: imageHeight,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Semantics(
-                    image: true,
-                    label: 'Xe điện đỗ tại vị trí đã đặt trước',
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => const ColoredBox(
-                        color: Color(0xFFF1F5F9),
-                        child: Center(
-                          child: Icon(
-                            Icons.local_parking_rounded,
-                            size: 42,
-                            color: Color(0xFF087B8C),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (_, __, ___) => const ColoredBox(
-                        color: Color(0xFFF1F5F9),
-                        child: Center(
-                          child: Icon(
-                            Icons.local_parking_rounded,
-                            size: 42,
-                            color: Color(0xFF087B8C),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 12,
-                    bottom: 12,
-                    child: _SensorTag(label: sensorTag),
-                  ),
-                ],
-              ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 20),
+              child: ExcludeSemantics(child: child),
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -160,54 +109,71 @@ class _PageIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (index) {
-        final isActive = index == activeIndex;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: isActive ? 24 : 8,
-          height: 6,
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF087B8C) : const Color(0xFFE2E8F0),
-            borderRadius: BorderRadius.circular(999),
-          ),
-        );
-      }),
+    return Semantics(
+      label: 'Trang ${activeIndex + 1} trên $count',
+      child: Row(
+        children: List.generate(count, (index) {
+          final isActive = index == activeIndex;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.only(right: 6),
+            width: isActive ? 24 : 8,
+            height: 6,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.brand : AppColors.borderLight,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
 
-class _SensorTag extends StatelessWidget {
-  final String label;
+/// Minh hoạ các slide.
+class OnboardingIllustrations {
+  OnboardingIllustrations._();
 
-  const _SensorTag({required this.label});
+  static Widget plate(BuildContext context) => const FittedBox(
+        child: Row(
+          children: [
+            PbmsPlate(licensePlate: '59X212345', isMotorbike: true, fontSize: 30),
+            SizedBox(width: 18),
+            Icon(Icons.arrow_forward_rounded, color: AppColors.textMutedLight),
+            SizedBox(width: 18),
+            Icon(Icons.door_sliding_outlined, size: 44, color: AppColors.brand),
+          ],
+        ),
+      );
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFFBFC).withValues(alpha: 0.94),
-        border: Border.all(color: const Color(0xFF97DFEB)),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.circle, size: 7, color: Color(0xFF087B8C)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF087B8C),
-            ),
-          ),
+  static Widget board(BuildContext context) => const PbmsLedCounter(
+        caption: 'Bãi PBMS',
+        entries: [
+          (label: 'Xe máy', available: 128),
+          (label: 'Ô tô', available: 0),
         ],
-      ),
-    );
-  }
+      );
+
+  static Widget ticket(BuildContext context) => SizedBox(
+        width: 260,
+        child: PbmsTicketStub(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PbmsPaidStamp(),
+              const SizedBox(height: 8),
+              Text('K7M2QX', style: PbmsText.display(30).copyWith(letterSpacing: 4)),
+            ],
+          ),
+          stub: const Row(
+            children: [
+              Icon(Icons.qr_code_2_rounded, size: 20, color: AppColors.brand),
+              SizedBox(width: 8),
+              Text('Quét ở cổng ra', style: PbmsText.bodyStrong),
+            ],
+          ),
+        ),
+      );
 }
