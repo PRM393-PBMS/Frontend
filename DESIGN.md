@@ -34,7 +34,8 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
 - **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
   raised, bouncing wallet button (owner's choice).
-- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot cards
+- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Each lot is a
+  compact row (name, distance or address, availability pill, chevron) that expands on tap into the lot card
   (height 100, radius 20): full-bleed photo, top-to-bottom dark gradient plus a 40% teal overlay;
   top-left glass pills (vehicle types, cheapest price), top-right availability pill in the status
   colors, bottom-right pin + distance/drive time (or address) and the lot name in white, right-aligned.
