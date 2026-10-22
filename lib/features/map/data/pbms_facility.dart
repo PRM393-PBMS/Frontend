@@ -25,12 +25,18 @@ class LotView {
   final int visits;
   final DateTime? lastVisit;
 
+  /// Ảnh và giờ mở cửa từ máy chủ (null nếu quản lý chưa nhập).
+  final String? imageUrl;
+  final String? openingHours;
+
   const LotView({
     required this.id,
     required this.name,
     required this.area,
     required this.point,
     required this.capacities,
+    this.imageUrl,
+    this.openingHours,
     this.visits = 0,
     this.lastVisit,
   });
@@ -69,6 +75,8 @@ class LotView {
             capacities: VehicleTypeCapacity.fromLot(l, prices),
             visits: usage[l.id]?.count ?? 0,
             lastVisit: usage[l.id]?.last,
+            imageUrl: l.imageUrl,
+            openingHours: l.openingHours,
           ),
       ];
     }

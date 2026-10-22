@@ -642,7 +642,7 @@ class _LotRow extends StatelessWidget {
 
   const _LotRow({required this.lot, required this.onTap, this.distance});
 
-  /// Bãi chưa có ảnh riêng trên máy chủ: gán cố định một ảnh bãi đỗ theo mã bãi.
+  /// Ảnh dự phòng khi bãi chưa có ảnh trên máy chủ: gán cố định theo mã bãi.
   static const _photos = [
     'assets/images/promo/reserve.jpg',
     'assets/images/promo/prepay.jpg',
@@ -695,12 +695,7 @@ class _LotRow extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(
-                  photoFor(lot.id),
-                  fit: BoxFit.cover,
-                  excludeFromSemantics: true,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
+                _LotPhoto(url: resolveMediaUrl(lot.imageUrl), fallback: photoFor(lot.id)),
                 // Tối dần từ trên xuống để chữ trắng phía dưới đủ tương phản.
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -725,7 +720,9 @@ class _LotRow extends StatelessWidget {
                           Expanded(
                             child: Row(
                               children: [
-                                if (hasMoto || hasCar)
+                                if (lot.openingHours != null)
+                                  _GlassPill(icons: const [Icons.schedule_rounded], label: lot.openingHours)
+                                else if (hasMoto || hasCar)
                                   _GlassPill(
                                     icons: [
                                       if (hasMoto) Icons.two_wheeler_rounded,
@@ -785,6 +782,27 @@ class _LotRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Ảnh bãi từ máy chủ; chưa có hoặc tải lỗi thì dùng ảnh bãi đỗ có sẵn trong app.
+class _LotPhoto extends StatelessWidget {
+  final String? url;
+  final String fallback;
+
+  const _LotPhoto({required this.url, required this.fallback});
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = Image.asset(fallback, fit: BoxFit.cover, excludeFromSemantics: true);
+    final src = url;
+    if (src == null) return asset;
+    return CachedNetworkImage(
+      imageUrl: src,
+      fit: BoxFit.cover,
+      placeholder: (_, __) => asset,
+      errorWidget: (_, __, ___) => asset,
     );
   }
 }
