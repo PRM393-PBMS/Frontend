@@ -79,7 +79,7 @@ class EntryTimePicker extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(v == null ? '--:--' : DateFormatter.formatTime(v),
-                style: PbmsText.figure(34)),
+                style: PbmsText.display(40)),
             const SizedBox(width: 12),
             Expanded(
               child: Padding(
@@ -186,6 +186,8 @@ class ReservationCard extends StatelessWidget {
                       context,
                       title: 'Mã QR vào cổng',
                       payload: ticket.qrPayload,
+                      plate: r.licensePlate,
+                      isMotorbike: r.vehicleTypeName.toLowerCase().contains('máy'),
                       headline: r.vehicleTypeName,
                       rows: [
                         (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),

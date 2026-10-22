@@ -20,16 +20,17 @@ class PromoItem {
   });
 }
 
-/// Băng quảng cáo trượt ngang, tự chuyển ảnh mỗi vài giây.
-/// Người dùng vuốt thì đếm lại từ đầu; chế độ giảm chuyển động thì không tự chuyển.
+/// Băng quảng cáo trượt ngang. Mặc định chỉ đổi ảnh khi khách vuốt, để không trượt
+/// dưới ngón cái lúc đang cuộn; truyền [interval] để tự chuyển ảnh.
+/// Chế độ giảm chuyển động thì không bao giờ tự chuyển.
 class PromoCarousel extends StatefulWidget {
   final List<PromoItem> items;
-  final Duration interval;
+  final Duration? interval;
 
   const PromoCarousel({
     super.key,
     required this.items,
-    this.interval = const Duration(seconds: 5),
+    this.interval,
   });
 
   static const double height = 164;
@@ -65,8 +66,9 @@ class _PromoCarouselState extends State<PromoCarousel> {
   void _restart() {
     _timer?.cancel();
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (reduceMotion || widget.items.length < 2) return;
-    _timer = Timer.periodic(widget.interval, (_) {
+    final interval = widget.interval;
+    if (interval == null || reduceMotion || widget.items.length < 2) return;
+    _timer = Timer.periodic(interval, (_) {
       if (!_page.hasClients) return;
       _page.nextPage(
           duration: const Duration(milliseconds: 520),

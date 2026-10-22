@@ -54,11 +54,6 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(16, 14, 16, 32 + bottomInset),
               children: [
-                const Text(
-                  'Vé tháng từ 3 tháng trở lên cần ký hợp đồng điện tử. Hợp đồng đã ký được bãi niêm phong, có thể kiểm tra tính toàn vẹn bất cứ lúc nào.',
-                  style: PbmsText.caption,
-                ),
-                const SizedBox(height: 14),
                 PbmsAsync<List<ContractModel>>(
                   cubit: _contracts,
                   loadingHeight: 160,
@@ -67,7 +62,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                   empty: const PbmsEmptyView(
                     icon: Icons.description_outlined,
                     title: 'Chưa có hợp đồng nào',
-                    message: 'Hợp đồng được tạo khi bạn đăng ký vé tháng từ 3 tháng trở lên.',
+                    message: 'Có khi đăng ký vé từ 3 tháng.',
                   ),
                   builder: (items) => Column(
                     children: [

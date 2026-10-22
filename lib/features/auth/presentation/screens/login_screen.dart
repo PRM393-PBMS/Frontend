@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -89,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Expanded(child: Text(state.errorMessage!)),
                 ],
               ),
-              backgroundColor: const Color(0xFFDC2626),
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -98,14 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7FAFC),
+        backgroundColor: AppColors.bgLight,
         body: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFEFFBFC), Color(0xFFF7FAFC)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            color: AppColors.bgLight,
           ),
           child: SafeArea(
             child: LayoutBuilder(
@@ -133,13 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(18),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0A0F172A),
-                                  blurRadius: 14,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
+                              border: Border.all(color: AppColors.borderLight),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       _obscurePassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: const Color(0xFF64748B),
+                                      color: AppColors.textSecondaryLight,
                                     ),
                                     onPressed: () => setState(() =>
                                         _obscurePassword = !_obscurePassword),
@@ -186,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   children: [
                                     Checkbox(
                                       value: _rememberMe,
-                                      activeColor: const Color(0xFF00616E),
+                                      activeColor: AppColors.brand,
                                       onChanged: (value) => setState(
                                           () => _rememberMe = value ?? false),
                                     ),
@@ -195,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         'Ghi nhớ đăng nhập',
                                         style: TextStyle(
                                             fontSize: 12,
-                                            color: Color(0xFF3E484B)),
+                                            color: AppColors.textSecondaryLight),
                                       ),
                                     ),
                                     TextButton(
@@ -203,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           .pushNamed(RouteNames.forgotPassword),
                                       child: const Text('Quên mật khẩu?',
                                           style: TextStyle(
-                                              color: Color(0xFF00616E),
+                                              color: AppColors.brand,
                                               fontSize: 12)),
                                     ),
                                   ],
@@ -228,17 +219,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                               size: 19),
                                       label: Text(state.isLoading
                                           ? 'Đang đăng nhập...'
-                                          : 'Đăng nhập'),
+                                          : 'Đăng nhập',
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600)),
                                       style: FilledButton.styleFrom(
                                         backgroundColor:
-                                            const Color(0xFF00616E),
+                                            AppColors.brand,
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12)),
-                                        textStyle: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ),
@@ -254,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               const Text('Chưa có tài khoản? ',
                                   style: TextStyle(
-                                      fontSize: 12, color: Color(0xFF64748B))),
+                                      fontSize: 12, color: AppColors.textSecondaryLight)),
                               TextButton(
                                 onPressed: _openRegister,
                                 style: TextButton.styleFrom(
@@ -264,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF00616E))),
+                                        color: AppColors.brand)),
                               ),
                             ],
                           ),
