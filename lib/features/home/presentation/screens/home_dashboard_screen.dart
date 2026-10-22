@@ -633,8 +633,8 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-/// Một bãi: ảnh bên trái mờ dần sang phải hoà vào nền trang, tên và khoảng cách,
-/// số chỗ trống lớn bên phải. Chạm để mở trên bản đồ.
+/// Thẻ bãi: ảnh bãi phủ kín, tối dần từ trên xuống, phủ teal 40%.
+/// Trên trái: loại xe nhận và giá. Trên phải: số chỗ trống. Dưới phải: khoảng cách và tên bãi.
 class _LotRow extends StatelessWidget {
   final LotView lot;
   final double? distance;
@@ -642,7 +642,7 @@ class _LotRow extends StatelessWidget {
 
   const _LotRow({required this.lot, required this.onTap, this.distance});
 
-  /// Bãi chưa có ảnh riêng trên máy chủ: gán cố định một ảnh bãi đỗ theo mã bãi.
+  /// Ảnh dự phòng khi bãi chưa có ảnh trên máy chủ: gán cố định theo mã bãi.
   static const _photos = [
     'assets/images/promo/reserve.jpg',
     'assets/images/promo/prepay.jpg',
@@ -653,89 +653,132 @@ class _LotRow extends StatelessWidget {
   static String photoFor(String lotId) =>
       _photos[lotId.codeUnits.fold<int>(0, (s, c) => s + c) % _photos.length];
 
+  /// "30k/2h", "20k/giờ": giá lượt đầu rẻ nhất của bãi.
+  static String? priceLabel(LotView lot) {
+    final prices = lot.capacities.map((c) => c.pricing).whereType<PricingPolicyModel>().toList()
+      ..sort((a, b) => a.basePrice.compareTo(b.basePrice));
+    if (prices.isEmpty) return null;
+    final p = prices.first;
+    final amount = p.basePrice >= 1000
+        ? '${(p.basePrice / 1000).toStringAsFixed(p.basePrice % 1000 == 0 ? 0 : 1)}k'
+        : CurrencyFormatter.format(p.basePrice);
+    return p.baseHours <= 1 ? '$amount/giờ' : '$amount/${p.baseHours}h';
+  }
+
+  /// Khoảng cách và thời gian lái xe ước tính trong nội thành (~25 km/h).
+  static String driveLabel(double meters) {
+    final minutes = (meters / 1000 / 25 * 60).ceil().clamp(1, 999);
+    return '${LocationService.formatDistance(meters)} · $minutes phút lái xe';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasRoom = lot.available > 0;
-    final car = lot.car;
-    final detail = [
-      if (distance != null) LocationService.formatDistance(distance!),
-      if (lot.visits > 0) 'đã gửi ${lot.visits} lần',
-      if (car?.pricing != null)
-        'ô tô ${CurrencyFormatter.format(car!.pricing!.basePrice)}/${car.pricing!.baseHours}h',
-      if (distance == null && lot.visits == 0 && lot.area != null) lot.area!,
-    ].join(', ');
-    // Không viền, không nền riêng: ảnh tan thẳng vào màu nền trang.
-    const surface = AppColors.bgLight;
-    return Material(
-      color: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height: 100,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Ảnh địa điểm bên trái; mép mờ là đường parabol từ 1/3 ô (trên)
-              // xuống 3/5 ô (dưới), tan vào màu nền trang trước phần chữ.
-              FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: 0.75,
-                child: Image.asset(
-                  photoFor(lot.id),
-                  fit: BoxFit.cover,
-                  excludeFromSemantics: true,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    final hasCar = lot.capacities.any((c) => c.isCar);
+    final hasMoto = lot.capacities.any((c) => !c.isCar);
+    final price = priceLabel(lot);
+    final where = distance != null ? driveLabel(distance!) : lot.area;
+
+    return Semantics(
+      button: true,
+      label: '${lot.name}, ${hasRoom ? '${lot.available} chỗ trống' : 'hết chỗ'}'
+          '${where == null ? '' : ', $where'}',
+      excludeSemantics: true,
+      child: Material(
+        color: PbmsTokens.teal,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 125,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _LotPhoto(url: resolveMediaUrl(lot.imageUrl), fallback: photoFor(lot.id)),
+                // Tối dần từ trên xuống để chữ trắng phía dưới đủ tương phản.
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x1A000000), Color(0x8C000000)],
+                    ),
+                  ),
                 ),
-              ),
-              const RepaintBoundary(child: CustomPaint(painter: _ParabolaFade(color: surface))),
-              // Chữ căn phải, thẳng hàng với mép phải của các khối phía trên.
-              Padding(
-                padding: const EdgeInsets.only(right: 2),
-                child: Row(
-                  children: [
-                    const Spacer(flex: 42),
-                    Expanded(
-                      flex: 58,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                // Lớp teal 40% của theme: vẫn nhìn thấy ảnh bên dưới.
+                ColoredBox(color: PbmsTokens.teal.withValues(alpha: 0.4)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(lot.name,
-                              maxLines: 1,
-                              textAlign: TextAlign.right,
-                              overflow: TextOverflow.ellipsis,
-                              style: PbmsText.bodyStrong),
-                          if (detail.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(detail,
-                                maxLines: 1,
-                                textAlign: TextAlign.right,
-                                overflow: TextOverflow.ellipsis,
-                                style: PbmsText.caption),
-                          ],
-                          const SizedBox(height: 6),
-                          Text.rich(
-                            TextSpan(children: [
-                              TextSpan(
-                                text: hasRoom ? '${lot.available}' : 'Hết chỗ',
-                                style: PbmsText.figure(18,
-                                        color: hasRoom ? PbmsTokens.teal : PbmsTokens.danger)
-                                    .copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              if (hasRoom)
-                                const TextSpan(text: ' chỗ trống', style: PbmsText.caption),
-                            ]),
-                            textAlign: TextAlign.right,
+                          // Một dòng, không xuống hàng: thẻ cao cố định 125.
+                          Expanded(
+                            child: Row(
+                              children: [
+                                if (lot.openingHours != null)
+                                  _GlassPill(icons: const [Icons.schedule_rounded], label: lot.openingHours)
+                                else if (hasMoto || hasCar)
+                                  _GlassPill(
+                                    icons: [
+                                      if (hasMoto) Icons.two_wheeler_rounded,
+                                      if (hasCar) Icons.directions_car_rounded,
+                                    ],
+                                    // Nhận cả hai loại xe: chỉ hai biểu tượng cho gọn.
+                                    label: hasMoto && hasCar ? null : (hasCar ? 'Ô tô' : 'Xe máy'),
+                                  ),
+                                if (price != null) ...[
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: _GlassPill(
+                                      icons: const [Icons.account_balance_wallet_outlined],
+                                      label: price,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _AvailabilityPill(
+                            label: hasRoom ? '${lot.available} chỗ trống' : 'Hết chỗ',
+                            full: !hasRoom,
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      if (where != null)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Icon(Icons.place_outlined, size: 15, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(where,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xF2FFFFFF))),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 2),
+                      Text(lot.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                              fontSize: 20, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -743,46 +786,89 @@ class _LotRow extends StatelessWidget {
   }
 }
 
-/// Phủ màu nền lên phần bên phải của thẻ theo một mép parabol
-/// (1/3 bề ngang ở trên, 3/5 ở dưới). Mỗi hàng điểm ảnh có gradient ngang riêng
-/// đặt theo vị trí parabol ở hàng đó, chuyển theo đường cong smoothstep,
-/// nên ảnh tan đều, không có dải gắt và không cần blur.
-class _ParabolaFade extends CustomPainter {
-  final Color color;
+/// Ảnh bãi từ máy chủ; chưa có hoặc tải lỗi thì dùng ảnh bãi đỗ có sẵn trong app.
+class _LotPhoto extends StatelessWidget {
+  final String? url;
+  final String fallback;
 
-  const _ParabolaFade({required this.color});
-
-  /// Độ rộng vùng chuyển, tính theo bề ngang thẻ.
-  static const _feather = 0.28;
-
-  /// Mẫu smoothstep để gradient không có điểm gãy.
-  static final List<double> _stops = [for (var i = 0; i <= 8; i++) i / 8];
-
-  List<Color> _colors() => [
-        for (final t in _stops) color.withValues(alpha: t * t * (3 - 2 * t)),
-      ];
+  const _LotPhoto({required this.url, required this.fallback});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final top = w / 3;
-    final bottom = w * 3 / 5;
-    final half = w * _feather / 2;
-    final colors = _colors();
-    final paint = Paint();
-    const step = 1.0;
-    for (var y = 0.0; y < h; y += step) {
-      final t = (y + step / 2) / h;
-      final edge = top + (bottom - top) * t * t;
-      paint.shader = LinearGradient(colors: colors, stops: _stops)
-          .createShader(Rect.fromLTRB(edge - half, y, edge + half, y + step));
-      canvas.drawRect(Rect.fromLTRB(edge - half, y, w, y + step + 0.5), paint);
-    }
+  Widget build(BuildContext context) {
+    final asset = Image.asset(fallback, fit: BoxFit.cover, excludeFromSemantics: true);
+    final src = url;
+    if (src == null) return asset;
+    return CachedNetworkImage(
+      imageUrl: src,
+      fit: BoxFit.cover,
+      placeholder: (_, __) => asset,
+      errorWidget: (_, __, ___) => asset,
+    );
   }
+}
+
+/// Nhãn nhỏ trên ảnh: nền trắng trong suốt nhẹ, viền trắng mảnh.
+class _GlassPill extends StatelessWidget {
+  final List<IconData> icons;
+  final String? label;
+
+  const _GlassPill({required this.icons, this.label});
 
   @override
-  bool shouldRepaint(covariant _ParabolaFade oldDelegate) => oldDelegate.color != color;
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0x29FFFFFF),
+        border: Border.all(color: const Color(0x99FFFFFF), width: 0.8),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < icons.length; i++) ...[
+            if (i > 0) const SizedBox(width: 3),
+            Icon(icons[i], size: 14, color: Colors.white),
+          ],
+          if (label != null) ...[
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(label!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Nhãn chỗ trống theo màu trạng thái của theme: xanh lục khi còn chỗ, đỏ khi hết.
+class _AvailabilityPill extends StatelessWidget {
+  final String label;
+  final bool full;
+
+  const _AvailabilityPill({required this.label, required this.full});
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = full ? PbmsTokens.danger : PbmsTokens.ok;
+    final bg = full ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+        ],
+      ),
+    );
+  }
 }
 
 /// Một loại xe ở bãi duy nhất: giá và số chỗ trống.

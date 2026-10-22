@@ -462,6 +462,10 @@ class ParkingLotModel {
   final int availableSlots;
   final List<LotTypeAvailability> availability;
 
+  /// Ảnh và giờ mở cửa do quản lý nhập (null nếu chưa có).
+  final String? imageUrl;
+  final String? openingHours;
+
   const ParkingLotModel({
     required this.id,
     required this.name,
@@ -471,6 +475,8 @@ class ParkingLotModel {
     required this.totalSlots,
     required this.availableSlots,
     required this.availability,
+    this.imageUrl,
+    this.openingHours,
   });
 
   bool get hasCoordinates => latitude != null && longitude != null;
@@ -492,6 +498,8 @@ class ParkingLotModel {
         totalSlots: JsonRead.int_(json, 'totalSlots'),
         availableSlots: JsonRead.int_(json, 'availableSlots'),
         availability: JsonRead.list(json['availability']).map(LotTypeAvailability.fromJson).toList(),
+        imageUrl: JsonRead.strOrNull(json, 'imageUrl'),
+        openingHours: JsonRead.strOrNull(json, 'openingHours'),
       );
 }
 
