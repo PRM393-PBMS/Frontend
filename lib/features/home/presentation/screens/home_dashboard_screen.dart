@@ -60,6 +60,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   /// Vị trí thực tế của khách để gợi ý bãi gần nhất.
   LocationResult? _loc;
   bool _locating = false;
+
+  /// Danh sách bãi đang mở rộng (mặc định chỉ hiện một bãi).
+  bool _showAllLots = false;
   final _subs = <StreamSubscription<Object?>>[];
 
   ParkingSessionModel? get _activeSession => _activity.state.data?.session;
@@ -255,24 +258,28 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     );
   }
 
-  /// Nhiều bãi: "Bãi gần bạn" (theo GPS), "Bãi thường dùng" (theo lượt gửi),
-  /// rồi các bãi còn lại (còn chỗ lên trước).
+  /// Nhiều bãi: chỉ hiện một bãi phù hợp nhất (gần nhất theo GPS, rồi bãi thường dùng,
+  /// rồi bãi còn nhiều chỗ); các bãi còn lại hiện khi nhấn "Xem thêm".
   Widget _buildLotSuggestions(List<LotView> lots) {
     final pos = _loc?.position;
     final nearby = lots.where((l) => l.distanceFrom(pos) != null).toList()
       ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
     final frequent = lots.where((l) => l.visits > 0).toList()
       ..sort((a, b) => b.visits.compareTo(a.visits));
-    final shown = {
-      ...nearby.take(3).map((l) => l.id),
-      ...frequent.take(3).map((l) => l.id)
-    };
-    final others = lots.where((l) => !shown.contains(l.id)).toList()
-      ..sort((a, b) => b.available.compareTo(a.available));
+    final rest = lots.toList()..sort((a, b) => b.available.compareTo(a.available));
+    final ordered = <LotView>[];
+    for (final l in [...nearby, ...frequent, ...rest]) {
+      if (!ordered.any((o) => o.id == l.id)) ordered.add(l);
+    }
+    final title = nearby.isNotEmpty
+        ? 'Bãi gần bạn'
+        : (frequent.isNotEmpty ? 'Bãi bạn hay gửi' : 'Bãi gợi ý');
+    final more = ordered.length - 1;
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
-    Widget row(LotView l) => Padding(
+    Widget card(LotView l) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: _LotRow(
+          child: _LotCard(
             lot: l,
             distance: l.distanceFrom(pos),
             onTap: () => widget.onOpenMap(l.id),
@@ -282,20 +289,37 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (nearby.isNotEmpty) ...[
-          const PbmsSectionTitle('Bãi gần bạn'),
-          ...nearby.take(3).map(row),
-          const SizedBox(height: 14),
-        ],
-        if (frequent.isNotEmpty) ...[
-          const PbmsSectionTitle('Bãi thường dùng'),
-          ...frequent.take(3).map(row),
-          const SizedBox(height: 14),
-        ],
-        if (others.isNotEmpty) ...[
-          PbmsSectionTitle(shown.isEmpty ? 'Các bãi' : 'Các bãi khác'),
-          ...others.map(row),
-        ],
+        PbmsSectionTitle(title),
+        card(ordered.first),
+        AnimatedSize(
+          duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _showAllLots
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: ordered.skip(1).map(card).toList(),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+        if (more > 0)
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _showAllLots = !_showAllLots),
+              iconAlignment: IconAlignment.end,
+              icon: AnimatedRotation(
+                turns: _showAllLots ? 0.5 : 0,
+                duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
+                child: const Icon(Icons.expand_more_rounded),
+              ),
+              label: Text(_showAllLots ? 'Thu gọn' : 'Xem thêm $more bãi',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              style: TextButton.styleFrom(
+                foregroundColor: PbmsTokens.teal,
+                minimumSize: const Size(48, 48),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -633,105 +657,7 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-/// Một bãi trong danh sách: mặc định chỉ một dòng gọn (tên, khoảng cách, chỗ trống);
-/// nhấn để mở thẻ ảnh chi tiết, nhấn thẻ ảnh để xem bãi trên bản đồ.
-class _LotRow extends StatefulWidget {
-  final LotView lot;
-  final double? distance;
-  final VoidCallback onTap;
-
-  const _LotRow({required this.lot, required this.onTap, this.distance});
-
-  @override
-  State<_LotRow> createState() => _LotRowState();
-}
-
-class _LotRowState extends State<_LotRow> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final lot = widget.lot;
-    final hasRoom = lot.available > 0;
-    final distance = widget.distance;
-    final detail = distance != null ? LocationService.formatDistance(distance) : lot.area;
-    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Material(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: PbmsTokens.border),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Semantics(
-              button: true,
-              expanded: _expanded,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 56),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(lot.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: PbmsText.bodyStrong),
-                            if (detail != null)
-                              Text(detail,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: PbmsText.caption),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _AvailabilityPill(
-                        label: hasRoom ? '${lot.available} chỗ trống' : 'Hết chỗ',
-                        full: !hasRoom,
-                      ),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
-                        child: const Padding(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(Icons.expand_more_rounded, color: PbmsTokens.muted),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: _expanded
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: _LotCard(lot: lot, distance: distance, onTap: widget.onTap),
-                )
-              : const SizedBox(width: double.infinity),
-        ),
-      ],
-    );
-  }
-}
-
-/// Thẻ bãi chi tiết: ảnh bãi phủ kín, tối dần từ trên xuống, phủ teal 40%.
+/// Thẻ bãi: ảnh bãi phủ kín, tối dần từ trên xuống, phủ teal 40%.
 /// Trên trái: loại xe nhận và giá. Trên phải: số chỗ trống. Dưới phải: khoảng cách và tên bãi.
 class _LotCard extends StatelessWidget {
   final LotView lot;
