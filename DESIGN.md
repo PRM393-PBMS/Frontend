@@ -26,7 +26,7 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   - `ExitQrScreen` (via `PbmsQrDialog.show`): full-screen white, QR >= 300px, max brightness and
     wake-lock, single "Xong" button at the bottom, swipe down to close.
 - **Surfaces:** cards are border-only (`PbmsCard`, radius 16; list rows 14); only the ticket stub
-  carries a shadow. Glass only on the bottom bar; gradients only for the lot photo fade.
+  carries a shadow. Glass only on the bottom bar; gradients only as the dark overlay on lot photos.
 - **Lists/settings:** `PbmsSettingsGroup` + `PbmsSettingsRow`: flat grouped rows, plain icon, no
   subtitles, at most 4 rows per group.
 - **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
@@ -34,8 +34,9 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
 - **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
   raised, bouncing wallet button (owner's choice).
-- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot rows have
-  no border or own background: the location photo on the left fades into the page background
-  (`#F8FAFC`), text is right-aligned on the clean side.
+- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot cards
+  (height 125, radius 24): full-bleed photo, top-to-bottom dark gradient plus a 40% teal overlay;
+  top-left glass pills (vehicle types, cheapest price), top-right availability pill in the status
+  colors, bottom-right pin + distance/drive time (or address) and the lot name in white, right-aligned.
 - **Notifications:** flat full-width rows, no borders/radius; unread rows get a full-row teal tint.
 - **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.
