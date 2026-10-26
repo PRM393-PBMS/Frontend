@@ -82,6 +82,11 @@ class ApiEndpoints {
   static const String incidentReports = '/api/IncidentReport';
   static const String myIncidentReports = '/api/IncidentReport/my-reports';
   static const String uploadIncidentProof = '/api/IncidentReport/upload-proof';
+
+  // ================= Máy quét của nhân viên (staff) =================
+  static const String gates = '/api/Gate';
+  static const String gateScans = '/api/GateScan';
+  static const String recentGateScans = '/api/GateScan/recent';
   static String incidentById(String id) => '/api/IncidentReport/$id';
   static String cancelIncident(String id) => '/api/IncidentReport/$id/cancel';
 

@@ -29,14 +29,24 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   carries a shadow. Glass only on the bottom bar; gradients only as the dark overlay on lot photos.
 - **Lists/settings:** `PbmsSettingsGroup` + `PbmsSettingsRow`: flat grouped rows, plain icon, no
   subtitles, at most 4 rows per group.
-- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
+- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state). Loading is a `PbmsLoadingBox` frame: it keeps the height of the content to come; under 64 it is one rounded bar, otherwise a white card of fake rows (icon tile, two text lines, a value on the right) with a light sweep (off when animations are disabled). Spinners stay only inside buttons doing an action.
 - **Copy:** short and factual, no teaching paragraphs. No em/en dashes, no uppercase eyebrows,
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
 - **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
   raised, bouncing wallet button (owner's choice).
-- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Lot cards
-  (height 125, radius 24): full-bleed photo, top-to-bottom dark gradient plus a 40% teal overlay;
+- **Home:** promo carousel first, then the active ticket / quick actions, then lots. Only the best lot
+  (nearest by GPS, else most used, else most free) shows; "Xem thêm N bãi" (right side of the section title row) reveals the rest. Lot cards
+  (height 100, radius 20): full-bleed photo, top-to-bottom dark gradient plus a 40% teal overlay;
   top-left glass pills (vehicle types, cheapest price), top-right availability pill in the status
   colors, bottom-right pin + distance/drive time (or address) and the lot name in white, right-aligned.
 - **Notifications:** flat full-width rows, no borders/radius; unread rows get a full-row teal tint.
 - **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.
+
+## Staff scanner (`/staff`)
+
+Gate staff log in to the same app and land on a camera-first scanner; managers/admins are still sent to the web. The phone is only a scanner: it shows what the server read and never admits a car itself.
+
+- Dark full-screen camera, a 2:1 plate frame (outside dimmed, four white corners) with one instruction line.
+- Top: gate chip (tap to change, remembered on the device) and a menu (staff name, recent scans, log out).
+- Bottom: big white shutter (78dp), torch toggle, recent scans. Shooting never waits for the upload; each shot becomes a card (photo, plate, verdict, "Đã gửi · time" / "Chạm để gửi lại").
+- Verdict copy and colour come from `ScanVerdict`: ok for on-time reservation / monthly pass, warn for off-time reservation or unread plate, danger for a car already inside.

@@ -154,13 +154,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       ),
       const SizedBox(height: 12),
       if (_loading)
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: SizedBox.square(
-                dimension: 22, child: CircularProgressIndicator(strokeWidth: 2, color: PbmsTokens.teal)),
-          ),
-        )
+        const PbmsLoadingBox(height: 72)
       else if (_error != null)
         TextButton(onPressed: _loadMore, child: Text('$_error Thử lại'))
       else if (!_hasMore)

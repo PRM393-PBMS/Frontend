@@ -12,6 +12,7 @@ import '../../features/home/presentation/screens/main_shell_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/home/presentation/screens/explore_home_screen.dart';
 import '../../features/reservations/presentation/screens/booking_confirmation_screen.dart';
+import '../../features/staff/presentation/staff_scanner_screen.dart';
 import 'route_names.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -60,7 +61,13 @@ class AppRouter {
         }
 
         if (authState.status == AuthStatus.authenticated) {
-          if (isAuthFlow || isSplash) {
+          // Nhân viên cổng chỉ dùng máy quét; tài xế không vào được màn máy quét.
+          final isStaff = authState.user?.isStaff ?? false;
+          final isStaffPath = currentPath == RouteNames.staffScannerPath;
+          if (isStaff) {
+            return isStaffPath ? null : RouteNames.staffScannerPath;
+          }
+          if (isAuthFlow || isSplash || isStaffPath) {
             return RouteNames.homePath;
           }
         }
@@ -105,6 +112,11 @@ class AppRouter {
           path: RouteNames.homePath,
           name: RouteNames.home,
           builder: (context, state) => const MainShellScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.staffScannerPath,
+          name: RouteNames.staffScanner,
+          builder: (context, state) => const StaffScannerScreen(),
         ),
         GoRoute(
           path: RouteNames.onboardingPath,

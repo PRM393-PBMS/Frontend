@@ -323,6 +323,7 @@ class StatusInfo {
         'pending' => const StatusInfo('Chờ thanh toán', _warn),
         'cancelled' => const StatusInfo('Đã huỷ', _neutral),
         'failed' => const StatusInfo('Thất bại', _danger),
+        'refunded' => const StatusInfo('Đã hoàn tiền', _accent),
         _ => StatusInfo(s, _neutral),
       };
 
@@ -364,7 +365,9 @@ void showPbmsSnack(BuildContext context, String message, {bool error = false}) {
     );
 }
 
-/// Khối skeleton nhấp nháy nhẹ, giữ đúng chiều cao nội dung sắp hiện.
+/// Khung chờ khi đang tải: giữ đúng chiều cao nội dung sắp hiện, vẽ sẵn các dòng
+/// giả (ô biểu tượng, hai dòng chữ, số liệu bên phải) với vệt sáng lướt qua.
+/// Thấp hơn 64 thì chỉ là một thanh bo góc.
 class PbmsLoadingBox extends StatefulWidget {
   final double height;
 
@@ -376,38 +379,123 @@ class PbmsLoadingBox extends StatefulWidget {
 
 class _PbmsLoadingBoxState extends State<PbmsLoadingBox>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
+  late final AnimationController _sweep = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+    duration: const Duration(milliseconds: 1300),
+  )..repeat();
+
+  static const _rowHeight = 44.0;
+  static const _rowGap = 16.0;
+  static const _padding = 14.0;
+  static const _boneColor = Color(0xFFE3E8EE);
 
   @override
   void dispose() {
-    _pulse.dispose();
+    _sweep.dispose();
     super.dispose();
+  }
+
+  static Widget _bone({double? width, required double height, double radius = 6}) => Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: _boneColor,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+
+  Widget _row(int i) {
+    // Độ dài dòng chữ đổi theo từng dòng để khung trông như nội dung thật.
+    final titleFactor = const [0.62, 0.48, 0.7, 0.55][i % 4];
+    final subFactor = const [0.4, 0.52, 0.34, 0.46][i % 4];
+    return SizedBox(
+      height: _rowHeight,
+      child: Row(
+        children: [
+          _bone(width: 40, height: 40, radius: 11),
+          const SizedBox(width: 12),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) => Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _bone(width: c.maxWidth * titleFactor, height: 12),
+                  const SizedBox(height: 8),
+                  _bone(width: c.maxWidth * subFactor, height: 10),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _bone(width: 48, height: 12),
+        ],
+      ),
+    );
+  }
+
+  /// Vệt sáng chỉ phủ lên các khối xám (srcATop trên nền trong suốt).
+  Widget _shimmer(Widget bones) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (reduceMotion) return bones;
+    return AnimatedBuilder(
+      animation: _sweep,
+      child: bones,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (rect) => LinearGradient(
+          colors: const [_boneColor, Color(0xFFF4F6F9), _boneColor],
+          stops: const [0.35, 0.5, 0.65],
+          transform: _SlideGradient(_sweep.value),
+        ).createShader(rect),
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final box = Container(
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: PbmsTokens.divider,
-        borderRadius: BorderRadius.circular(16),
-      ),
-    );
-    return Semantics(
-      label: 'Đang tải',
-      child: reduceMotion
-          ? box
-          : FadeTransition(
-              opacity: Tween(begin: 1.0, end: 0.55).animate(
-                  CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-              child: box,
-            ),
-    );
+    final h = widget.height;
+    final Widget frame;
+    if (h < 64) {
+      frame = _shimmer(_bone(height: h, radius: 16));
+    } else {
+      final rows = ((h - 2 * _padding - 2 + _rowGap) / (_rowHeight + _rowGap)).floor().clamp(1, 99);
+      frame = Container(
+        height: h,
+        padding: const EdgeInsets.all(_padding),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: PbmsTokens.border),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRect(
+          child: _shimmer(Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < rows; i++) ...[
+                if (i > 0) const SizedBox(height: _rowGap),
+                _row(i),
+              ],
+            ],
+          )),
+        ),
+      );
+    }
+    return Semantics(label: 'Đang tải', child: ExcludeSemantics(child: frame));
   }
+}
+
+/// Dịch dải sáng của khung chờ từ trái sang phải theo [t] (0 → 1).
+class _SlideGradient extends GradientTransform {
+  final double t;
+
+  const _SlideGradient(this.t);
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) =>
+      Matrix4.translationValues(bounds.width * (t * 2 - 1), 0, 0);
 }
 
 class PbmsErrorView extends StatelessWidget {

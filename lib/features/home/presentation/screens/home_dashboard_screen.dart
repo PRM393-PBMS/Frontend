@@ -19,6 +19,7 @@ import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
 import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
+import 'package:prm393_frontend/features/home/presentation/widgets/lot_photo.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/promo_carousel.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
@@ -60,6 +61,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   /// Vị trí thực tế của khách để gợi ý bãi gần nhất.
   LocationResult? _loc;
   bool _locating = false;
+
+  /// Danh sách bãi đang mở rộng (mặc định chỉ hiện một bãi).
+  bool _showAllLots = false;
   final _subs = <StreamSubscription<Object?>>[];
 
   ParkingSessionModel? get _activeSession => _activity.state.data?.session;
@@ -255,24 +259,28 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     );
   }
 
-  /// Nhiều bãi: "Bãi gần bạn" (theo GPS), "Bãi thường dùng" (theo lượt gửi),
-  /// rồi các bãi còn lại (còn chỗ lên trước).
+  /// Nhiều bãi: chỉ hiện một bãi phù hợp nhất (gần nhất theo GPS, rồi bãi thường dùng,
+  /// rồi bãi còn nhiều chỗ); các bãi còn lại hiện khi nhấn "Xem thêm".
   Widget _buildLotSuggestions(List<LotView> lots) {
     final pos = _loc?.position;
     final nearby = lots.where((l) => l.distanceFrom(pos) != null).toList()
       ..sort((a, b) => a.distanceFrom(pos)!.compareTo(b.distanceFrom(pos)!));
     final frequent = lots.where((l) => l.visits > 0).toList()
       ..sort((a, b) => b.visits.compareTo(a.visits));
-    final shown = {
-      ...nearby.take(3).map((l) => l.id),
-      ...frequent.take(3).map((l) => l.id)
-    };
-    final others = lots.where((l) => !shown.contains(l.id)).toList()
-      ..sort((a, b) => b.available.compareTo(a.available));
+    final rest = lots.toList()..sort((a, b) => b.available.compareTo(a.available));
+    final ordered = <LotView>[];
+    for (final l in [...nearby, ...frequent, ...rest]) {
+      if (!ordered.any((o) => o.id == l.id)) ordered.add(l);
+    }
+    final title = nearby.isNotEmpty
+        ? 'Bãi gần bạn'
+        : (frequent.isNotEmpty ? 'Bãi bạn hay gửi' : 'Bãi gợi ý');
+    final more = ordered.length - 1;
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
-    Widget row(LotView l) => Padding(
+    Widget card(LotView l) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: _LotRow(
+          child: _LotCard(
             lot: l,
             distance: l.distanceFrom(pos),
             onTap: () => widget.onOpenMap(l.id),
@@ -282,20 +290,41 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (nearby.isNotEmpty) ...[
-          const PbmsSectionTitle('Bãi gần bạn'),
-          ...nearby.take(3).map(row),
-          const SizedBox(height: 14),
-        ],
-        if (frequent.isNotEmpty) ...[
-          const PbmsSectionTitle('Bãi thường dùng'),
-          ...frequent.take(3).map(row),
-          const SizedBox(height: 14),
-        ],
-        if (others.isNotEmpty) ...[
-          PbmsSectionTitle(shown.isEmpty ? 'Các bãi' : 'Các bãi khác'),
-          ...others.map(row),
-        ],
+        // Nút "Xem thêm" nằm cùng dòng tiêu đề, phía đối diện.
+        PbmsSectionTitle(
+          title,
+          trailing: more > 0
+              ? TextButton.icon(
+                  onPressed: () => setState(() => _showAllLots = !_showAllLots),
+                  iconAlignment: IconAlignment.end,
+                  icon: AnimatedRotation(
+                    turns: _showAllLots ? 0.5 : 0,
+                    duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
+                    child: const Icon(Icons.expand_more_rounded, size: 20),
+                  ),
+                  label: Text(_showAllLots ? 'Thu gọn' : 'Xem thêm $more bãi',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: PbmsTokens.teal,
+                    minimumSize: const Size(48, 40),
+                    padding: const EdgeInsets.only(left: 8),
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                  ),
+                )
+              : null,
+        ),
+        card(ordered.first),
+        AnimatedSize(
+          duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _showAllLots
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: ordered.skip(1).map(card).toList(),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
       ],
     );
   }
@@ -635,23 +664,12 @@ class _QuickAction extends StatelessWidget {
 
 /// Thẻ bãi: ảnh bãi phủ kín, tối dần từ trên xuống, phủ teal 40%.
 /// Trên trái: loại xe nhận và giá. Trên phải: số chỗ trống. Dưới phải: khoảng cách và tên bãi.
-class _LotRow extends StatelessWidget {
+class _LotCard extends StatelessWidget {
   final LotView lot;
   final double? distance;
   final VoidCallback onTap;
 
-  const _LotRow({required this.lot, required this.onTap, this.distance});
-
-  /// Ảnh dự phòng khi bãi chưa có ảnh trên máy chủ: gán cố định theo mã bãi.
-  static const _photos = [
-    'assets/images/promo/reserve.jpg',
-    'assets/images/promo/prepay.jpg',
-    'assets/images/promo/monthly.jpg',
-    'assets/images/promo/wallet.jpg',
-  ];
-
-  static String photoFor(String lotId) =>
-      _photos[lotId.codeUnits.fold<int>(0, (s, c) => s + c) % _photos.length];
+  const _LotCard({required this.lot, required this.onTap, this.distance});
 
   /// "30k/2h", "20k/giờ": giá lượt đầu rẻ nhất của bãi.
   static String? priceLabel(LotView lot) {
@@ -687,15 +705,15 @@ class _LotRow extends StatelessWidget {
       child: Material(
         color: PbmsTokens.teal,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 125,
+            height: 100,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _LotPhoto(url: resolveMediaUrl(lot.imageUrl), fallback: photoFor(lot.id)),
+                LotPhoto(lot: lot),
                 // Tối dần từ trên xuống để chữ trắng phía dưới đủ tương phản.
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -709,14 +727,14 @@ class _LotRow extends StatelessWidget {
                 // Lớp teal 40% của theme: vẫn nhìn thấy ảnh bên dưới.
                 ColoredBox(color: PbmsTokens.teal.withValues(alpha: 0.4)),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Một dòng, không xuống hàng: thẻ cao cố định 125.
+                          // Một dòng, không xuống hàng: thẻ cao cố định 100.
                           Expanded(
                             child: Row(
                               children: [
@@ -755,7 +773,7 @@ class _LotRow extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Icon(Icons.place_outlined, size: 15, color: Colors.white),
+                            const Icon(Icons.place_outlined, size: 13, color: Colors.white),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(where,
@@ -763,7 +781,7 @@ class _LotRow extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(
-                                      fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xF2FFFFFF))),
+                                      fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xF2FFFFFF))),
                             ),
                           ],
                         ),
@@ -773,7 +791,7 @@ class _LotRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
-                              fontSize: 20, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white)),
+                              fontSize: 17, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white)),
                     ],
                   ),
                 ),
@@ -782,27 +800,6 @@ class _LotRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Ảnh bãi từ máy chủ; chưa có hoặc tải lỗi thì dùng ảnh bãi đỗ có sẵn trong app.
-class _LotPhoto extends StatelessWidget {
-  final String? url;
-  final String fallback;
-
-  const _LotPhoto({required this.url, required this.fallback});
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = Image.asset(fallback, fit: BoxFit.cover, excludeFromSemantics: true);
-    final src = url;
-    if (src == null) return asset;
-    return CachedNetworkImage(
-      imageUrl: src,
-      fit: BoxFit.cover,
-      placeholder: (_, __) => asset,
-      errorWidget: (_, __, ___) => asset,
     );
   }
 }
@@ -817,7 +814,7 @@ class _GlassPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0x29FFFFFF),
         border: Border.all(color: const Color(0x99FFFFFF), width: 0.8),
@@ -857,7 +854,7 @@ class _AvailabilityPill extends StatelessWidget {
     final fg = full ? PbmsTokens.danger : PbmsTokens.ok;
     final bg = full ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,

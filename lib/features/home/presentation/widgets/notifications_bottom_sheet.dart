@@ -218,13 +218,7 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
       return ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-        children: const [
-          PbmsLoadingBox(height: 72),
-          SizedBox(height: 8),
-          PbmsLoadingBox(height: 72),
-          SizedBox(height: 8),
-          PbmsLoadingBox(height: 72),
-        ],
+        children: const [PbmsLoadingBox(height: 240)],
       );
     }
     if (_error != null && _notifications.isEmpty) {
