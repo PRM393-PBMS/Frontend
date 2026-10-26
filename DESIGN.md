@@ -29,7 +29,7 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   carries a shadow. Glass only on the bottom bar; gradients only as the dark overlay on lot photos.
 - **Lists/settings:** `PbmsSettingsGroup` + `PbmsSettingsRow`: flat grouped rows, plain icon, no
   subtitles, at most 4 rows per group.
-- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state).
+- **States:** every async block goes through `PbmsAsync` (skeleton, error with retry, short empty state). Loading is a `PbmsLoadingBox` frame: it keeps the height of the content to come; under 64 it is one rounded bar, otherwise a white card of fake rows (icon tile, two text lines, a value on the right) with a light sweep (off when animations are disabled). Spinners stay only inside buttons doing an action.
 - **Copy:** short and factual, no teaching paragraphs. No em/en dashes, no uppercase eyebrows,
   no fake data (illustrations are labelled "Ví dụ"). Labels above inputs.
 - **Motion:** carousels never auto-advance. The bottom bar keeps the original frosted bar with the
