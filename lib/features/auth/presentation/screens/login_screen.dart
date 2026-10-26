@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: const Icon(Icons.badge_outlined),
         title: const Text('Không thể đăng nhập'),
         content: const Text(
-            'Tài khoản nhân sự/quản trị vui lòng sử dụng cổng Web nội bộ.'),
+            'Tài khoản quản lý/quản trị vui lòng sử dụng cổng Web nội bộ.'),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),

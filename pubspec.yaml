@@ -47,6 +47,7 @@ dependencies:
   webview_flutter: ^4.10.0
   wakelock_plus: ^1.5.2
   screen_brightness: ^2.1.11
+  camera: ^0.12.1
 
 dev_dependencies:
   flutter_test:
