@@ -1,0 +1,2 @@
+// Chép thành MapsKey.xcconfig (không commit) và điền khoá Google Maps.
+MAPS_API_KEY=

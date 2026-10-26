@@ -1,4 +1,5 @@
 import Flutter
+import GoogleMaps
 import UIKit
 
 @main
@@ -7,6 +8,10 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Khoá Google Maps: MAPS_API_KEY trong ios/Flutter/MapsKey.xcconfig (không commit), đọc qua Info.plist.
+    if let key = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String, !key.isEmpty {
+      GMSServices.provideAPIKey(key)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
