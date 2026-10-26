@@ -32,6 +32,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>GMSApiKey</key>
+	<string>$(MAPS_API_KEY)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Vị trí của bạn được dùng để tìm và sắp xếp các bãi đỗ xe gần bạn.</string>
 	<key>UIApplicationSceneManifest</key>
