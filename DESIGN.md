@@ -41,3 +41,12 @@ components in `lib/core/widgets/parking/` (exported from `pbms_ui.dart`).
   colors, bottom-right pin + distance/drive time (or address) and the lot name in white, right-aligned.
 - **Notifications:** flat full-width rows, no borders/radius; unread rows get a full-row teal tint.
 - **Touch targets:** 48dp minimum; primary gate actions sit in the lower half of the screen.
+
+## Staff scanner (`/staff`)
+
+Gate staff log in to the same app and land on a camera-first scanner; managers/admins are still sent to the web. The phone is only a scanner: it shows what the server read and never admits a car itself.
+
+- Dark full-screen camera, a 2:1 plate frame (outside dimmed, four white corners) with one instruction line.
+- Top: gate chip (tap to change, remembered on the device) and a menu (staff name, recent scans, log out).
+- Bottom: big white shutter (78dp), torch toggle, recent scans. Shooting never waits for the upload; each shot becomes a card (photo, plate, verdict, "Đã gửi · time" / "Chạm để gửi lại").
+- Verdict copy and colour come from `ScanVerdict`: ok for on-time reservation / monthly pass, warn for off-time reservation or unread plate, danger for a car already inside.

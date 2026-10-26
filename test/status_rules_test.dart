@@ -95,10 +95,22 @@ void main() {
     }
   });
 
-  test('nhân sự đăng nhập bị đăng xuất ngay và không vào app', () async {
+  test('nhân viên cổng đăng nhập được (dùng máy quét), không bị đăng xuất', () async {
     final repo = _FakeAuthRepository(_user('staff'));
     final bloc = AuthBloc(authRepository: repo)
       ..add(const AuthLoginSubmitted(email: 'staff', password: 'x'));
+    final state = await bloc.stream.firstWhere((s) => s.status != AuthStatus.loading);
+    expect(state.status, AuthStatus.authenticated);
+    expect(state.user?.isStaff, isTrue);
+    expect(state.staffAccountBlocked, isFalse);
+    expect(repo.logouts, 0);
+    await bloc.close();
+  });
+
+  test('quản lý đăng nhập bị đăng xuất ngay và không vào app', () async {
+    final repo = _FakeAuthRepository(_user('manager'));
+    final bloc = AuthBloc(authRepository: repo)
+      ..add(const AuthLoginSubmitted(email: 'ql', password: 'x'));
     final state = await bloc.stream.firstWhere((s) => s.status != AuthStatus.loading);
     expect(state.status, AuthStatus.unauthenticated);
     expect(state.staffAccountBlocked, isTrue);

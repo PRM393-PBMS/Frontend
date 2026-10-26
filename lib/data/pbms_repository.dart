@@ -8,6 +8,7 @@ import '../core/error/app_exception.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/json_read.dart';
 import '../features/auth/data/models/user_model.dart';
+import '../features/staff/data/staff_models.dart';
 import 'models/pbms_models.dart';
 
 /// Toàn bộ API phía khách hàng của PBMS.
@@ -522,6 +523,34 @@ class PbmsRepository {
     }
     return url;
   }
+
+  // ================= Máy quét của nhân viên =================
+
+  Future<List<GateModel>> getGates() async =>
+      _list(await _get(ApiEndpoints.gates), GateModel.fromJson);
+
+  /// Gửi ảnh biển số kèm cổng và giờ chụp; nhân viên quét lấy từ token.
+  /// Máy chủ nhận diện, đối chiếu đặt chỗ rồi đẩy real-time cho web staff.
+  Future<GateScanModel> sendGateScan({
+    required String gateId,
+    required Uint8List bytes,
+    required DateTime capturedAt,
+  }) async {
+    final form = FormData.fromMap({
+      'gateId': gateId,
+      'capturedAt': capturedAt.toUtc().toIso8601String(),
+      'file': MultipartFile.fromBytes(bytes,
+          filename: 'plate-${capturedAt.millisecondsSinceEpoch}.jpg',
+          contentType: DioMediaType('image', 'jpeg')),
+    });
+    final res = await _api.post<dynamic>(ApiEndpoints.gateScans, data: form);
+    return GateScanModel.fromJson(_obj(res.result, 'lượt quét'));
+  }
+
+  Future<List<GateScanModel>> getMyRecentGateScans({int limit = 20}) async => _list(
+        await _get(ApiEndpoints.recentGateScans, query: {'mine': 'true', 'limit': '$limit'}),
+        GateScanModel.fromJson,
+      );
 
   Future<void> createIncident({
     required String issueType,

@@ -27,6 +27,9 @@ class RouteNames {
   static const String forgotPasswordPath = '/forgot-password';
 
   static const String home = 'home';
+  static const String staffScanner = 'staffScanner';
+  static const String staffScannerPath = '/staff';
+
   static const String homePath = '/home';
 
   static const String reservations = 'reservations';
