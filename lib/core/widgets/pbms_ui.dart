@@ -323,6 +323,7 @@ class StatusInfo {
         'pending' => const StatusInfo('Chờ thanh toán', _warn),
         'cancelled' => const StatusInfo('Đã huỷ', _neutral),
         'failed' => const StatusInfo('Thất bại', _danger),
+        'refunded' => const StatusInfo('Đã hoàn tiền', _accent),
         _ => StatusInfo(s, _neutral),
       };
 

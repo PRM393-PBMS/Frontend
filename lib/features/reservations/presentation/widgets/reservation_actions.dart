@@ -244,7 +244,15 @@ class ReservationActions {
       verify: link.orderCode == null && link.reservationId == null
           ? null
           : () async {
-              // Kiểm tra theo mã đơn PayOS, sau đó đối chiếu trạng thái đặt chỗ.
+              // Tra thẳng PayOS (không chờ webhook) để đặt chỗ được xác nhận
+              // và có mã QR ngay; sau đó đối chiếu theo mã đơn và trạng thái đặt chỗ.
+              if (link.paymentId != null) {
+                try {
+                  if (await repo.checkPayment(link.paymentId!)) return PaymentCheck.paid;
+                } catch (_) {
+                  // PayOS chưa phản hồi: thử các cách kiểm tra bên dưới.
+                }
+              }
               if (link.orderCode != null) {
                 final st = await repo.checkPaymentStatus(link.orderCode!);
                 if (st.isPaid) return PaymentCheck.paid;
@@ -293,7 +301,8 @@ class ReservationActions {
       builder: (ctx) => AlertDialog(
         title: const Text('Huỷ đặt chỗ?'),
         content: Text(
-          'Chỗ giữ lúc ${DateFormatter.formatDayTime(r.expectedEntryTime)} sẽ được nhả cho người khác.',
+          'Chỗ giữ lúc ${DateFormatter.formatDayTime(r.expectedEntryTime)} sẽ được nhả cho người khác.'
+          '${r.isPending ? '' : '\n\nHuỷ trước giờ hẹn: tiền cọc được hoàn vào ví PBMS. Huỷ sau giờ hẹn: không hoàn cọc.'}',
         ),
         actions: [
           TextButton(
@@ -309,8 +318,10 @@ class ReservationActions {
     );
     if (ok != true || !context.mounted) return;
     try {
-      await context.read<PbmsRepository>().cancelReservation(r.reservationId);
-      if (context.mounted) showPbmsSnack(context, 'Đã huỷ đặt chỗ.');
+      final message = await context.read<PbmsRepository>().cancelReservation(r.reservationId);
+      if (context.mounted) {
+        showPbmsSnack(context, (message ?? '').trim().isEmpty ? 'Đã huỷ đặt chỗ.' : message!);
+      }
       onChanged();
     } catch (e) {
       if (context.mounted) showPbmsSnack(context, errorText(e), error: true);

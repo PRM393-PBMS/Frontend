@@ -10,6 +10,7 @@ import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/home/presentation/widgets/lot_photo.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 
 /// Bản đồ các bãi đỗ với chỗ trống và bảng giá thời gian thực.
@@ -539,6 +540,43 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Ảnh bãi (từ máy chủ, chưa có thì ảnh dự phòng) và giờ mở cửa.
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: 140,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Semantics(image: true, label: 'Ảnh ${lot.name}', child: LotPhoto(lot: lot)),
+                if (lot.openingHours != null)
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC0F172A),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule_rounded, size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(lot.openingHours!,
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(

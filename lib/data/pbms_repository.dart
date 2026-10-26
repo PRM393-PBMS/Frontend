@@ -347,8 +347,11 @@ class PbmsRepository {
     });
   }
 
-  Future<void> cancelReservation(String reservationId) async {
-    await _put(ApiEndpoints.cancelReservation(reservationId));
+  /// Huỷ đặt chỗ; trả về lời nhắn của máy chủ (vd. đã hoàn bao nhiêu tiền cọc vào ví).
+  Future<String?> cancelReservation(String reservationId) async {
+    final res = await _api.put<dynamic>(ApiEndpoints.cancelReservation(reservationId),
+        data: const <String, dynamic>{});
+    return res.message;
   }
 
   // ------------------------------------------------------- subscriptions

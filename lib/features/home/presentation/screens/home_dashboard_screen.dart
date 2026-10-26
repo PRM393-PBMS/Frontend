@@ -19,6 +19,7 @@ import 'package:prm393_frontend/features/entry_pass/entry_pass_screen.dart';
 import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
 import 'package:prm393_frontend/features/home/presentation/shell_scope.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/notifications_bottom_sheet.dart';
+import 'package:prm393_frontend/features/home/presentation/widgets/lot_photo.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/promo_carousel.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
@@ -670,17 +671,6 @@ class _LotCard extends StatelessWidget {
 
   const _LotCard({required this.lot, required this.onTap, this.distance});
 
-  /// Ảnh dự phòng khi bãi chưa có ảnh trên máy chủ: gán cố định theo mã bãi.
-  static const _photos = [
-    'assets/images/promo/reserve.jpg',
-    'assets/images/promo/prepay.jpg',
-    'assets/images/promo/monthly.jpg',
-    'assets/images/promo/wallet.jpg',
-  ];
-
-  static String photoFor(String lotId) =>
-      _photos[lotId.codeUnits.fold<int>(0, (s, c) => s + c) % _photos.length];
-
   /// "30k/2h", "20k/giờ": giá lượt đầu rẻ nhất của bãi.
   static String? priceLabel(LotView lot) {
     final prices = lot.capacities.map((c) => c.pricing).whereType<PricingPolicyModel>().toList()
@@ -723,7 +713,7 @@ class _LotCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _LotPhoto(url: resolveMediaUrl(lot.imageUrl), fallback: photoFor(lot.id)),
+                LotPhoto(lot: lot),
                 // Tối dần từ trên xuống để chữ trắng phía dưới đủ tương phản.
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -810,27 +800,6 @@ class _LotCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Ảnh bãi từ máy chủ; chưa có hoặc tải lỗi thì dùng ảnh bãi đỗ có sẵn trong app.
-class _LotPhoto extends StatelessWidget {
-  final String? url;
-  final String fallback;
-
-  const _LotPhoto({required this.url, required this.fallback});
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = Image.asset(fallback, fit: BoxFit.cover, excludeFromSemantics: true);
-    final src = url;
-    if (src == null) return asset;
-    return CachedNetworkImage(
-      imageUrl: src,
-      fit: BoxFit.cover,
-      placeholder: (_, __) => asset,
-      errorWidget: (_, __, ___) => asset,
     );
   }
 }
