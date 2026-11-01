@@ -475,7 +475,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         Expanded(
           child: _QuickAction(
             icon: Icons.qr_code_2_rounded,
-            label: 'Mã QR gửi xe',
+            label: 'Gửi xe 1 lần',
             onTap: () => EntryPassScreen.open(context),
           ),
         ),
@@ -525,7 +525,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           if (pass != null)
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
-              child: Align(alignment: Alignment.centerLeft, child: PbmsPaidStamp()),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PbmsPaidStamp(),
+                  SizedBox(height: 8),
+                  Text('Ra cổng bằng biển số, camera mở cổng tự động.', style: PbmsText.caption),
+                ],
+              ),
             )
           else
             Padding(
@@ -547,17 +554,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               ),
             ),
           PbmsPrimaryButton(
-            label: pass != null ? 'Mã ra cổng' : 'Trả phí, lấy mã ra cổng',
-            icon: Icons.qr_code_2_rounded,
+            label: pass != null ? 'Mã QR dự phòng' : 'Trả trước để ra nhanh',
+            icon: pass != null ? Icons.qr_code_2_rounded : Icons.bolt_rounded,
             onPressed: pass != null
                 ? () => PbmsQrDialog.show(
                       context,
-                      title: 'Mã ra cổng',
+                      title: 'Mã QR dự phòng ra cổng',
                       payload: pass.qrPayload,
                       plate: s.licensePlateIn,
                       isMotorbike: s.isMotorbike,
                       code: pass.code,
                       rows: [
+                        (Icons.info_outline_rounded, 'Dùng khi', 'Camera không đọc được biển số'),
                         if (s.slotCode != null)
                           (Icons.local_parking_rounded, 'Vị trí đỗ', s.slotCode!),
                       ],

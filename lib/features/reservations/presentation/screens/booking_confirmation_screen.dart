@@ -73,7 +73,17 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       if (!mounted) return;
       final id = link.reservationId;
       if (paid && id != null) {
-        final r = await _repo.getReservation(id);
+        // Đã cọc xong: tải lại vé lỗi (mạng chập chờn) thì không được để form mở lại,
+        // bấm "Đặt chỗ" lần nữa sẽ tạo đơn mới và cọc lần hai.
+        final ReservationModel r;
+        try {
+          r = await _repo.getReservation(id);
+        } catch (_) {
+          if (!mounted) return;
+          showPbmsSnack(context, 'Đã đặt cọc thành công. Xem vé vào cổng trong mục Lịch sử.');
+          context.pop(true);
+          return;
+        }
         if (mounted) setState(() => _confirmed = r);
       } else {
         showPbmsSnack(context,

@@ -26,6 +26,8 @@ class ScanVerdict {
         );
       case 'resident':
         return const ScanVerdict('Khách vé tháng', Icons.card_membership_rounded, PbmsTokens.ok);
+      case 'entrypass':
+        return const ScanVerdict('Đã đăng ký gửi 1 lần', Icons.how_to_reg_rounded, PbmsTokens.ok);
       case 'guest':
         return const ScanVerdict('Khách vãng lai', Icons.directions_car_outlined, PbmsTokens.teal);
       case 'inside':

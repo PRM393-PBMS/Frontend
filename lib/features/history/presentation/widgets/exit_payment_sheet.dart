@@ -247,7 +247,7 @@ class _ExitPaymentSheetState extends State<ExitPaymentSheet> {
   }
 }
 
-/// Thẻ mã ra cổng: mã chữ để đọc cho nhân viên + QR để quét.
+/// Đã thanh toán trước: ra cổng bằng biển số. Mã QR + mã chữ chỉ dự phòng khi camera không đọc được biển.
 class ExitPassCard extends StatelessWidget {
   final ExitPassModel pass;
   final String plate;
@@ -257,12 +257,13 @@ class ExitPassCard extends StatelessWidget {
 
   void _showQr(BuildContext context) => PbmsQrDialog.show(
         context,
-        title: 'Mã ra cổng',
+        title: 'Mã QR dự phòng ra cổng',
         payload: pass.qrPayload,
         plate: plate,
         isMotorbike: isMotorbike,
         code: pass.code,
         rows: [
+          (Icons.info_outline_rounded, 'Dùng khi', 'Camera không đọc được biển số'),
           if (pass.prepaidAt != null)
             (Icons.verified_rounded, 'Đã thanh toán', DateFormatter.formatDateTime(pass.prepaidAt)),
           (Icons.timer_outlined, 'Hiệu lực', 'Tới khi xe ra khỏi bãi'),
@@ -278,12 +279,15 @@ class ExitPassCard extends StatelessWidget {
         children: [
           const PbmsPaidStamp(),
           const SizedBox(height: 12),
-          const Text('Mã ra cổng', style: PbmsText.label),
-          Text(pass.code, style: PbmsText.display(40).copyWith(letterSpacing: 6)),
+          const Text('Ra cổng bằng biển số', style: PbmsText.label),
+          const SizedBox(height: 6),
+          PbmsPlate(licensePlate: plate, isMotorbike: isMotorbike, fontSize: 24),
+          const SizedBox(height: 8),
+          const Text('Camera ở cổng ra đọc biển số và mở cổng, không cần mở mã.', style: PbmsText.caption),
         ],
       ),
       stub: PbmsPrimaryButton(
-        label: 'Mở mã ra cổng',
+        label: 'Mã QR dự phòng',
         icon: Icons.qr_code_2_rounded,
         onPressed: () => _showQr(context),
       ),
