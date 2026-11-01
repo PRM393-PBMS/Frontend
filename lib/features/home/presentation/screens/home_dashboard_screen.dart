@@ -25,10 +25,11 @@ import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
-/// Lượt gửi đang diễn ra hoặc đặt chỗ sắp tới, ưu tiên xe đang trong bãi.
+/// Lượt gửi đang diễn ra, đặt chỗ sắp tới hoặc đăng ký gửi xe 1 lần, ưu tiên xe đang trong bãi.
 typedef _Activity = ({
   ParkingSessionModel? session,
   ReservationModel? reservation,
+  EntryPassModel? entryPass,
 });
 
 class HomeDashboardScreen extends StatefulWidget {
@@ -112,14 +113,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     final results = await Future.wait([
       _repo.getMySessions(),
       _repo.getMyReservations(),
+      // Đăng ký gửi 1 lần chỉ để nhắc; lỗi tải không được làm hỏng thẻ hoạt động.
+      _repo.getMyEntryPasses().catchError((_) => <EntryPassModel>[]),
     ]);
     final sessions = results[0] as List<ParkingSessionModel>;
     final reservations = results[1] as List<ReservationModel>;
+    final passes = results[2] as List<EntryPassModel>;
     final upcoming = reservations.where((r) => r.canModify).toList()
       ..sort((a, b) => a.expectedEntryTime.compareTo(b.expectedEntryTime));
     return (
       session: sessions.where((s) => s.isActive).firstOrNull,
       reservation: upcoming.firstOrNull,
+      entryPass: passes.where((p) => p.isActive).firstOrNull,
     );
   }
 
@@ -470,13 +475,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     if (session != null) return _buildActiveSession(session);
     final reservation = activity.reservation;
     if (reservation != null) return _buildUpcomingReservation(reservation);
+    final pass = activity.entryPass;
+    if (pass != null) return _buildEntryPass(pass);
     return Row(
       children: [
         Expanded(
           child: _QuickAction(
             icon: Icons.qr_code_2_rounded,
             label: 'Gửi xe 1 lần',
-            onTap: () => EntryPassScreen.open(context),
+            onTap: () => EntryPassScreen.open(context).then((_) => reloadAll()),
           ),
         ),
         const SizedBox(width: 10),
@@ -488,6 +495,33 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Đã đăng ký gửi 1 lần, xe chưa vào: nhắc khách tới cổng là camera đọc biển số.
+  Widget _buildEntryPass(EntryPassModel pass) {
+    final left = pass.expiresAt.difference(DateTime.now());
+    return PbmsTicketStub(
+      onTap: () => EntryPassScreen.open(context).then((_) => reloadAll()),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const PbmsStatusPill(StatusInfo('Đã đăng ký gửi xe', PbmsTokens.ok)),
+          const SizedBox(height: 12),
+          PbmsPlate(licensePlate: pass.licensePlate, isMotorbike: pass.isMotorbike, fontSize: 24),
+          const SizedBox(height: 8),
+          Text(
+            'Tới cổng vào, camera đọc biển số là xe được vào. '
+            'Còn ${left.inHours >= 1 ? '${left.inHours} giờ' : '${left.inMinutes.clamp(0, 59)} phút'}.',
+            style: PbmsText.caption,
+          ),
+        ],
+      ),
+      stub: PbmsPrimaryButton(
+        label: 'Xem đăng ký',
+        icon: Icons.how_to_reg_rounded,
+        onPressed: () => EntryPassScreen.open(context).then((_) => reloadAll()),
+      ),
     );
   }
 
