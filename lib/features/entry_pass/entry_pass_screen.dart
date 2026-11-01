@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
@@ -12,7 +11,8 @@ import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_picker.dart';
 
-/// Mã QR gửi xe một lần: tạo cho một xe, đưa ra ở cổng vào, dùng một lần trong 24 giờ.
+/// Gửi xe một lần: đăng ký trước biển số một xe, tới cổng camera đọc biển số là vào được.
+/// Mã QR đi kèm chỉ để dự phòng khi camera không đọc được biển. Dùng một lần trong 24 giờ.
 class EntryPassScreen extends StatefulWidget {
   const EntryPassScreen({super.key});
 
@@ -71,14 +71,14 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Huỷ mã vào bãi?'),
-        content: Text('Mã của xe ${pass.licensePlate} sẽ không dùng được nữa.'),
+        title: const Text('Huỷ đăng ký gửi xe?'),
+        content: Text('Xe ${pass.licensePlate} sẽ không vào bãi bằng đăng ký này nữa.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Giữ lại')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger),
-            child: const Text('Huỷ mã'),
+            child: const Text('Huỷ đăng ký'),
           ),
         ],
       ),
@@ -87,7 +87,7 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
     try {
       await _repo.cancelEntryPass(pass.id);
       await _passes.load();
-      if (mounted) showPbmsSnack(context, 'Đã huỷ mã.');
+      if (mounted) showPbmsSnack(context, 'Đã huỷ đăng ký.');
     } catch (e) {
       if (mounted) showPbmsSnack(context, errorText(e), error: true);
     }
@@ -102,7 +102,7 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
         backgroundColor: AppColors.bgLight,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 4,
-        title: const Text('Mã QR gửi xe 1 lần',
+        title: const Text('Gửi xe 1 lần',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: PbmsTokens.ink)),
       ),
       body: BlocBuilder<AsyncCubit<List<EntryPassModel>>, AsyncState<List<EntryPassModel>>>(
@@ -112,7 +112,7 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
             return ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                PbmsErrorView(title: 'Chưa dùng được mã QR', message: st.error ?? '', onRetry: _passes.load),
+                PbmsErrorView(title: 'Chưa tải được đăng ký gửi xe', message: st.error ?? '', onRetry: _passes.load),
               ],
             );
           }
@@ -135,18 +135,18 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(active.isEmpty ? 'Tạo mã vào bãi' : 'Tạo mã cho xe khác',
+                      Text(active.isEmpty ? 'Đăng ký gửi xe' : 'Đăng ký cho xe khác',
                           style: PbmsText.title),
                       const SizedBox(height: 4),
                       const Text(
-                        'Đưa mã cho camera hoặc nhân viên ở cổng vào. Mã dùng một lần, hiệu lực 24 giờ; '
-                        'tạo mã mới cho cùng xe sẽ huỷ mã cũ.',
+                        'Tới cổng vào, camera đọc biển số là xe được vào, không cần mở mã. '
+                        'Đăng ký dùng một lần, hiệu lực 24 giờ; đăng ký lại cho cùng xe sẽ huỷ đăng ký cũ.',
                         style: PbmsText.caption,
                       ),
                       const SizedBox(height: 14),
                       VehiclePicker(
                         selectedId: _vehicle?.id,
-                        emptyMessage: 'Thêm xe để tạo mã vào bãi.',
+                        emptyMessage: 'Thêm xe để đăng ký gửi xe.',
                         onChanged: (v) => setState(() {
                           _vehicle = v;
                           _error = null;
@@ -158,8 +158,8 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
                       ],
                       const SizedBox(height: 14),
                       PbmsPrimaryButton(
-                        label: 'Tạo mã QR',
-                        icon: Icons.qr_code_2_rounded,
+                        label: 'Đăng ký gửi xe',
+                        icon: Icons.how_to_reg_rounded,
                         busy: _busy,
                         onPressed: _create,
                       ),
@@ -168,7 +168,7 @@ class _EntryPassScreenState extends State<EntryPassScreen> {
                 ),
                 if (recent.isNotEmpty) ...[
                   const SizedBox(height: 22),
-                  const PbmsSectionTitle('Mã gần đây'),
+                  const PbmsSectionTitle('Đăng ký gần đây'),
                   for (final p in recent) _PastPass(pass: p),
                 ],
               ],
@@ -186,71 +186,87 @@ class _ActivePass extends StatelessWidget {
 
   const _ActivePass({required this.pass, required this.onCancel});
 
+  /// Camera ở cổng không đọc được biển số (biển bẩn, mờ, mất điện camera):
+  /// đưa mã QR hoặc đọc mã chữ cho nhân viên.
+  void _showBackupQr(BuildContext context) => PbmsQrDialog.show(
+        context,
+        title: 'Mã QR dự phòng vào bãi',
+        payload: pass.qrPayload ?? '',
+        plate: pass.licensePlate,
+        isMotorbike: pass.isMotorbike,
+        code: pass.code,
+        rows: [
+          (Icons.info_outline_rounded, 'Dùng khi', 'Camera không đọc được biển số'),
+          (Icons.timer_outlined, 'Hết hạn', DateFormatter.formatDateTime(pass.expiresAt)),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     final left = pass.expiresAt.difference(DateTime.now());
     final leftText = left.inHours >= 1
         ? 'Còn ${left.inHours} giờ ${left.inMinutes % 60} phút'
         : 'Còn ${left.inMinutes.clamp(0, 59)} phút';
-    final size = (MediaQuery.sizeOf(context).width - 120).clamp(180.0, 260.0);
     return PbmsCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
       borderColor: PbmsTokens.tealLine,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(pass.isMotorbike ? Icons.two_wheeler_rounded : Icons.directions_car_rounded,
-                  color: PbmsTokens.teal),
-              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pass.vehicleName ?? pass.licensePlate, style: PbmsText.title),
-                    Text(
-                      [if (pass.vehicleName != null) pass.licensePlate, pass.vehicleTypeName].join(', '),
-                      style: PbmsText.caption,
-                    ),
-                  ],
+                child: Text(
+                  [pass.vehicleName, pass.vehicleTypeName].whereType<String>().join(', '),
+                  style: PbmsText.caption,
                 ),
               ),
-              const PbmsStatusPill(StatusInfo('Còn hiệu lực', PbmsTokens.ok)),
+              const PbmsStatusPill(StatusInfo('Sẵn sàng vào bãi', PbmsTokens.ok)),
             ],
           ),
           const SizedBox(height: 16),
-          Semantics(
-            label: 'Mã QR vào bãi của xe ${pass.licensePlate}, mã ${pass.code}',
-            image: true,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: PbmsTokens.border),
-              ),
-              child: QrImageView(
-                data: pass.qrPayload ?? '',
-                size: size,
-                errorCorrectionLevel: QrErrorCorrectLevel.Q,
-                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: PbmsTokens.ink),
-                dataModuleStyle:
-                    const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: PbmsTokens.ink),
-              ),
+          Center(
+            child: Semantics(
+              label: 'Biển số đã đăng ký ${pass.licensePlate}',
+              child: PbmsPlate(licensePlate: pass.licensePlate, isMotorbike: pass.isMotorbike, fontSize: 28),
             ),
           ),
-          const SizedBox(height: 12),
-          // Mã ngắn để nhân viên nhập tay khi máy quét không đọc được.
-          Text(pass.code, style: PbmsText.display(40).copyWith(letterSpacing: 6)),
-          const SizedBox(height: 4),
-          Text('$leftText, hết hạn ${DateFormatter.formatDateTime(pass.expiresAt)}',
-              textAlign: TextAlign.center, style: PbmsText.caption),
-          const SizedBox(height: 6),
-          TextButton.icon(
-            onPressed: onCancel,
-            style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger, minimumSize: const Size(48, 48)),
-            icon: const Icon(Icons.block_rounded, size: 18),
-            label: const Text('Huỷ mã'),
+          const SizedBox(height: 16),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.photo_camera_outlined, size: 18, color: PbmsTokens.teal),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Lái xe tới cổng vào, camera đọc biển số là xe được vào. Không cần mở mã.',
+                  style: PbmsText.body,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('$leftText, hết hạn ${DateFormatter.formatDateTime(pass.expiresAt)}', style: PbmsText.caption),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: pass.qrPayload == null ? null : () => _showBackupQr(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: PbmsTokens.teal,
+              side: const BorderSide(color: PbmsTokens.tealLine),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+            label: const Text('Mã QR dự phòng'),
+          ),
+          const SizedBox(height: 2),
+          Center(
+            child: TextButton.icon(
+              onPressed: onCancel,
+              style: TextButton.styleFrom(foregroundColor: PbmsTokens.danger, minimumSize: const Size(48, 48)),
+              icon: const Icon(Icons.block_rounded, size: 18),
+              label: const Text('Huỷ đăng ký'),
+            ),
           ),
         ],
       ),
@@ -280,7 +296,7 @@ class _PastPass extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${pass.licensePlate}, mã ${pass.code}', style: PbmsText.bodyStrong),
+                  Text(pass.licensePlate, style: PbmsText.bodyStrong),
                   Text(
                     pass.usedAt != null
                         ? 'Vào bãi ${DateFormatter.formatDateTime(pass.usedAt!)}'

@@ -183,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> with ReloadOnDataChange {
                       children: [
                         PbmsSettingsRow(
                           icon: Icons.qr_code_2_rounded,
-                          title: 'Mã QR gửi xe 1 lần',
+                          title: 'Gửi xe 1 lần',
                           onTap: () => EntryPassScreen.open(context),
                         ),
                         PbmsSettingsRow(

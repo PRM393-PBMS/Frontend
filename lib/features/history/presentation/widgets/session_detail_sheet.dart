@@ -171,11 +171,13 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
                     ? null
                     : () => PbmsQrDialog.show(
                           context,
-                          title: 'Vé gửi xe',
+                          title: 'Vé QR dự phòng',
                           payload: ticket.qrPayload,
                           plate: s.licensePlateIn,
                           isMotorbike: s.isMotorbike,
                           rows: [
+                            (Icons.info_outline_rounded, 'Dùng khi',
+                                'Camera không đọc được biển số'),
                             (Icons.local_parking_rounded, 'Vị trí đỗ',
                                 s.slotCode ?? 'Chưa phân ô'),
                             (Icons.schedule_rounded, 'Vào bãi',
@@ -183,7 +185,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
                           ],
                         ),
                 icon: const Icon(Icons.qr_code_2_rounded, size: 19),
-                label: const Text('Vé gửi xe (thanh toán tại cổng)'),
+                label: const Text('Trả tại cổng · vé QR dự phòng'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: PbmsTokens.teal,
                   backgroundColor: PbmsTokens.tealTint,
