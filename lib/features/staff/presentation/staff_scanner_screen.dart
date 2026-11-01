@@ -13,6 +13,8 @@ import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_event.dart';
 import 'package:prm393_frontend/features/staff/data/staff_models.dart';
+import 'package:prm393_frontend/features/staff/data/pending_scan_store.dart';
+import 'package:prm393_frontend/features/staff/presentation/scan_error.dart';
 import 'package:prm393_frontend/features/staff/presentation/scan_verdict.dart';
 import 'package:prm393_frontend/features/staff/presentation/staff_sheets.dart';
 
@@ -26,6 +28,10 @@ class _Capture {
   final String gateId;
   _SendState state = _SendState.sending;
   GateScanModel? result;
+  String? error;
+  bool saved = false;
+  bool deleting = false;
+  bool uploading = false;
 
   _Capture(this.key, this.bytes, this.capturedAt, this.gateId);
 }
@@ -39,7 +45,8 @@ class StaffScannerScreen extends StatefulWidget {
   State<StaffScannerScreen> createState() => _StaffScannerScreenState();
 }
 
-class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBindingObserver {
+class _StaffScannerScreenState extends State<StaffScannerScreen>
+    with WidgetsBindingObserver {
   static const _gatePrefKey = 'staff.gate.v1';
   static const _maxCaptures = 8;
 
@@ -51,6 +58,9 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   GateModel? _gate;
   final _captures = <_Capture>[];
   int _nextKey = 0;
+  PendingScanStore? _pending;
+  bool _loadingPending = true;
+  String? _pendingError;
 
   @override
   void initState() {
@@ -58,7 +68,40 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable().catchError((_) {});
     _restoreGate();
+    _restorePending();
     _initCamera();
+  }
+
+  Future<void> _restorePending() async {
+    try {
+      final userId = context.read<AuthBloc>().state.user?.id;
+      if (userId == null) throw StateError('Đăng nhập lại để khôi phục ảnh.');
+      final prefs = await SharedPreferences.getInstance();
+      final pending = PendingScanStore(prefs, userId);
+      final items = pending.load();
+      if (!mounted) return;
+      setState(() {
+        _pending = pending;
+        _pendingError = null;
+        for (final item in items.reversed) {
+          final capture = _Capture(
+              item.id, item.bytes, item.capturedAt, item.gateId)
+            ..state = _SendState.failed
+            ..saved = true
+            ..error =
+                'Ảnh từ lần trước. Kiểm tra lượt quét gần đây trước khi gửi lại.';
+          _captures.add(capture);
+          if (item.id >= _nextKey) _nextKey = item.id + 1;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _pendingError =
+            'Không đọc được ảnh đang lưu. Thử tải lại trước khi chụp.');
+      }
+    } finally {
+      if (mounted) setState(() => _loadingPending = false);
+    }
   }
 
   @override
@@ -72,7 +115,8 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Nhả camera khi app vào nền, mở lại khi quay về.
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       final cam = _camera;
       _camera = null;
       _torch = false;
@@ -89,7 +133,9 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
     setState(() => _cameraError = null);
     try {
       final cameras = await availableCameras();
-      if (cameras.isEmpty) throw CameraException('NoCamera', 'Máy không có camera');
+      if (cameras.isEmpty) {
+        throw CameraException('NoCamera', 'Máy không có camera');
+      }
       final back = cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
@@ -108,11 +154,14 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
       setState(() => _camera = controller);
     } on CameraException catch (e) {
       if (!mounted) return;
-      setState(() => _cameraError = e.code.contains('Denied') || e.code.contains('denied')
+      setState(() => _cameraError = e.code.contains('Denied') ||
+              e.code.contains('denied')
           ? 'Chưa cho phép dùng camera. Mở Cài đặt > Ứng dụng > PBMS > Quyền để bật camera.'
           : 'Không mở được camera (${e.description ?? e.code}).');
     } catch (_) {
-      if (mounted) setState(() => _cameraError = 'Không mở được camera trên máy này.');
+      if (mounted) {
+        setState(() => _cameraError = 'Không mở được camera trên máy này.');
+      }
     } finally {
       _initializing = false;
     }
@@ -120,9 +169,11 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
 
   Future<void> _restoreGate() async {
     try {
-      final raw = (await SharedPreferences.getInstance()).getString(_gatePrefKey);
+      final raw =
+          (await SharedPreferences.getInstance()).getString(_gatePrefKey);
       if (raw != null && mounted) {
-        setState(() => _gate = GateModel.fromJson(jsonDecode(raw) as Map<String, dynamic>));
+        setState(() => _gate =
+            GateModel.fromJson(jsonDecode(raw) as Map<String, dynamic>));
       }
     } catch (_) {
       // Bỏ qua lựa chọn cũ hỏng; nhân viên chọn lại.
@@ -133,11 +184,13 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   }
 
   Future<void> _pickGate() async {
-    final picked = await showGatePickerSheet(context, selectedId: _gate?.gateId);
+    final picked =
+        await showGatePickerSheet(context, selectedId: _gate?.gateId);
     if (picked == null || !mounted) return;
     setState(() => _gate = picked);
     try {
-      await (await SharedPreferences.getInstance()).setString(_gatePrefKey, jsonEncode(picked.toJson()));
+      await (await SharedPreferences.getInstance())
+          .setString(_gatePrefKey, jsonEncode(picked.toJson()));
     } catch (_) {}
   }
 
@@ -155,44 +208,172 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   Future<void> _shoot() async {
     final cam = _camera;
     final gate = _gate;
+    final pending = _pending;
     if (gate == null) {
       _pickGate();
       return;
     }
-    if (cam == null || !cam.value.isInitialized || _shooting) return;
+    if (cam == null ||
+        !cam.value.isInitialized ||
+        _shooting ||
+        pending == null) {
+      return;
+    }
+    if (_captures.where((c) => c.saved || c.state != _SendState.sent).length >=
+        PendingScanStore.maxCount) {
+      showPbmsSnack(
+          context, 'Đã có 8 ảnh chưa gửi. Gửi lại hoặc nhấn giữ ảnh cũ để xóa.',
+          error: true);
+      return;
+    }
     setState(() => _shooting = true);
     try {
       final file = await cam.takePicture();
-      final capture = _Capture(_nextKey++, await file.readAsBytes(), DateTime.now(), gate.gateId);
+      final capture = _Capture(
+          _nextKey++, await file.readAsBytes(), DateTime.now(), gate.gateId);
+      final pendingBytes = _captures
+          .where((c) => c.saved || c.state != _SendState.sent)
+          .fold<int>(0, (sum, c) => sum + c.bytes.length);
+      if (pendingBytes + capture.bytes.length > PendingScanStore.maxBytes) {
+        if (mounted) {
+          showPbmsSnack(context,
+              'Ảnh vượt dung lượng hàng đợi 8MB. Gửi lại hoặc xóa ảnh cũ rồi chụp lại.',
+              error: true);
+        }
+        return;
+      }
+      try {
+        await pending.put(PendingScan(
+            id: capture.key,
+            gateId: capture.gateId,
+            capturedAt: capture.capturedAt,
+            bytes: capture.bytes));
+        capture.saved = true;
+      } catch (_) {
+        capture.state = _SendState.failed;
+        capture.error =
+            'Không lưu được ảnh trên thiết bị. Giữ màn hình này và thử lại, hoặc nhấn giữ để xóa.';
+      }
+      if (!mounted) return;
       HapticFeedback.mediumImpact();
       setState(() {
         _captures.insert(0, capture);
-        if (_captures.length > _maxCaptures) _captures.removeLast();
+        if (_captures.length > _maxCaptures) {
+          final sent = _captures
+              .lastIndexWhere((c) => c.state == _SendState.sent && !c.saved);
+          if (sent >= 0) _captures.removeAt(sent);
+        }
       });
-      unawaited(_send(capture));
+      if (capture.saved) unawaited(_send(capture));
     } on CameraException catch (e) {
-      if (mounted) showPbmsSnack(context, 'Chụp không được: ${e.description ?? e.code}', error: true);
+      if (mounted) {
+        showPbmsSnack(context, 'Chụp không được: ${e.description ?? e.code}',
+            error: true);
+      }
+    } catch (_) {
+      if (mounted) {
+        showPbmsSnack(
+            context, 'Không đọc được ảnh vừa chụp. Vui lòng chụp lại.',
+            error: true);
+      }
     } finally {
       if (mounted) setState(() => _shooting = false);
     }
   }
 
   Future<void> _send(_Capture capture) async {
-    setState(() => capture.state = _SendState.sending);
+    if (!mounted || capture.deleting || capture.uploading) return;
+    final repo = context.read<PbmsRepository>();
+    final pending = _pending;
+    if (pending == null) return;
+    capture.uploading = true;
+    setState(() {
+      capture.state = _SendState.sending;
+      capture.error = null;
+    });
     try {
-      final result = await context.read<PbmsRepository>().sendGateScan(
+      if (!capture.saved) {
+        await pending.put(PendingScan(
+            id: capture.key,
             gateId: capture.gateId,
-            bytes: capture.bytes,
             capturedAt: capture.capturedAt,
-          );
+            bytes: capture.bytes));
+      }
+      capture.saved = true;
+    } catch (_) {
+      capture.saved = false;
+      capture.uploading = false;
+      if (mounted) {
+        setState(() {
+          capture.state = _SendState.failed;
+          capture.error =
+              'Không lưu được ảnh trên thiết bị. Giữ màn hình này và thử lại, hoặc nhấn giữ để xóa.';
+        });
+      }
+      return;
+    }
+    try {
+      final result = await repo.sendGateScan(
+        gateId: capture.gateId,
+        bytes: capture.bytes,
+        capturedAt: capture.capturedAt,
+      );
+      // Giữ kết quả thành công ngay cả khi việc dọn ảnh cục bộ thất bại.
+      capture.result = result;
+      try {
+        await pending.remove(capture.key);
+        capture.saved = false;
+      } catch (_) {
+        capture.error =
+            'Web đã nhận ảnh nhưng chưa xóa được bản lưu. Nhấn giữ để xóa, không gửi lại.';
+      }
       if (!mounted) return;
       setState(() {
         capture.result = result;
         capture.state = _SendState.sent;
       });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          capture.state = _SendState.failed;
+          capture.error = scanErrorText(error);
+        });
+      }
+    } finally {
+      capture.uploading = false;
+    }
+  }
+
+  Future<void> _discard(_Capture capture) async {
+    if (capture.state == _SendState.sending || capture.deleting) return;
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Xóa ảnh đang lưu?'),
+              content: const Text(
+                  'Ảnh sẽ bị xóa khỏi thiết bị và không thể gửi lại từ đây.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Giữ ảnh')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Xóa ảnh')),
+              ],
+            ));
+    if (confirmed != true || !mounted || capture.state == _SendState.sending) {
+      return;
+    }
+    setState(() => capture.deleting = true);
+    try {
+      await _pending!.remove(capture.key);
+      if (mounted) setState(() => _captures.remove(capture));
     } catch (_) {
-      // Ảnh vẫn giữ trên máy; chạm thẻ để gửi lại.
-      if (mounted) setState(() => capture.state = _SendState.failed);
+      if (mounted) {
+        setState(() => capture.deleting = false);
+        showPbmsSnack(context, 'Không xóa được ảnh. Vui lòng thử lại.',
+            error: true);
+      }
     }
   }
 
@@ -211,6 +392,11 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
               child: Column(
                 children: [
                   _buildTopBar(),
+                  if (_pendingError != null)
+                    TextButton(
+                        onPressed: _restorePending,
+                        child: Text(_pendingError!,
+                            style: const TextStyle(color: Colors.white))),
                   const Spacer(),
                   if (_captures.isNotEmpty) _buildCaptures(),
                   _buildControls(),
@@ -232,15 +418,18 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.no_photography_outlined, color: Colors.white70, size: 40),
+              const Icon(Icons.no_photography_outlined,
+                  color: Colors.white70, size: 40),
               const SizedBox(height: 12),
               Text(_cameraError!,
-                  textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 15)),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 15)),
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: _initCamera,
                 style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white54)),
                 child: const Text('Thử lại'),
               ),
             ],
@@ -250,7 +439,8 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
     }
     if (cam == null || !cam.value.isInitialized) {
       return const Center(
-        child: Text('Đang mở camera…', style: TextStyle(color: Colors.white70, fontSize: 14)),
+        child: Text('Đang mở camera…',
+            style: TextStyle(color: Colors.white70, fontSize: 14)),
       );
     }
     // Phủ kín màn hình (cắt mép) thay vì chừa viền đen.
@@ -270,7 +460,9 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   Widget _buildTopBar() {
     final gate = _gate;
     final user = context.read<AuthBloc>().state.user;
-    final name = (user?.fullName?.trim().isNotEmpty ?? false) ? user!.fullName!.trim() : (user?.email ?? '');
+    final name = (user?.fullName?.trim().isNotEmpty ?? false)
+        ? user!.fullName!.trim()
+        : (user?.email ?? '');
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
@@ -295,13 +487,19 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        gate == null ? 'Chọn cổng' : '${gate.gateName} · ${gate.floorName}',
+                        gate == null
+                            ? 'Chọn cổng'
+                            : '${gate.gateName} · ${gate.floorName}',
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.expand_more_rounded, color: Colors.white70, size: 18),
+                    const Icon(Icons.expand_more_rounded,
+                        color: Colors.white70, size: 18),
                   ],
                 ),
               ),
@@ -312,10 +510,12 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
             onTap: () => showStaffMenuSheet(
               context,
               staffName: name,
-              onLogout: () => context.read<AuthBloc>().add(AuthLogoutRequested()),
+              onLogout: () =>
+                  context.read<AuthBloc>().add(AuthLogoutRequested()),
             ),
             semanticLabel: 'Tài khoản và lượt quét gần đây',
-            child: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
+            child:
+                const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -324,7 +524,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
 
   Widget _buildCaptures() {
     return SizedBox(
-      height: 92,
+      height: 168,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -338,7 +538,13 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
             capturedAt: c.capturedAt,
             state: c.state,
             result: c.result,
-            onRetry: c.state == _SendState.failed ? () => _send(c) : null,
+            error: c.error,
+            onRetry: c.state == _SendState.failed && !c.deleting
+                ? () => _send(c)
+                : null,
+            onDiscard: c.state != _SendState.sending && !c.deleting
+                ? () => _discard(c)
+                : null,
           );
         },
       ),
@@ -346,7 +552,9 @@ class _StaffScannerScreenState extends State<StaffScannerScreen> with WidgetsBin
   }
 
   Widget _buildControls() {
-    final ready = _camera?.value.isInitialized ?? false;
+    final ready = (_camera?.value.isInitialized ?? false) &&
+        !_loadingPending &&
+        _pending != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
       child: Row(
@@ -402,7 +610,10 @@ class _PlateFrame extends StatelessWidget {
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth * 0.82;
         final h = w / 2;
-        final rect = Rect.fromCenter(center: Offset(c.maxWidth / 2, c.maxHeight * 0.42), width: w, height: h);
+        final rect = Rect.fromCenter(
+            center: Offset(c.maxWidth / 2, c.maxHeight * 0.42),
+            width: w,
+            height: h);
         return CustomPaint(
           size: Size(c.maxWidth, c.maxHeight),
           painter: _FramePainter(rect),
@@ -415,7 +626,10 @@ class _PlateFrame extends StatelessWidget {
                 child: const Text(
                   'Đưa biển số vào khung rồi bấm chụp',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -435,7 +649,8 @@ class _FramePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final frame = RRect.fromRectAndRadius(rect, const Radius.circular(18));
     canvas.drawPath(
-      Path.combine(PathOperation.difference, Path()..addRect(Offset.zero & size), Path()..addRRect(frame)),
+      Path.combine(PathOperation.difference,
+          Path()..addRect(Offset.zero & size), Path()..addRRect(frame)),
       Paint()..color = const Color(0x8C000000),
     );
     final corner = Paint()
@@ -454,7 +669,8 @@ class _FramePainter extends CustomPainter {
       final path = Path()
         ..moveTo(x, y + sy * (r + len))
         ..lineTo(x, y + sy * r)
-        ..arcToPoint(Offset(x + sx * r, y), radius: const Radius.circular(r), clockwise: sx * sy > 0)
+        ..arcToPoint(Offset(x + sx * r, y),
+            radius: const Radius.circular(r), clockwise: sx * sy > 0)
         ..lineTo(x + sx * (r + len), y);
       canvas.drawPath(path, corner);
     }
@@ -470,6 +686,8 @@ class _CaptureCard extends StatelessWidget {
   final _SendState state;
   final GateScanModel? result;
   final VoidCallback? onRetry;
+  final VoidCallback? onDiscard;
+  final String? error;
 
   const _CaptureCard({
     super.key,
@@ -478,6 +696,8 @@ class _CaptureCard extends StatelessWidget {
     required this.state,
     required this.result,
     this.onRetry,
+    this.onDiscard,
+    this.error,
   });
 
   @override
@@ -496,9 +716,16 @@ class _CaptureCard extends StatelessWidget {
     };
     return Semantics(
       button: onRetry != null,
-      label: [result?.licensePlate ?? 'Ảnh chụp lúc $time', verdict?.label, status].whereType<String>().join(', '),
+      label: [
+        result?.licensePlate ?? 'Ảnh chụp lúc $time',
+        verdict?.label,
+        status,
+        error
+      ].whereType<String>().join(', '),
+      onLongPress: onDiscard,
       child: GestureDetector(
         onTap: onRetry,
+        onLongPress: onDiscard,
         child: Container(
           width: 252,
           padding: const EdgeInsets.all(8),
@@ -512,7 +739,11 @@ class _CaptureCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.memory(bytes, width: 64, height: 76, fit: BoxFit.cover, gaplessPlayback: true),
+                  child: Image.memory(bytes,
+                      width: 64,
+                      height: 76,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -525,7 +756,9 @@ class _CaptureCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: state == _SendState.failed ? const Color(0xFFFCA5A5) : Colors.white,
+                          color: state == _SendState.failed
+                              ? const Color(0xFFFCA5A5)
+                              : Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
@@ -536,14 +769,17 @@ class _CaptureCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Row(
                           children: [
-                            Icon(verdict.icon, size: 13, color: _onDark(verdict.color)),
+                            Icon(verdict.icon,
+                                size: 13, color: _onDark(verdict.color)),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(verdict.label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                      color: _onDark(verdict.color), fontSize: 12, fontWeight: FontWeight.w600)),
+                                      color: _onDark(verdict.color),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ],
                         ),
@@ -553,6 +789,14 @@ class _CaptureCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: statusColor, fontSize: 12)),
+                      if (error != null) ...[
+                        const SizedBox(height: 4),
+                        Text(error!,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Color(0xFFFCA5A5), fontSize: 11)),
+                      ],
                     ],
                   ),
                 ),
@@ -573,7 +817,8 @@ class _GlassButton extends StatelessWidget {
   final VoidCallback onTap;
   final String? semanticLabel;
 
-  const _GlassButton({required this.child, required this.onTap, this.semanticLabel});
+  const _GlassButton(
+      {required this.child, required this.onTap, this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -605,7 +850,11 @@ class _RoundIcon extends StatelessWidget {
   final bool active;
   final VoidCallback? onTap;
 
-  const _RoundIcon({required this.icon, required this.label, this.active = false, this.onTap});
+  const _RoundIcon(
+      {required this.icon,
+      required this.label,
+      this.active = false,
+      this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -619,7 +868,10 @@ class _RoundIcon extends StatelessWidget {
           onTap: onTap,
           child: SizedBox.square(
             dimension: 52,
-            child: Icon(icon, color: active ? Colors.black : Colors.white, size: 24, semanticLabel: label),
+            child: Icon(icon,
+                color: active ? Colors.black : Colors.white,
+                size: 24,
+                semanticLabel: label),
           ),
         ),
       ),
