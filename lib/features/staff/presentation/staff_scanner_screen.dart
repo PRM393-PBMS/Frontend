@@ -49,6 +49,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     with WidgetsBindingObserver {
   static const _gatePrefKey = 'staff.gate.v1';
   static const _maxCaptures = 8;
+  static const _gateSyncEvery = Duration(seconds: 4);
 
   CameraController? _camera;
   String? _cameraError;
@@ -58,6 +59,11 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
   GateModel? _gate;
   final _captures = <_Capture>[];
   int _nextKey = 0;
+  Timer? _gateSync;
+
+  /// Lần web chọn cổng gần nhất đã áp dụng. Web chọn lại thì điện thoại đổi theo;
+  /// nhân viên tự chọn trên điện thoại thì giữ tới khi web chọn cổng khác.
+  String? _webGateSetAt;
   PendingScanStore? _pending;
   bool _loadingPending = true;
   String? _pendingError;
@@ -70,6 +76,36 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     _restoreGate();
     _restorePending();
     _initCamera();
+    _startGateSync();
+  }
+
+  void _startGateSync() {
+    _gateSync?.cancel();
+    _gateSync = Timer.periodic(_gateSyncEvery, (_) => _syncGateFromWeb());
+  }
+
+  /// Đi theo cổng web staff (cùng tài khoản) đang mở. Lỗi mạng thì bỏ qua, lần sau hỏi lại.
+  Future<void> _syncGateFromWeb({bool announce = true}) async {
+    try {
+      final web = await context.read<PbmsRepository>().getMyGate();
+      if (web == null || !mounted || web.setAt == _webGateSetAt) return;
+      _webGateSetAt = web.setAt;
+      if (web.gate.gateId == _gate?.gateId) return;
+      setState(() => _gate = web.gate);
+      unawaited(_saveGate(web.gate));
+      if (announce) {
+        HapticFeedback.selectionClick();
+        showPbmsSnack(context,
+            'Đổi theo web: ${web.gate.gateName} · ${web.gate.floorName}');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveGate(GateModel gate) async {
+    try {
+      await (await SharedPreferences.getInstance())
+          .setString(_gatePrefKey, jsonEncode(gate.toJson()));
+    } catch (_) {}
   }
 
   Future<void> _restorePending() async {
@@ -108,6 +144,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable().catchError((_) {});
+    _gateSync?.cancel();
     _camera?.dispose();
     super.dispose();
   }
@@ -120,10 +157,13 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
       final cam = _camera;
       _camera = null;
       _torch = false;
+      _gateSync?.cancel();
       if (mounted) setState(() {});
       cam?.dispose();
-    } else if (state == AppLifecycleState.resumed && _camera == null) {
-      _initCamera();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_camera == null) _initCamera();
+      _syncGateFromWeb();
+      _startGateSync();
     }
   }
 
@@ -178,6 +218,8 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     } catch (_) {
       // Bỏ qua lựa chọn cũ hỏng; nhân viên chọn lại.
     }
+    // Web đã chọn cổng thì lấy luôn, khỏi bắt chọn trên điện thoại.
+    if (mounted) await _syncGateFromWeb(announce: _gate != null);
     if (mounted && _gate == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _pickGate());
     }
@@ -188,10 +230,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
         await showGatePickerSheet(context, selectedId: _gate?.gateId);
     if (picked == null || !mounted) return;
     setState(() => _gate = picked);
-    try {
-      await (await SharedPreferences.getInstance())
-          .setString(_gatePrefKey, jsonEncode(picked.toJson()));
-    } catch (_) {}
+    await _saveGate(picked);
   }
 
   Future<void> _toggleTorch() async {
@@ -706,6 +745,10 @@ class _CaptureCard extends StatelessWidget {
     final verdict = result == null ? null : ScanVerdict.of(result!);
     final (String status, Color statusColor) = switch (state) {
       _SendState.sending => ('Đang gửi lên web…', Colors.white70),
+      _SendState.sent
+          when result?.licensePlate == null &&
+              result?.recognitionNote != null =>
+        ('${result!.recognitionNote} · $time', const Color(0xFFFCD34D)),
       _SendState.sent => ('Đã gửi · $time', const Color(0xFF6EE7B7)),
       _SendState.failed => ('Chạm để gửi lại', const Color(0xFFFCA5A5)),
     };
@@ -786,7 +829,7 @@ class _CaptureCard extends StatelessWidget {
                       ],
                       const SizedBox(height: 3),
                       Text(status,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: statusColor, fontSize: 12)),
                       if (error != null) ...[

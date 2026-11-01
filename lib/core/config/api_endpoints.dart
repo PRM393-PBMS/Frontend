@@ -87,6 +87,7 @@ class ApiEndpoints {
   static const String gates = '/api/Gate';
   static const String gateScans = '/api/GateScan';
   static const String recentGateScans = '/api/GateScan/recent';
+  static const String myGate = '/api/GateScan/my-gate';
   static String incidentById(String id) => '/api/IncidentReport/$id';
   static String cancelIncident(String id) => '/api/IncidentReport/$id/cancel';
 
