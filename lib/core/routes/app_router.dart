@@ -132,7 +132,9 @@ class AppRouter {
         GoRoute(
           path: RouteNames.bookingConfirmationPath,
           name: RouteNames.bookingConfirmation,
-          builder: (context, state) => const BookingConfirmationScreen(),
+          builder: (context, state) => BookingConfirmationScreen(
+            initialParking: state.extra is BookingParking ? state.extra as BookingParking : null,
+          ),
         ),
       ],
     );

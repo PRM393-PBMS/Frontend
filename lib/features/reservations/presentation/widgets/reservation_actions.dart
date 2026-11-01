@@ -159,10 +159,18 @@ class ReservationCard extends StatelessWidget {
                         [
                           DateFormatter.formatDay(r.expectedEntryTime),
                           r.licensePlate ?? r.vehicleTypeName,
+                          if (r.parkingName != null) r.parkingName!,
                           if (r.depositAmount != null)
                             'cọc ${CurrencyFormatter.format(r.depositAmount!)}',
                         ].join(', '),
                         style: PbmsText.caption),
+                    if (r.isPending && r.payBefore != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Trả cọc trước ${DateFormatter.formatTime(r.payBefore!)}, quá hạn đơn tự huỷ',
+                        style: PbmsText.caption.copyWith(color: PbmsTokens.warn),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -190,7 +198,7 @@ class ReservationCard extends StatelessWidget {
                       isMotorbike: r.vehicleTypeName.toLowerCase().contains('máy'),
                       headline: r.vehicleTypeName,
                       rows: [
-                        (Icons.location_on_outlined, 'Địa điểm', PbmsFacility.name),
+                        (Icons.location_on_outlined, 'Địa điểm', r.parkingName ?? PbmsFacility.name),
                         (Icons.schedule_rounded, 'Giờ vào dự kiến',
                             DateFormatter.formatDayTime(r.expectedEntryTime)),
                       ],
@@ -302,7 +310,7 @@ class ReservationActions {
         title: const Text('Huỷ đặt chỗ?'),
         content: Text(
           'Chỗ giữ lúc ${DateFormatter.formatDayTime(r.expectedEntryTime)} sẽ được nhả cho người khác.'
-          '${r.isPending ? '' : '\n\nHuỷ trước giờ hẹn: tiền cọc được hoàn vào ví PBMS. Huỷ sau giờ hẹn: không hoàn cọc.'}',
+          '${r.isPending ? '' : r.refundIfCancelNow ? '\n\nHuỷ bây giờ: tiền cọc${r.depositAmount == null ? '' : ' ${CurrencyFormatter.format(r.depositAmount!)}'} được hoàn 100% vào ví PBMS.' : '\n\nĐã quá mốc 30 phút trước giờ hẹn nên huỷ bây giờ sẽ không được hoàn cọc.'}',
         ),
         actions: [
           TextButton(
