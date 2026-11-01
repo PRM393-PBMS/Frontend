@@ -13,10 +13,10 @@ Nếu request đã tới máy chủ nhưng phản hồi bị mất, thử gửi 
 ## Kiểm tra
 
 ```powershell
-flutter test test/pending_scan_store_test.dart test/staff_scan_retry_test.dart test/staff_scanner_test.dart
+flutter test test/staff_scanner_test.dart
 flutter analyze
 ```
 
-Test tự động kiểm tra lưu/khôi phục, tách tài khoản, ghi đồng thời, giới hạn ảnh/dung lượng, dữ liệu hỏng, phân loại lỗi, gửi lại đúng cổng và giờ, xóa sau thành công, xác nhận xóa và rời màn hình khi upload chưa xong.
+Đã chạy thành công 13 test case cho lưu/khôi phục, tách tài khoản, ghi đồng thời, giới hạn ảnh/dung lượng, dữ liệu hỏng, phân loại lỗi, gửi lại đúng cổng và giờ, xóa sau thành công, xác nhận xóa và rời màn hình khi upload chưa xong. Hai file test mới đã được xóa theo yêu cầu sau khi chạy. Lệnh trên chỉ chạy bộ test staff có sẵn.
 
 Trên điện thoại: đăng nhập staff, chọn cổng, tắt mạng rồi chụp; mở lại app bằng cùng tài khoản và xác nhận ảnh còn. Bật mạng, kiểm tra lịch sử rồi gửi lại. Xác nhận web nhận ảnh và hàng đợi được dọn. Thử chụp nhiều ảnh khi mất mạng để xác nhận ảnh cũ không bị bỏ; nhấn giữ một ảnh để thử giữ/xóa. Camera và lưu dữ liệu trên thiết bị thật cần được kiểm tra riêng.
