@@ -49,3 +49,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Khoá Google Maps (xem docs/google-maps.md)
+ios/Flutter/MapsKey.xcconfig
+web/maps_key.js

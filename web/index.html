@@ -44,6 +44,14 @@
   -->
   <!-- Khoá ứng dụng bằng sinh trắc học trên web (WebAuthn) -->
   <script src="webauthn.js"></script>
+  <!-- Khoá Google Maps cho bản web: web/maps_key.js (không commit) đặt window.PBMS_MAPS_KEY. -->
+  <script src="maps_key.js" onerror="void 0"></script>
+  <script>
+    if (window.PBMS_MAPS_KEY) {
+      document.write('<script src="https://maps.googleapis.com/maps/api/js?key=' +
+        encodeURIComponent(window.PBMS_MAPS_KEY) + '"><\/script>');
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

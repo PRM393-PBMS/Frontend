@@ -1,7 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
@@ -12,6 +14,7 @@ import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/lot_photo.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/map/presentation/lot_marker_icon.dart';
 
 /// Bản đồ các bãi đỗ với chỗ trống và bảng giá thời gian thực.
 class ExploreHomeScreen extends StatefulWidget {
@@ -27,7 +30,11 @@ class ExploreHomeScreen extends StatefulWidget {
 class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   static const _surfaceLow = PbmsTokens.surfaceLow;
 
-  final MapController _mapController = MapController();
+  gm.GoogleMapController? _map;
+
+  /// Ảnh ghim đã vẽ, theo bãi + trạng thái chọn + giá + số chỗ.
+  final _icons = <String, (gm.BitmapDescriptor, Offset)>{};
+  final _drawing = <String>{};
   final DraggableScrollableController _sheet = DraggableScrollableController();
 
   /// Chiều cao hiện tại của khung bãi (px), để nút định vị đi theo mép khung.
@@ -52,7 +59,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   @override
   void dispose() {
     _lots.close();
-    _mapController.dispose();
+    _map?.dispose();
     _sheet.dispose();
     _sheetPx.dispose();
     super.dispose();
@@ -80,7 +87,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
       _showDetails = false;
     });
     final p = lot.point;
-    if (p != null) _mapController.move(p, 16);
+    if (p != null) _moveTo(p, 16);
     _snapSheet(_midSize);
   }
 
@@ -151,11 +158,11 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
         if (withPoint.isNotEmpty) _selectedId = withPoint.first.id;
       });
       final target = withPoint.firstOrNull?.point;
-      _mapController.fitCamera(CameraFit.coordinates(
-        coordinates: [location, if (target != null) target],
-        padding: EdgeInsets.fromLTRB(60, 120, 60, _sheetPx.value + 40),
-        maxZoom: 16,
-      ));
+      if (target == null) {
+        _moveTo(location, 16);
+      } else {
+        await _fit(location, target);
+      }
     } catch (_) {
       if (mounted) {
         _showLocationMessage(
@@ -225,7 +232,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
               if (_sheetPx.value == 0) _sheetPx.value = _midSize * h;
               return Stack(
                 children: [
-                  Positioned.fill(child: _buildMap(lots, selected)),
+                  Positioned.fill(child: _buildMap(lots, selected, _midSize * h)),
                   ValueListenableBuilder<double>(
                     valueListenable: _sheetPx,
                     builder: (context, px, child) => Positioned(
@@ -265,136 +272,87 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
     );
   }
 
-  Widget _buildMap(List<LotView> lots, LotView? selected) {
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: _initialCenter,
-        initialZoom: 15,
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-        ),
-      ),
-      children: [
-        // Nền bản đồ OpenStreetMap France: tile.openstreetmap.org không trả ảnh
-        // cho ứng dụng (bản đồ chỉ hiện xám), CARTO thì đòi API key.
-        TileLayer(
-          urlTemplate: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-          subdomains: const ['a', 'b', 'c'],
-          maxNativeZoom: 19,
-          userAgentPackageName: 'com.prm393.parking.prm393_frontend',
-        ),
-        MarkerLayer(
-          markers: [
-            for (final l in lots)
-              if (l.point != null) _buildLotMarker(l, l.id == selected?.id),
-            if (_userLocation != null) _buildUserLocationMarker(_userLocation!),
-          ],
-        ),
-        const RichAttributionWidget(
-          alignment: AttributionAlignment.bottomLeft,
-          attributions: [
-            TextSourceAttribution('OpenStreetMap contributors'),
-            TextSourceAttribution('OpenStreetMap France'),
-          ],
-        ),
-      ],
+  static gm.LatLng _g(LatLng p) => gm.LatLng(p.latitude, p.longitude);
+
+  void _moveTo(LatLng p, double zoom) =>
+      _map?.animateCamera(gm.CameraUpdate.newLatLngZoom(_g(p), zoom));
+
+  /// Đưa cả vị trí của khách và bãi gần nhất vào khung nhìn, không phóng quá mức 16.
+  Future<void> _fit(LatLng a, LatLng b) async {
+    final map = _map;
+    if (map == null) return;
+    final bounds = gm.LatLngBounds(
+      southwest: gm.LatLng(math.min(a.latitude, b.latitude), math.min(a.longitude, b.longitude)),
+      northeast: gm.LatLng(math.max(a.latitude, b.latitude), math.max(a.longitude, b.longitude)),
+    );
+    await map.animateCamera(gm.CameraUpdate.newLatLngBounds(bounds, 70));
+    if (await map.getZoomLevel() > 16) await map.animateCamera(gm.CameraUpdate.zoomTo(16));
+  }
+
+  String _iconKey(LotView lot, bool selected) =>
+      '${lot.id}|$selected|${lot.car?.pricing?.basePrice}|${lot.available}';
+
+  /// Vẽ ảnh ghim ở nền; xong thì dựng lại bản đồ. Trong lúc chờ dùng ghim mặc định.
+  void _ensureIcon(LotView lot, bool selected) {
+    final key = _iconKey(lot, selected);
+    if (_icons.containsKey(key) || !_drawing.add(key)) return;
+    LotMarkerIcon.build(
+      available: lot.available,
+      basePrice: lot.car?.pricing?.basePrice.round(),
+      selected: selected,
+      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+      fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+    ).then((icon) {
+      _drawing.remove(key);
+      if (mounted) setState(() => _icons[key] = icon);
+    });
+  }
+
+  Set<gm.Marker> _markers(List<LotView> lots, LotView? selected) {
+    return {
+      for (final lot in lots)
+        if (lot.point != null) _lotMarker(lot, lot.id == selected?.id),
+    };
+  }
+
+  gm.Marker _lotMarker(LotView lot, bool isSelected) {
+    _ensureIcon(lot, isSelected);
+    final icon = _icons[_iconKey(lot, isSelected)];
+    return gm.Marker(
+      markerId: gm.MarkerId(lot.id),
+      position: _g(lot.point!),
+      icon: icon?.$1 ??
+          gm.BitmapDescriptor.defaultMarkerWithHue(isSelected ? 186 : gm.BitmapDescriptor.hueAzure),
+      anchor: icon?.$2 ?? const Offset(0.5, 1),
+      zIndexInt: isSelected ? 2 : 1,
+      consumeTapEvents: true,
+      infoWindow: gm.InfoWindow.noText,
+      onTap: () => _selectLot(lot),
     );
   }
 
-  Marker _buildUserLocationMarker(LatLng location) {
-    return Marker(
-      point: location,
-      width: 48,
-      height: 48,
-      child: Semantics(
-        label: 'Vị trí hiện tại của bạn',
-        image: true,
-        child: Container(
-          decoration: BoxDecoration(
-            color: PbmsTokens.teal.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: PbmsTokens.teal,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  /// Ẩn quán xá, biểu tượng trạm xe buýt để ghim bãi nổi bật hơn.
+  static const _mapStyle = '[{"featureType":"poi.business","stylers":[{"visibility":"off"}]},'
+      '{"featureType":"transit","elementType":"labels.icon","stylers":[{"visibility":"off"}]}]';
 
-  Marker _buildLotMarker(LotView lot, bool isSelected) {
-    final price = lot.car?.pricing?.basePrice;
-    final bg = isSelected ? PbmsTokens.teal : Colors.white;
-    final fg = isSelected ? Colors.white : PbmsTokens.ink;
-
-    return Marker(
-      point: lot.point!,
-      width: 180,
-      height: 58,
-      alignment: Alignment.topCenter,
-      child: Semantics(
-        button: true,
-        label: '${lot.name}, còn ${lot.available} chỗ',
-        child: GestureDetector(
-          onTap: () => _selectLot(lot),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: PbmsTokens.ink.withValues(alpha: 0.18),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.local_parking_rounded,
-                        size: 15, color: isSelected ? Colors.white : PbmsTokens.teal),
-                    const SizedBox(width: 5),
-                    if (price != null) ...[
-                      Text('${(price / 1000).round()}k',
-                          style: TextStyle(
-                              color: fg, fontSize: 12, fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 6),
-                    ],
-                    Text('${lot.available} chỗ',
-                        style: TextStyle(
-                            color: isSelected ? const Color(0xFFE4F7F8) : PbmsTokens.muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.only(top: 1),
-                transform: Matrix4.rotationZ(0.785398),
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildMap(List<LotView> lots, LotView? selected, double bottomPadding) {
+    return Semantics(
+      label: 'Bản đồ ${lots.length} bãi đỗ',
+      child: gm.GoogleMap(
+        initialCameraPosition: gm.CameraPosition(target: _g(_initialCenter), zoom: 15),
+        onMapCreated: (controller) => _map = controller,
+        markers: _markers(lots, selected),
+        style: _mapStyle,
+        // Chấm xanh vị trí của Google: chỉ bật khi khách đã cho quyền vị trí.
+        myLocationEnabled: _userLocation != null,
+        myLocationButtonEnabled: false,
+        mapToolbarEnabled: false,
+        zoomControlsEnabled: false,
+        rotateGesturesEnabled: false,
+        tiltGesturesEnabled: false,
+        compassEnabled: false,
+        // Chừa chỗ cho khung bãi để tâm bản đồ và logo Google nằm trên khung.
+        padding: EdgeInsets.only(bottom: bottomPadding),
       ),
     );
   }
@@ -749,7 +707,7 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
           height: 50,
           child: IconButton(
             tooltip: 'Xem vị trí bãi đỗ trên bản đồ',
-            onPressed: point == null ? null : () => _mapController.move(point, 17),
+            onPressed: point == null ? null : () => _moveTo(point, 17),
             style: IconButton.styleFrom(
               foregroundColor: PbmsTokens.ink,
               side: const BorderSide(color: PbmsTokens.border),
