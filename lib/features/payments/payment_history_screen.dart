@@ -7,6 +7,7 @@ import 'package:prm393_frontend/core/utils/date_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
+import 'package:prm393_frontend/features/payments/receipt_sheet.dart';
 
 /// Lịch sử thanh toán của tôi: tiền cọc, phí gửi xe, vé tháng, gia hạn, nạp ví.
 /// Tải từng trang 20 dòng, kéo tới cuối danh sách thì tải tiếp.
@@ -147,7 +148,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
           children: [
             for (var i = 0; i < _items.length; i++) ...[
               if (i > 0) const Divider(height: 1, color: PbmsTokens.divider),
-              PaymentRow(payment: _items[i]),
+              PaymentRow(
+                payment: _items[i],
+                onTap: _items[i].paymentStatus.toLowerCase() == 'success'
+                    ? () => ReceiptSheet.show(context, _items[i])
+                    : null,
+              ),
             ],
           ],
         ),
@@ -167,7 +173,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 class PaymentRow extends StatelessWidget {
   final PaymentModel payment;
 
-  const PaymentRow({super.key, required this.payment});
+  /// Thanh toán thành công: mở biên nhận.
+  final VoidCallback? onTap;
+
+  const PaymentRow({super.key, required this.payment, this.onTap});
 
   static String methodLabel(String method) => switch (method.toLowerCase()) {
         'wallet' => 'Ví PBMS',
@@ -183,7 +192,9 @@ class PaymentRow extends StatelessWidget {
       p.packageName ?? p.licensePlate,
       methodLabel(p.paymentMethod),
     ].whereType<String>().join(' · ');
-    return Padding(
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,9 +219,14 @@ class PaymentRow extends StatelessWidget {
               Text(CurrencyFormatter.format(p.amount), style: PbmsText.figure(14, color: PbmsTokens.ink)),
               const SizedBox(height: 4),
               PbmsStatusPill(StatusInfo.payment(p.paymentStatus)),
+              if (onTap != null) ...[
+                const SizedBox(height: 4),
+                const Text('Biên nhận', style: TextStyle(fontSize: 12, color: PbmsTokens.teal, fontWeight: FontWeight.w600)),
+              ],
             ],
           ),
         ],
+      ),
       ),
     );
   }

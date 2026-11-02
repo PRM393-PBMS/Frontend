@@ -9,11 +9,15 @@ class GateModel {
   final String gateType;
   final String floorName;
 
+  /// Tầng đặt cổng (dựng sơ đồ bãi); rỗng với dữ liệu cũ đã lưu trên máy.
+  final String floorId;
+
   const GateModel({
     required this.gateId,
     required this.gateName,
     required this.gateType,
     required this.floorName,
+    this.floorId = '',
   });
 
   bool get isExit => gateType.toLowerCase() == 'exit';
@@ -23,9 +27,11 @@ class GateModel {
         gateName: JsonRead.str(json, 'gateName'),
         gateType: JsonRead.str(json, 'gateType', 'Entry'),
         floorName: JsonRead.str(json, 'floorName'),
+        floorId: JsonRead.str(json, 'floorId'),
       );
 
-  StaffJson toJson() => {'gateId': gateId, 'gateName': gateName, 'gateType': gateType, 'floorName': floorName};
+  StaffJson toJson() =>
+      {'gateId': gateId, 'gateName': gateName, 'gateType': gateType, 'floorName': floorName, 'floorId': floorId};
 }
 
 /// Một lượt quét đã gửi lên máy chủ (máy chủ đã nhận diện và đối chiếu).

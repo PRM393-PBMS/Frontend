@@ -218,6 +218,23 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
     if (paid && mounted) showPbmsSnack(context, 'Đã gia hạn vé tháng.');
   }
 
+  Future<void> _setAutoRenew(MonthlySubscriptionModel sub, bool value) async {
+    try {
+      await _repo.setSubscriptionAutoRenew(sub.subscriptionId, value);
+      _changed();
+      if (mounted) {
+        showPbmsSnack(
+          context,
+          value
+              ? 'Đã bật tự gia hạn. Ví sẽ bị trừ ${CurrencyFormatter.format(sub.price)} khi vé còn dưới 1 ngày.'
+              : 'Đã tắt tự gia hạn.',
+        );
+      }
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
+  }
+
   Future<void> _cancel(MonthlySubscriptionModel sub) async {
     final password = await PasswordConfirmDialog.ask(
       context,
@@ -377,6 +394,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
                 onChangePlate: () => _changePlate(s),
                 onHistory: () => RenewalHistorySheet.show(context, s),
                 onCancel: () => _cancel(s),
+                onAutoRenew: (v) => _setAutoRenew(s, v),
               ),
               const SizedBox(height: 14),
               if (s.isActive) ...[
@@ -422,6 +440,7 @@ class _PassCard extends StatelessWidget {
   final VoidCallback onChangePlate;
   final VoidCallback onHistory;
   final VoidCallback onCancel;
+  final ValueChanged<bool> onAutoRenew;
 
   const _PassCard({
     required this.pass,
@@ -431,6 +450,7 @@ class _PassCard extends StatelessWidget {
     required this.onChangePlate,
     required this.onHistory,
     required this.onCancel,
+    required this.onAutoRenew,
   });
 
   String _short(DateTime? d) => d == null
@@ -561,9 +581,29 @@ class _PassCard extends StatelessWidget {
             ),
             if (s.daysLeft <= 5) ...[
               const SizedBox(height: 8),
-              const Text('Vé sắp hết hạn. Gia hạn để không bị gián đoạn.',
-                  style: TextStyle(fontSize: 12, color: PbmsTokens.warn)),
+              Text(
+                  s.autoRenew
+                      ? 'Vé sắp hết hạn và sẽ tự gia hạn từ ví. Kiểm tra số dư ví.'
+                      : 'Vé sắp hết hạn. Gia hạn để không bị gián đoạn.',
+                  style: const TextStyle(fontSize: 12, color: PbmsTokens.warn)),
             ],
+            const SizedBox(height: 4),
+            MergeSemantics(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tự gia hạn bằng ví',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: Text(
+                    'Trừ ${CurrencyFormatter.format(s.price)} khi vé còn dưới 1 ngày',
+                    style: PbmsText.caption),
+                onTap: () => onAutoRenew(!s.autoRenew),
+                trailing: Switch.adaptive(
+                  value: s.autoRenew,
+                  activeTrackColor: PbmsTokens.teal,
+                  onChanged: onAutoRenew,
+                ),
+              ),
+            ),
           ],
           if (s.isPendingPayment) ...[
             const SizedBox(height: 13),

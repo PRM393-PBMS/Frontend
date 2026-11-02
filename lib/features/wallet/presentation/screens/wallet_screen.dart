@@ -257,16 +257,49 @@ class TopUpSheet extends StatefulWidget {
 class _TopUpSheetState extends State<TopUpSheet> {
   static const _presets = [50000, 100000, 200000, 500000];
   final _amount = TextEditingController(text: '100000');
+  final _code = TextEditingController();
   bool _busy = false;
   String? _error;
+  List<PromoCodeModel> _promos = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<PbmsRepository>().getAvailablePromoCodes().then((list) {
+      if (mounted) setState(() => _promos = list);
+    });
+  }
 
   @override
   void dispose() {
     _amount.dispose();
+    _code.dispose();
     super.dispose();
   }
 
   int get _value => int.tryParse(_amount.text) ?? 0;
+  String get _codeText => _code.text.trim().toUpperCase();
+
+  /// Mã đang nhập nếu là mã đang chạy (mã riêng không có trong danh sách: máy chủ kiểm tra khi nạp).
+  PromoCodeModel? get _promo => _promos.where((p) => p.code == _codeText).firstOrNull;
+
+  void _pickPromo(PromoCodeModel p) => setState(() {
+        _code.text = p.code;
+        if (_value < p.minTopUp) _amount.text = p.minTopUp.round().toString();
+        _error = null;
+      });
+
+  Widget? _promoHint() {
+    final p = _promo;
+    if (p == null) return null;
+    final bonus = p.bonusFor(_value);
+    return Text(
+      bonus > 0
+          ? 'Được tặng ${CurrencyFormatter.format(bonus)} vào ngăn khuyến mãi, dùng trong ${p.bonusValidDays} ngày.'
+          : 'Nạp từ ${CurrencyFormatter.format(p.minTopUp)} để được tặng ${CurrencyFormatter.format(p.bonusAmount)}.',
+      style: PbmsText.caption.copyWith(color: bonus > 0 ? PbmsTokens.ok : PbmsTokens.warn),
+    );
+  }
 
   Future<void> _submit() async {
     final min = widget.wallet.topUpMin, max = widget.wallet.topUpMax;
@@ -281,7 +314,7 @@ class _TopUpSheetState extends State<TopUpSheet> {
       _error = null;
     });
     try {
-      final link = await repo.topUpWallet(_value);
+      final link = await repo.topUpWallet(_value, promoCode: _codeText);
       if (!mounted) return;
       final paid = await PbmsPaymentSheet.show(
         context,
@@ -341,6 +374,39 @@ class _TopUpSheetState extends State<TopUpSheet> {
               ),
           ],
         ),
+        const SizedBox(height: 16),
+        const Text('Mã khuyến mãi (không bắt buộc)', style: PbmsText.label),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _code,
+          textCapitalization: TextCapitalization.characters,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+            LengthLimitingTextInputFormatter(30),
+          ],
+          decoration: pbmsInputDecoration(hint: 'VD: NAP500K'),
+          onChanged: (_) => setState(() => _error = null),
+        ),
+        if (_promos.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final p in _promos)
+                ActionChip(
+                  avatar: const Icon(Icons.local_offer_outlined, size: 16, color: PbmsTokens.teal),
+                  label: Text(p.description ??
+                      'Nạp ${CurrencyFormatter.format(p.minTopUp)} tặng ${CurrencyFormatter.format(p.bonusAmount)}'),
+                  onPressed: () => _pickPromo(p),
+                ),
+            ],
+          ),
+        ],
+        if (_promoHint() case final hint?) ...[
+          const SizedBox(height: 8),
+          hint,
+        ],
         if (_error != null) ...[
           const SizedBox(height: 10),
           Text(_error!,

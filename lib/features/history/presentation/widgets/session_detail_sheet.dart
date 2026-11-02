@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
+import 'package:prm393_frontend/features/map/presentation/lot_map_screen.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
 import 'package:prm393_frontend/core/utils/media_url.dart';
@@ -145,6 +146,25 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
           ),
         ],
         if (s.isActive) ...[
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: () => LotMapScreen.open(
+                context,
+                targetSlotCode: s.slotCode,
+                entryGateName: s.entryGateName,
+                car: !s.isMotorbike,
+              ),
+              icon: const Icon(Icons.alt_route_rounded, size: 19),
+              label: Text(s.slotCode != null ? 'Đường tới ô ${s.slotCode}' : 'Sơ đồ bãi'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: PbmsTokens.teal,
+                side: const BorderSide(color: PbmsTokens.tealLine),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              ),
+            ),
+          ),
           const SizedBox(height: 18),
           if (exitPass != null)
             ExitPassCard(pass: exitPass, plate: s.licensePlateIn, isMotorbike: s.isMotorbike)
