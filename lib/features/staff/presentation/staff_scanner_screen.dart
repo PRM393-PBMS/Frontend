@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +15,7 @@ import 'package:prm393_frontend/features/auth/presentation/blocs/auth_bloc.dart'
 import 'package:prm393_frontend/features/auth/presentation/blocs/auth_event.dart';
 import 'package:prm393_frontend/features/staff/data/staff_models.dart';
 import 'package:prm393_frontend/features/staff/data/pending_scan_store.dart';
+import 'package:prm393_frontend/features/staff/data/plate_crop.dart';
 import 'package:prm393_frontend/features/staff/presentation/scan_error.dart';
 import 'package:prm393_frontend/features/staff/presentation/scan_verdict.dart';
 import 'package:prm393_frontend/features/staff/presentation/staff_sheets.dart';
@@ -51,10 +53,15 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
   static const _maxCaptures = 8;
   static const _gateSyncEvery = Duration(seconds: 4);
 
+  /// Sau mỗi lần chụp khoá nút một lúc: chạm đúp / chạm liên tục không tạo nhiều lượt quét trùng.
+  static const _shotCooldown = Duration(milliseconds: 1500);
+
   CameraController? _camera;
   String? _cameraError;
   bool _initializing = false;
   bool _shooting = false;
+  DateTime _readyAt = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _cooldownTimer;
   bool _torch = false;
   GateModel? _gate;
   final _captures = <_Capture>[];
@@ -145,6 +152,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable().catchError((_) {});
     _gateSync?.cancel();
+    _cooldownTimer?.cancel();
     _camera?.dispose();
     super.dispose();
   }
@@ -182,7 +190,8 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
       );
       final controller = CameraController(
         back,
-        ResolutionPreset.high,
+        // Ảnh sẽ được cắt còn vùng biển số: chụp nét hơn để phần cắt còn đủ điểm ảnh cho máy đọc chữ.
+        ResolutionPreset.veryHigh,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -255,6 +264,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     if (cam == null ||
         !cam.value.isInitialized ||
         _shooting ||
+        _coolingDown ||
         pending == null) {
       return;
     }
@@ -265,11 +275,26 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
           error: true);
       return;
     }
+    // Lấy hình học khung trước khi chờ chụp (context không dùng sau await).
+    final screen = MediaQuery.sizeOf(context);
+    final ps = cam.value.previewSize;
+    // previewSize của camera là chiều ngang; màn hình hiển thị dọc.
+    final preview = ps == null ? null : Size(ps.height, ps.width);
     setState(() => _shooting = true);
     try {
       final file = await cam.takePicture();
-      final capture = _Capture(
-          _nextKey++, await file.readAsBytes(), DateTime.now(), gate.gateId);
+      final capturedAt = DateTime.now();
+      _startCooldown();
+      final raw = await file.readAsBytes();
+      // Chỉ gửi vùng khung biển số: máy chủ và web đọc chữ chính xác hơn nhiều khi ảnh không lẫn thân xe, nền.
+      final bytes = preview == null
+          ? raw
+          : await compute(
+              cropPlatePhoto,
+              PlateCropJob(raw, PlateCrop.frameInPreview(screen, preview),
+                  preview.width / preview.height),
+            );
+      final capture = _Capture(_nextKey++, bytes, capturedAt, gate.gateId);
       final pendingBytes = _captures
           .where((c) => c.saved || c.state != _SendState.sent)
           .fold<int>(0, (sum, c) => sum + c.bytes.length);
@@ -318,6 +343,16 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     } finally {
       if (mounted) setState(() => _shooting = false);
     }
+  }
+
+  bool get _coolingDown => DateTime.now().isBefore(_readyAt);
+
+  void _startCooldown() {
+    _readyAt = DateTime.now().add(_shotCooldown);
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer(_shotCooldown, () {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _send(_Capture capture) async {
@@ -594,6 +629,8 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
     final ready = (_camera?.value.isInitialized ?? false) &&
         !_loadingPending &&
         _pending != null;
+    // Đang chụp / vừa chụp xong: nút mờ đi, chạm không có tác dụng.
+    final canShoot = ready && !_shooting && !_coolingDown;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
       child: Row(
@@ -608,8 +645,9 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
           Semantics(
             button: true,
             label: 'Chụp biển số và gửi lên web',
+            enabled: canShoot,
             child: GestureDetector(
-              onTap: ready ? _shoot : null,
+              onTap: canShoot ? _shoot : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
                 width: 78,
@@ -622,7 +660,7 @@ class _StaffScannerScreenState extends State<StaffScannerScreen>
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: ready ? Colors.white : Colors.white38,
+                    color: canShoot ? Colors.white : Colors.white38,
                   ),
                 ),
               ),
@@ -647,12 +685,8 @@ class _PlateFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth * 0.82;
-        final h = w / 2;
-        final rect = Rect.fromCenter(
-            center: Offset(c.maxWidth / 2, c.maxHeight * 0.42),
-            width: w,
-            height: h);
+        // Cùng hình học với phần cắt ảnh trước khi gửi (PlateCrop).
+        final rect = PlateCrop.frameOnScreen(Size(c.maxWidth, c.maxHeight));
         return CustomPaint(
           size: Size(c.maxWidth, c.maxHeight),
           painter: _FramePainter(rect),
