@@ -630,7 +630,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               style: PbmsText.display(44)),
           const SizedBox(height: 4),
           Text(
-              '${DateFormatter.formatDay(r.expectedEntryTime)}, ${PbmsFacility.name}',
+              '${DateFormatter.formatDay(r.expectedEntryTime)}, ${r.parkingName ?? PbmsFacility.name}',
               style: PbmsText.caption),
           if (plate != null) ...[
             const SizedBox(height: 14),

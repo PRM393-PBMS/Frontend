@@ -322,13 +322,28 @@ class PbmsRepository {
         _obj(await _get(ApiEndpoints.getReservationById(reservationId)), 'đặt chỗ'),
       );
 
-  Future<PaymentLinkModel> createReservation(DateTime expectedEntryTime, String vehicleId) async =>
+  Future<PaymentLinkModel> createReservation(
+    DateTime expectedEntryTime,
+    String vehicleId, {
+    String? parkingId,
+  }) async =>
       PaymentLinkModel.fromJson(_obj(
         await _post(ApiEndpoints.reservations, {
           'vehicleId': vehicleId,
+          if (parkingId != null) 'parkingId': parkingId,
           'expectedEntryTime': expectedEntryTime.toUtc().toIso8601String(),
         }),
         'đặt chỗ',
+      ));
+
+  /// Suất đặt trước còn lại của bãi quanh giờ [time].
+  Future<ReservationAvailability> getReservationAvailability(String parkingId, DateTime time) async =>
+      ReservationAvailability.fromJson(_obj(
+        await _get(ApiEndpoints.reservationAvailability, query: {
+          'parkingId': parkingId,
+          'time': time.toUtc().toIso8601String(),
+        }),
+        'suất đặt trước',
       ));
 
   Future<PaymentLinkModel> recreateReservationPayment(String reservationId) async =>

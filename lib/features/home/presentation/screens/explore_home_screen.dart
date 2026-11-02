@@ -180,7 +180,11 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   }
 
   Future<void> _book() async {
-    final booked = await context.push<bool>(RouteNames.bookingConfirmationPath);
+    final lot = _selected(_lots.state.data ?? const <LotView>[]);
+    final booked = await context.push<bool>(
+      RouteNames.bookingConfirmationPath,
+      extra: lot == null ? null : (id: lot.id, name: lot.name, area: lot.area),
+    );
     if (booked == true && mounted) context.pop(true);
   }
 

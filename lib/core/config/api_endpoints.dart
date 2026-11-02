@@ -22,6 +22,7 @@ class ApiEndpoints {
   // ================= Reservations (lowercase /api/reservations) =================
   static const String reservations = '/api/reservations';
   static const String myReservations = '/api/reservations/my-reservations';
+  static const String reservationAvailability = '/api/reservations/availability';
   static String checkPaymentStatus(String orderCode) =>
       '/api/reservations/check-payment-status/$orderCode';
   static String recreateReservationPayment(String id) =>

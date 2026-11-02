@@ -730,6 +730,17 @@ class ReservationModel {
   final DateTime? createdAt;
   final TicketModel? ticket;
 
+  /// Bãi đã đặt; null với đơn cũ trước khi đặt chỗ gắn theo bãi.
+  final String? parkingId;
+  final String? parkingName;
+
+  /// Đơn chờ cọc: hạn trả cọc (giữ chỗ 15 phút). Máy chủ cũ không trả thì tính từ [createdAt].
+  final DateTime? holdExpiresAt;
+
+  /// Huỷ trước mốc này thì được hoàn 100% cọc vào ví.
+  final DateTime? refundDeadline;
+  final bool? _serverCanChangeTime;
+
   const ReservationModel({
     required this.reservationId,
     required this.vehicleTypeName,
@@ -740,20 +751,49 @@ class ReservationModel {
     required this.status,
     this.createdAt,
     this.ticket,
-  });
+    this.parkingId,
+    this.parkingName,
+    this.holdExpiresAt,
+    this.refundDeadline,
+    bool? canChangeTimeFromServer,
+  }) : _serverCanChangeTime = canChangeTimeFromServer;
 
-  /// Được vào trễ tối đa 30 phút; quá hạn máy chủ chuyển đơn sang NoShow.
+  /// Được vào sớm / trễ tối đa 30 phút quanh giờ hẹn; quá hạn máy chủ chuyển đơn sang NoShow.
   static const lateGrace = Duration(minutes: 30);
+
+  /// Đơn chờ cọc giữ chỗ 15 phút kể từ lúc tạo.
+  static const holdDuration = Duration(minutes: 15);
+
+  /// Huỷ trước giờ hẹn ít nhất 30 phút mới được hoàn cọc.
+  static const refundBefore = Duration(minutes: 30);
 
   /// Còn trong khung giờ có thể vào bãi.
   bool get _stillValid => expectedEntryTime.isAfter(DateTime.now().subtract(lateGrace));
 
-  bool get isPending => _is(status, 'pending') && _stillValid;
+  DateTime? get payBefore =>
+      holdExpiresAt ?? createdAt?.add(holdDuration);
+
+  bool get isPending {
+    final until = payBefore;
+    return _is(status, 'pending') &&
+        _stillValid &&
+        (until == null || until.isAfter(DateTime.now()));
+  }
+
   bool get isUpcoming => (_is(status, 'confirmed') || _is(status, 'modified')) && _stillValid;
   bool get canModify => isPending || isUpcoming;
 
-  /// Máy chủ chỉ cho đổi giờ một lần, khi đơn đã đặt cọc (Confirmed, chưa Modified).
-  bool get canChangeTime => _is(status, 'confirmed') && _stillValid;
+  /// Máy chủ chỉ cho đổi giờ một lần, khi đơn đã đặt cọc (Confirmed, chưa Modified),
+  /// trước giờ hẹn ít nhất 15 phút.
+  bool get canChangeTime =>
+      _serverCanChangeTime ??
+      (_is(status, 'confirmed') &&
+          expectedEntryTime.isAfter(DateTime.now().add(const Duration(minutes: 15))));
+
+  /// Huỷ ngay bây giờ có được hoàn cọc không.
+  bool get refundIfCancelNow =>
+      isUpcoming &&
+      !DateTime.now().isAfter(refundDeadline ?? expectedEntryTime.subtract(refundBefore));
 
   factory ReservationModel.fromJson(J json) => ReservationModel(
         reservationId: JsonRead.str(json, 'reservationId'),
@@ -765,6 +805,37 @@ class ReservationModel {
         status: JsonRead.str(json, 'status', 'Pending'),
         createdAt: JsonRead.date(json, 'createdAt'),
         ticket: TicketModel.fromJson(json['ticket']),
+        parkingId: JsonRead.strOrNull(json, 'parkingId'),
+        parkingName: JsonRead.strOrNull(json, 'parkingName'),
+        holdExpiresAt: JsonRead.date(json, 'holdExpiresAt'),
+        refundDeadline: JsonRead.date(json, 'refundDeadline'),
+        canChangeTimeFromServer: json['canChangeTime'] is bool ? json['canChangeTime'] as bool : null,
+      );
+}
+
+/// Suất đặt trước còn lại của một bãi quanh một giờ vào.
+class ReservationAvailability {
+  final int quota;
+  final int remaining;
+  final double? depositAmount;
+
+  /// Lý do giờ đã chọn không hợp lệ (quá 5 tiếng...), null nếu hợp lệ.
+  final String? timeError;
+
+  const ReservationAvailability({
+    required this.quota,
+    required this.remaining,
+    this.depositAmount,
+    this.timeError,
+  });
+
+  bool get open => quota > 0;
+
+  factory ReservationAvailability.fromJson(J json) => ReservationAvailability(
+        quota: (JsonRead.numOrNull(json, 'quota') ?? 0).toInt(),
+        remaining: (JsonRead.numOrNull(json, 'remaining') ?? 0).toInt(),
+        depositAmount: JsonRead.numOrNull(json, 'depositAmount'),
+        timeError: JsonRead.strOrNull(json, 'timeError'),
       );
 }
 
