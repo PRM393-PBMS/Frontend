@@ -561,9 +561,45 @@ class VehicleTypeOption {
   const VehicleTypeOption(this.id, this.name);
 }
 
+/// Mã khuyến mãi nạp ví: nạp từ [minTopUp] được tặng [bonusAmount] vào ngăn khuyến mãi.
+class PromoCodeModel {
+  final String code;
+  final String? description;
+  final double minTopUp;
+  final double bonusAmount;
+  final int bonusValidDays;
+  final DateTime? endsAt;
+
+  const PromoCodeModel({
+    required this.code,
+    this.description,
+    required this.minTopUp,
+    required this.bonusAmount,
+    this.bonusValidDays = 30,
+    this.endsAt,
+  });
+
+  /// Tiền tặng khi nạp [amount]; 0 nếu chưa đủ mức.
+  double bonusFor(int amount) => amount >= minTopUp ? bonusAmount : 0;
+
+  factory PromoCodeModel.fromJson(J json) => PromoCodeModel(
+        code: JsonRead.str(json, 'code'),
+        description: JsonRead.strOrNull(json, 'description'),
+        minTopUp: JsonRead.num_(json, 'minTopUp'),
+        bonusAmount: JsonRead.num_(json, 'bonusAmount'),
+        bonusValidDays: JsonRead.int_(json, 'bonusValidDays', 30),
+        endsAt: JsonRead.date(json, 'endsAt'),
+      );
+}
+
 class FacilityAvailabilityModel {
+  /// Bãi của tầng; rỗng với máy chủ cũ.
+  final String parkingId;
   final String floorId;
   final String floorName;
+
+  /// Tầng cư dân: chỉ dành cho vé tháng, khách vãng lai không gửi được.
+  final bool isResident;
   final String vehicleTypeId;
   final String vehicleTypeName;
   final int totalSlots;
@@ -572,8 +608,10 @@ class FacilityAvailabilityModel {
   final int assignedSlots;
 
   const FacilityAvailabilityModel({
+    this.parkingId = '',
     required this.floorId,
     required this.floorName,
+    this.isResident = false,
     required this.vehicleTypeId,
     required this.vehicleTypeName,
     required this.totalSlots,
@@ -585,8 +623,10 @@ class FacilityAvailabilityModel {
   double get availabilityRatio => totalSlots > 0 ? availableSlots / totalSlots : 0;
 
   factory FacilityAvailabilityModel.fromJson(J json) => FacilityAvailabilityModel(
+        parkingId: JsonRead.str(json, 'parkingId'),
         floorId: JsonRead.str(json, 'floorId'),
         floorName: JsonRead.str(json, 'floorName'),
+        isResident: JsonRead.bool_(json, 'isResident'),
         vehicleTypeId: JsonRead.str(json, 'vehicleTypeId'),
         vehicleTypeName: JsonRead.str(json, 'vehicleTypeName'),
         totalSlots: JsonRead.int_(json, 'totalSlots'),
@@ -858,6 +898,9 @@ class MonthlySubscriptionModel {
   final String? contractNumber;
   final String? contractStatus;
 
+  /// Khách đã bật tự gia hạn bằng ví.
+  final bool autoRenew;
+
   const MonthlySubscriptionModel({
     required this.subscriptionId,
     required this.licensePlate,
@@ -874,6 +917,7 @@ class MonthlySubscriptionModel {
     this.contractId,
     this.contractNumber,
     this.contractStatus,
+    this.autoRenew = false,
   });
 
   /// Đã quá ngày hết hạn (máy chủ có thể chưa kịp chuyển trạng thái sang Expired).
@@ -924,6 +968,7 @@ class MonthlySubscriptionModel {
         contractId: JsonRead.strOrNull(json, 'contractId'),
         contractNumber: JsonRead.strOrNull(json, 'contractNumber'),
         contractStatus: JsonRead.strOrNull(json, 'contractStatus'),
+        autoRenew: JsonRead.bool_(json, 'autoRenew'),
       );
 }
 

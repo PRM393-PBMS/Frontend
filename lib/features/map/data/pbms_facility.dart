@@ -21,6 +21,9 @@ class LotView {
   final LatLng? point;
   final List<VehicleTypeCapacity> capacities;
 
+  /// Chỗ trống từng tầng (theo loại xe) của bãi; rỗng nếu không tải được.
+  final List<FacilityAvailabilityModel> floors;
+
   /// Số lượt khách đã gửi xe ở bãi này (để gợi ý "bãi thường dùng").
   final int visits;
   final DateTime? lastVisit;
@@ -35,6 +38,7 @@ class LotView {
     required this.area,
     required this.point,
     required this.capacities,
+    this.floors = const [],
     this.imageUrl,
     this.openingHours,
     this.visits = 0,
@@ -64,6 +68,7 @@ class LotView {
     final lotList = results[0] as List<ParkingLotModel>;
     final prices = results[1] as List<PricingPolicyModel>;
     final usage = await _usage(sessions, slots);
+    final floors = await _floors(facility);
     if (lotList.isNotEmpty) {
       return [
         for (final l in lotList)
@@ -73,6 +78,7 @@ class LotView {
             area: l.displayLocation,
             point: l.hasCoordinates ? LatLng(l.latitude!, l.longitude!) : null,
             capacities: VehicleTypeCapacity.fromLot(l, prices),
+            floors: floors.where((f) => f.parkingId == l.id).toList(),
             visits: usage[l.id]?.count ?? 0,
             lastVisit: usage[l.id]?.last,
             imageUrl: l.imageUrl,
@@ -87,10 +93,22 @@ class LotView {
         name: PbmsFacility.name,
         area: PbmsFacility.area,
         point: PbmsFacility.location,
-        capacities: VehicleTypeCapacity.summarize(await facility(), prices),
+        capacities: VehicleTypeCapacity.summarize(floors, prices),
+        floors: floors,
         visits: all,
       ),
     ];
+  }
+
+  /// Chỗ trống theo tầng; lỗi tải thì bỏ qua, vẫn hiện số theo bãi.
+  static Future<List<FacilityAvailabilityModel>> _floors(
+    Future<List<FacilityAvailabilityModel>> Function() facility,
+  ) async {
+    try {
+      return await facility();
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Đếm lượt gửi theo bãi: mã ô của lượt gửi -> parkingId trong danh mục ô đỗ.

@@ -13,6 +13,12 @@ Widget _host(Future<Object?> Function(BuildContext) open, void Function(Object?)
     );
 
 void main() {
+  test('vé tháng: tự gia hạn đọc từ máy chủ, máy chủ cũ không gửi thì coi là tắt', () {
+    final base = {'subscriptionId': 's1', 'status': 'Active', 'price': 1500000};
+    expect(MonthlySubscriptionModel.fromJson({...base, 'autoRenew': true}).autoRenew, isTrue);
+    expect(MonthlySubscriptionModel.fromJson(base).autoRenew, isFalse);
+  });
+
   testWidgets('hộp thoại mật khẩu: bỏ trống báo lỗi, nhập rồi trả mật khẩu', (tester) async {
     Object? got = 'chua';
     await tester.pumpWidget(_host(

@@ -8,6 +8,8 @@ import '../core/error/app_exception.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/json_read.dart';
 import '../features/auth/data/models/user_model.dart';
+import '../features/map/data/lot_layout.dart';
+import '../features/map/data/tile_layout.dart';
 import '../features/staff/data/staff_models.dart';
 import 'models/pbms_models.dart';
 
@@ -151,11 +153,47 @@ class PbmsRepository {
     return _list(await _get(path), WalletTransactionModel.fromJson);
   }
 
-  Future<PaymentLinkModel> topUpWallet(int amount) async {
+  /// Nạp ví; [promoCode] sai hoặc không đủ điều kiện thì máy chủ báo lỗi kèm lý do.
+  Future<PaymentLinkModel> topUpWallet(int amount, {String? promoCode}) async {
     final id = await _ensureWalletId();
     return PaymentLinkModel.fromJson(
-      _obj(await _post(ApiEndpoints.walletTopUp(id), {'amount': amount}), 'nạp ví'),
+      _obj(
+        await _post(ApiEndpoints.walletTopUp(id), {
+          'amount': amount,
+          if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
+        }),
+        'nạp ví',
+      ),
     );
+  }
+
+  /// Link tải biên nhận PDF (có chữ ký, hết hạn sau 10 phút) để mở bằng trình duyệt.
+  Future<String> getReceiptUrl(String paymentId) async =>
+      JsonRead.str(_obj(await _get(ApiEndpoints.receiptLink(paymentId)), 'biên nhận'), 'url');
+
+  /// Gửi thông tin công ty để kế toán xuất hoá đơn GTGT cho một thanh toán.
+  Future<void> requestInvoice(
+    String paymentId, {
+    required String companyName,
+    required String taxCode,
+    required String address,
+    required String email,
+  }) async {
+    await _post(ApiEndpoints.invoiceRequest(paymentId), {
+      'companyName': companyName,
+      'taxCode': taxCode,
+      'address': address,
+      'email': email,
+    });
+  }
+
+  /// Mã khuyến mãi nạp ví đang chạy; lỗi tải thì coi như không có.
+  Future<List<PromoCodeModel>> getAvailablePromoCodes() async {
+    try {
+      return _list(await _get(ApiEndpoints.availablePromoCodes), PromoCodeModel.fromJson);
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Tra trực tiếp PayOS; `true` nếu thanh toán đã thành công.
@@ -201,6 +239,37 @@ class PbmsRepository {
   /// Ô đỗ công khai (có parkingId) để dựng bãi và đoán bãi của lượt gửi.
   Future<List<ParkingSlotModel>> getAllSlots() async =>
       _list(await _get(ApiEndpoints.parkingSlots), ParkingSlotModel.fromJson);
+
+  /// Sơ đồ admin đã vẽ và xuất bản cho bãi; null khi bãi chưa có sơ đồ (hoặc lỗi tải: dùng sơ đồ tự dựng).
+  Future<TileLot?> getTileLot(String parkingId) async {
+    try {
+      final floors = JsonRead.list(await _get(ApiEndpoints.publishedLayouts(parkingId)))
+          .map(TileFloor.fromJson)
+          .whereType<TileFloor>()
+          .where((f) => f.w > 0 && f.h > 0)
+          .toList();
+      return floors.isEmpty ? null : TileLot(floors);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sơ đồ mọi bãi: tầng, ô (trạng thái), cổng, chỗ trống tầng xe máy. Cổng/chỗ trống lỗi thì vẽ thiếu, không chặn.
+  Future<List<LotLayout>> getLotLayouts() async {
+    Future<T> orElse<T>(Future<T> f, T fallback) => f.catchError((Object _) => fallback);
+    final r = await Future.wait([
+      _get(ApiEndpoints.floors),
+      getAllSlots(),
+      orElse(getGates(), const <GateModel>[]),
+      orElse(getAvailability(), const <FacilityAvailabilityModel>[]),
+    ]);
+    return LotLayout.buildAll(
+      floors: JsonRead.list(r[0]),
+      slots: r[1] as List<ParkingSlotModel>,
+      gates: r[2] as List<GateModel>,
+      availability: r[3] as List<FacilityAvailabilityModel>,
+    );
+  }
 
   /// Bãi dựng từ /api/Floor (tên bãi) + /api/ParkingSlot (trạng thái ô). Không có toạ độ.
   Future<List<ParkingLotModel>> _lotsFromCatalog() async {
@@ -436,6 +505,11 @@ class PbmsRepository {
 
   Future<void> cancelSubscription(String subscriptionId, {required String password}) async {
     await _put(ApiEndpoints.cancelSubscription(subscriptionId), {'password': password});
+  }
+
+  /// Bật/tắt tự gia hạn: bật thì máy chủ trừ ví gia hạn khi vé còn dưới 1 ngày.
+  Future<void> setSubscriptionAutoRenew(String subscriptionId, bool autoRenew) async {
+    await _put(ApiEndpoints.subscriptionAutoRenew(subscriptionId), {'autoRenew': autoRenew});
   }
 
   Future<List<VehicleChangeRequestModel>> getMyVehicleChangeRequests() async => _list(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:prm393_frontend/core/routes/route_names.dart';
 import 'package:prm393_frontend/core/services/location_service.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
+import 'package:prm393_frontend/features/map/presentation/lot_map_screen.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -49,8 +52,18 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   bool _isLocating = false;
   bool _showDetails = false;
 
+  /// Chỗ trống đổi liên tục: làm mới khi khách đang xem, giữ số cũ trong lúc tải.
+  Timer? _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = Timer.periodic(const Duration(seconds: 30), (_) => _lots.load());
+  }
+
   @override
   void dispose() {
+    _refresh?.cancel();
     _lots.close();
     _mapController.dispose();
     _sheet.dispose();
@@ -694,6 +707,30 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
                 ],
               ),
             ),
+        if (_showDetails && lot.floors.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text('Theo tầng', style: PbmsText.caption.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          for (final f in lot.floors)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${f.floorName} · ${f.vehicleTypeName}${f.isResident ? ' · chỉ vé tháng' : ''}',
+                      style: PbmsText.caption.copyWith(color: PbmsTokens.ink),
+                    ),
+                  ),
+                  Text('${f.availableSlots}/${f.totalSlots}',
+                      style: PbmsText.figure(13,
+                          color: f.isResident
+                              ? PbmsTokens.muted
+                              : (f.availableSlots > 0 ? PbmsTokens.ok : PbmsTokens.danger))),
+                ],
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -746,7 +783,26 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
   Widget _buildActions(LotView? lot) {
     final car = lot?.car;
     final point = lot?.point;
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (lot != null) ...[
+          SizedBox(
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: () => LotMapScreen.open(context, lotId: lot.id == 'pbms' ? null : lot.id, lotName: lot.name),
+              icon: const Icon(Icons.view_in_ar_rounded, size: 19),
+              label: const Text('Sơ đồ bãi và đường vào'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: PbmsTokens.teal,
+                side: const BorderSide(color: PbmsTokens.tealLine),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        Row(
       children: [
         SizedBox(
           width: 50,
@@ -771,6 +827,8 @@ class _ExploreHomeScreenState extends State<ExploreHomeScreen> {
             icon: Icons.directions_car_rounded,
             onPressed: car != null ? _book : null,
           ),
+        ),
+      ],
         ),
       ],
     );

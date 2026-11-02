@@ -52,6 +52,8 @@ class ApiEndpoints {
   static String subscriptionById(String id) => '/api/MonthlySubscription/$id';
   static String cancelSubscription(String id) =>
       '/api/MonthlySubscription/$id/cancel';
+  static String subscriptionAutoRenew(String id) =>
+      '/api/MonthlySubscription/$id/auto-renew';
   static String subscriptionPayment(String subscriptionId) =>
       '/api/MonthlySubscription/payment/$subscriptionId';
 
@@ -74,6 +76,7 @@ class ApiEndpoints {
   static const String subscriptionPackages = '/api/SubscriptionPackage';
   static const String pricingPolicies = '/api/PricingPolicy';
   static const String floors = '/api/Floor';
+  static String publishedLayouts(String parkingId) => '/api/FloorLayout/parking/$parkingId';
   static const String parkingSlots = '/api/ParkingSlot';
 
   // ================= Operations & Slot Availability =================
@@ -110,6 +113,9 @@ class ApiEndpoints {
   static const String ensureWallet = '/api/wallet';
   static String walletById(String walletId) => '/api/wallet/$walletId';
   static String walletTopUp(String walletId) => '/api/wallet/$walletId/top-up';
+  static const String availablePromoCodes = '/api/PromoCode/available';
+  static String receiptLink(String paymentId) => '/api/receipts/$paymentId/link';
+  static String invoiceRequest(String paymentId) => '/api/receipts/$paymentId/invoice-request';
   static String walletTransactions(String walletId) => '/api/wallet/$walletId/transactions';
   static String walletTopUps(String walletId) => '/api/wallet/$walletId/top-ups';
   static String walletSpends(String walletId) => '/api/wallet/$walletId/spends';
