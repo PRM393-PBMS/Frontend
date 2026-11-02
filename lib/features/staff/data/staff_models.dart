@@ -44,6 +44,9 @@ class GateScanModel {
   /// New, Handled, Dismissed.
   final String status;
 
+  /// Lý do máy chủ không đọc được biển số (chỉ có trong phản hồi lúc gửi).
+  final String? recognitionNote;
+
   const GateScanModel({
     required this.scanId,
     required this.gateName,
@@ -54,6 +57,7 @@ class GateScanModel {
     required this.reservationOnTime,
     required this.reservationTime,
     required this.status,
+    this.recognitionNote,
   });
 
   factory GateScanModel.fromJson(StaffJson json) {
@@ -68,6 +72,7 @@ class GateScanModel {
       reservationOnTime: reservation == null ? null : JsonRead.bool_(reservation, 'onTime'),
       reservationTime: reservation == null ? null : JsonRead.date(reservation, 'expectedEntryTime'),
       status: JsonRead.str(json, 'status', 'New'),
+      recognitionNote: JsonRead.strOrNull(json, 'recognitionNote'),
     );
   }
 

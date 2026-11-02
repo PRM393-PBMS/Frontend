@@ -529,6 +529,13 @@ class PbmsRepository {
   Future<List<GateModel>> getGates() async =>
       _list(await _get(ApiEndpoints.gates), GateModel.fromJson);
 
+  /// Cổng web staff của cùng tài khoản đang mở, kèm lúc web chọn; null khi web chưa chọn.
+  Future<({GateModel gate, String setAt})?> getMyGate() async {
+    final raw = await _get(ApiEndpoints.myGate);
+    if (raw is! J || raw['gateId'] == null) return null;
+    return (gate: GateModel.fromJson(raw), setAt: JsonRead.str(raw, 'setAt'));
+  }
+
   /// Gửi ảnh biển số kèm cổng và giờ chụp; nhân viên quét lấy từ token.
   /// Máy chủ nhận diện, đối chiếu đặt chỗ rồi đẩy real-time cho web staff.
   Future<GateScanModel> sendGateScan({
