@@ -179,11 +179,9 @@ class PbmsRepository {
     try {
       return WalletModel.fromJson(_obj(await _get(ApiEndpoints.walletById(id)), 'ví'));
     } on ServerException catch (e) {
-      // Lịch sử ví lỗi phía máy chủ: vẫn hiện số dư lấy từ lệnh mở ví.
-      return WalletModel(
-        walletId: id,
-        balance: JsonRead.num_(opened, 'walletBalance'),
-        transactions: const [],
+      // Lịch sử ví lỗi phía máy chủ: vẫn hiện số dư (cả hai ngăn) lấy từ lệnh mở ví.
+      return WalletModel.fromJson(
+        {...opened, 'transactions': const []},
         historyError: e.message.trim().isEmpty || e.message.contains('Internal')
             ? 'Máy chủ đang lỗi khi tải lịch sử giao dịch.'
             : e.message,
