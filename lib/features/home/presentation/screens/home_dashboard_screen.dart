@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:prm393_frontend/core/error/app_exception.dart';
+import 'package:prm393_frontend/core/services/home_widget_bridge.dart';
 import 'package:prm393_frontend/core/services/location_service.dart';
 import 'package:prm393_frontend/core/services/parking_ongoing_notification.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
@@ -140,7 +141,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   /// Sau mỗi lần tải: cập nhật thông báo đang gửi xe; xe vừa vào bãi thì rung nhẹ và mở sơ đồ tới ô (một lần).
   Future<void> _onActivity(_Activity a) async {
-    if (a.offlineAt == null) await ParkingOngoingNotification.sync(a.session);
+    if (a.offlineAt == null) {
+      await ParkingOngoingNotification.sync(a.session);
+      await HomeWidgetBridge.sync(session: a.session, reservation: a.reservation);
+    }
     final s = a.session;
     if (s == null || a.offlineAt != null) return;
     final prefs = await SharedPreferences.getInstance();

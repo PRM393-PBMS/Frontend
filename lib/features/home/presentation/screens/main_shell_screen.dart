@@ -54,6 +54,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _onLink(Uri uri) {
+    if (uri.scheme == 'pbms' && uri.host == 'widget' && mounted) {
+      _onWidgetLink(uri);
+      return;
+    }
     if (uri.scheme != 'pbms' || uri.host != 'payment-result' || !mounted) return;
     _revision.value++;
     final message = switch (uri.queryParameters['status']) {
@@ -71,6 +75,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 110),
       ));
+  }
+
+  /// Bấm widget màn hình chính: pbms://widget/exit-pass | reservation?lot=... | home.
+  void _onWidgetLink(Uri uri) {
+    final action = uri.pathSegments.firstOrNull;
+    switch (action) {
+      case 'exit-pass':
+        ShellActions.request(const OpenExitPass());
+      case 'reservation':
+        ShellActions.request(OpenLotMap(parkingId: uri.queryParameters['lot']));
+      default:
+        _goTab(AppTab.home);
+    }
   }
 
   void _onConnectivity() {

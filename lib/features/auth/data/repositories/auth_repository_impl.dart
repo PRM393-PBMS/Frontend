@@ -1,3 +1,4 @@
+import 'package:prm393_frontend/core/services/home_widget_bridge.dart';
 import 'package:prm393_frontend/core/services/parking_ongoing_notification.dart';
 import 'package:prm393_frontend/core/services/push_notification_service.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
@@ -116,6 +117,7 @@ class AuthRepositoryImpl implements AuthRepository {
       // Dữ liệu của tài khoản vừa đăng xuất: vé lưu khi mất mạng, thông báo đang gửi xe, thông báo đẩy.
       await PbmsRepository.clearUserCache().catchError((_) {});
       await ParkingOngoingNotification.sync(null);
+      await HomeWidgetBridge.clear();
       await PushNotificationService.instance.detach().catchError((_) {});
     }
   }
