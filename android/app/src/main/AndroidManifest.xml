@@ -41,6 +41,18 @@
             <!-- app_links xử lý link; không để go_router nhận nhầm thành một trang. -->
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
+        <!-- Widget màn hình chính: vé đang gửi xe, đặt chỗ sắp tới. -->
+        <receiver
+            android:name=".ParkingWidgetProvider"
+            android:exported="false"
+            android:label="Xe đang gửi">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/parking_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
