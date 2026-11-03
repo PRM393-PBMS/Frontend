@@ -382,7 +382,7 @@ void showPbmsSnack(BuildContext context, String message, {bool error = false}) {
 
 /// Khung chờ khi đang tải: giữ đúng chiều cao nội dung sắp hiện, vẽ sẵn các dòng
 /// giả (ô biểu tượng, hai dòng chữ, số liệu bên phải) với vệt sáng lướt qua.
-/// Thấp hơn 64 thì chỉ là một thanh bo góc.
+/// Thấp hơn một dòng xương (74) thì chỉ là một thanh bo góc.
 class PbmsLoadingBox extends StatefulWidget {
   final double height;
 
@@ -472,7 +472,8 @@ class _PbmsLoadingBoxState extends State<PbmsLoadingBox>
   Widget build(BuildContext context) {
     final h = widget.height;
     final Widget frame;
-    if (h < 64) {
+    // Không đủ chỗ cho một dòng xương (đệm + viền + 1 dòng) thì chỉ vẽ một thanh, tránh tràn.
+    if (h < 2 * _padding + 2 + _rowHeight) {
       frame = _shimmer(_bone(height: h, radius: 16));
     } else {
       final rows = ((h - 2 * _padding - 2 + _rowGap) / (_rowHeight + _rowGap)).floor().clamp(1, 99);

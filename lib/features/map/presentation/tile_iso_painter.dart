@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../data/tile_layout.dart';
-import 'lot_iso_painter.dart' show LotColors;
+import 'lot_iso_painter.dart' show LotColors, SlotPickOptions, boxHitPath;
 
 /// Vẽ đúng sơ đồ admin đã vẽ theo kiểu isometric: tầng chồng lên nhau, tầng đang chọn vẽ đủ từng ô
 /// (tường, cột cao; ô đỗ màu theo trạng thái thật; lối đi phẳng có mũi tên), đường đi qua các tầng.
@@ -16,6 +16,7 @@ class TileIsoPainter extends CustomPainter {
   /// slotId -> trạng thái thường (available, occupied, assigned...).
   final Map<String, String> slotStatus;
   final double t;
+  final SlotPickOptions? pick;
 
   TileIsoPainter({
     required this.lot,
@@ -23,6 +24,7 @@ class TileIsoPainter extends CustomPainter {
     required this.slotStatus,
     this.guide,
     this.t = 0,
+    this.pick,
   });
 
   static const _cos = 0.8660254;
@@ -95,6 +97,7 @@ class TileIsoPainter extends CustomPainter {
   void _cells(Canvas canvas, TileFloor f, int level) {
     final cells = [...f.cells]..sort((a, b) => (a.x + a.y).compareTo(b.x + b.y));
     final target = guide?.slot;
+    pick?.hits.clear();
     Offset? targetTop;
     for (final c in cells) {
       final x = c.x.toDouble(), y = c.y.toDouble();
@@ -121,9 +124,16 @@ class TileIsoPainter extends CustomPainter {
         case 'kiosk':
           _box(canvas, x + 0.15, y + 0.15, 0.7, level, 0.55, const Color(0xFF8B5CF6));
         case 'slot':
-          final hit = target != null && c.slotId == target.slotId && c.code == target.code;
+          final p = pick;
+          final id = c.slotId ?? '';
+          final hit = p != null
+              ? id.isNotEmpty && id == p.selectedSlotId
+              : target != null && c.slotId == target.slotId && c.code == target.code;
           final h = hit ? 0.3 * (1.4 + 0.4 * math.sin(t * 2 * math.pi)) : 0.3;
-          final slotTop = _box(canvas, x + 0.08, y + 0.08, 0.84, level, h, hit ? LotColors.target : _slotColor(c));
+          final color = hit
+              ? LotColors.target
+              : (p != null && !p.pickable(id) ? SlotPickOptions.faded : _slotColor(c));
+          final slotTop = _box(canvas, x + 0.08, y + 0.08, 0.84, level, h, color, hitId: id.isEmpty ? null : id);
           if (hit) targetTop = slotTop;
           if (_scale >= 22) _text(canvas, c.code ?? '', slotTop, 8, center: true, color: const Color(0xFF0F172A));
       }
@@ -152,8 +162,9 @@ class TileIsoPainter extends CustomPainter {
   }
 
   /// Khối hộp; trả tâm mặt trên.
-  Offset _box(Canvas canvas, double x, double y, double size, int level, double h, Color c) {
+  Offset _box(Canvas canvas, double x, double y, double size, int level, double h, Color c, {String? hitId}) {
     Offset q(double dx, double dy, double z) => _p(x + dx, y + dy, level, z);
+    if (pick != null && hitId != null) pick!.hits.add((boxHitPath(q, size, h), hitId));
     final s = size;
     _poly(canvas, [q(0, s, 0), q(s, s, 0), q(s, s, h), q(0, s, h)], Color.lerp(c, Colors.black, 0.25)!);
     _poly(canvas, [q(s, 0, 0), q(s, s, 0), q(s, s, h), q(s, 0, h)], Color.lerp(c, Colors.black, 0.12)!);
@@ -224,5 +235,10 @@ class TileIsoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(TileIsoPainter old) =>
-      old.t != t || old.selectedFloorId != selectedFloorId || old.lot != lot || old.guide != guide || old.slotStatus != slotStatus;
+      old.t != t ||
+      old.selectedFloorId != selectedFloorId ||
+      old.lot != lot ||
+      old.guide != guide ||
+      old.slotStatus != slotStatus ||
+      old.pick?.selectedSlotId != pick?.selectedSlotId;
 }
