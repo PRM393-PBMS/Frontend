@@ -173,9 +173,93 @@ class _BalanceCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(CurrencyFormatter.format(wallet.balance), style: PbmsText.display(48)),
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _BucketTile(
+                  label: 'Tiền nạp',
+                  amount: wallet.cashBalance,
+                  icon: Icons.account_balance_wallet_rounded,
+                  color: PbmsTokens.teal,
+                  background: PbmsTokens.tealTint,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _BucketTile(
+                  label: 'Khuyến mãi',
+                  amount: wallet.bonusBalance,
+                  icon: Icons.card_giftcard_rounded,
+                  color: PbmsTokens.warn,
+                  background: const Color(0xFFFFFBEB),
+                  note: wallet.bonusBalance > 0 && wallet.bonusExpiresAt != null
+                      ? 'Hết hạn ${DateFormatter.formatDate(wallet.bonusExpiresAt)}'
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          if (wallet.bonusBalance > 0) ...[
+            const SizedBox(height: 8),
+            const Text('Khuyến mãi được trừ trước tiền nạp.', style: PbmsText.caption),
+          ],
           const SizedBox(height: 16),
           PbmsPrimaryButton(label: 'Nạp tiền', icon: Icons.add_rounded, onPressed: onTopUp),
         ],
+      ),
+    );
+  }
+}
+
+/// Một ngăn ví: tên, số tiền, ghi chú phụ (hạn dùng khuyến mãi).
+class _BucketTile extends StatelessWidget {
+  final String label;
+  final double amount;
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final String? note;
+
+  const _BucketTile({
+    required this.label,
+    required this.amount,
+    required this.icon,
+    required this.color,
+    required this.background,
+    this.note,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label ${CurrencyFormatter.format(amount)}${note == null ? '' : ', $note'}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 15, color: color),
+                const SizedBox(width: 5),
+                Flexible(child: Text(label, style: PbmsText.caption.copyWith(color: color, fontWeight: FontWeight.w600))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(CurrencyFormatter.format(amount), style: PbmsText.figure(17, color: PbmsTokens.ink)),
+            ),
+            if (note != null) ...[
+              const SizedBox(height: 2),
+              Text(note!, style: PbmsText.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -216,7 +300,10 @@ class _TransactionRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: PbmsText.bodyStrong),
                 const SizedBox(height: 2),
-                Text(DateFormatter.formatDateTime(tx.createdAt),
+                Text(
+                    tx.isBonus
+                        ? '${DateFormatter.formatDateTime(tx.createdAt)} · Khuyến mãi'
+                        : DateFormatter.formatDateTime(tx.createdAt),
                     style: PbmsText.caption),
               ],
             ),

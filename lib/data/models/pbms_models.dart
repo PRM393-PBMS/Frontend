@@ -372,6 +372,9 @@ class WalletTransactionModel {
   final String? description;
   final DateTime createdAt;
 
+  /// Giao dịch vào ngăn khuyến mãi (BONUS) thay vì tiền nạp (CASH).
+  final bool isBonus;
+
   const WalletTransactionModel({
     required this.id,
     required this.type,
@@ -380,6 +383,7 @@ class WalletTransactionModel {
     required this.balanceAfter,
     this.description,
     required this.createdAt,
+    this.isBonus = false,
   });
 
   bool get isTopUp => isCredit;
@@ -395,6 +399,7 @@ class WalletTransactionModel {
       balanceAfter: JsonRead.num_(json, 'balanceAfter'),
       description: JsonRead.strOrNull(json, 'description'),
       createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
+      isBonus: _is(JsonRead.strOrNull(json, 'bucket') ?? '', 'bonus'),
     );
   }
 }
@@ -405,7 +410,16 @@ class WalletModel {
   static const double maxTopUp = 10000000;
 
   final String walletId;
+
+  /// Tổng khả dụng = tiền nạp + khuyến mãi còn hạn.
   final double balance;
+
+  /// Tiền khách tự nạp (ngăn CASH); hoàn tiền về đây nếu trừ từ đây.
+  final double cashBalance;
+
+  /// Tiền khuyến mãi còn hạn (ngăn BONUS); được trừ trước tiền nạp.
+  final double bonusBalance;
+  final DateTime? bonusExpiresAt;
   final List<WalletTransactionModel> transactions;
 
   /// Máy chủ lỗi khi tải lịch sử: vẫn hiện số dư, báo riêng phần lịch sử.
@@ -414,19 +428,28 @@ class WalletModel {
   const WalletModel({
     required this.walletId,
     required this.balance,
+    double? cashBalance,
+    this.bonusBalance = 0,
+    this.bonusExpiresAt,
     required this.transactions,
     this.historyError,
-  });
+  }) : cashBalance = cashBalance ?? balance - bonusBalance;
 
   double get topUpMin => minTopUp;
   double get topUpMax => maxTopUp;
 
-  factory WalletModel.fromJson(J json) => WalletModel(
+  /// [historyError]: dựng từ bản tóm tắt ví (không có lịch sử) khi máy chủ lỗi lúc tải lịch sử.
+  factory WalletModel.fromJson(J json, {String? historyError}) => WalletModel(
         walletId: JsonRead.str(json, 'walletId'),
         balance: JsonRead.num_(json, 'walletBalance'),
+        // Máy chủ cũ chưa tách ngăn: coi toàn bộ là tiền nạp.
+        cashBalance: JsonRead.numOrNull(json, 'cashBalance'),
+        bonusBalance: JsonRead.numOrNull(json, 'bonusBalance') ?? 0,
+        bonusExpiresAt: JsonRead.date(json, 'bonusExpiresAt'),
         transactions: JsonRead.list(json['transactions'])
             .map(WalletTransactionModel.fromJson)
             .toList(),
+        historyError: historyError,
       );
 }
 
