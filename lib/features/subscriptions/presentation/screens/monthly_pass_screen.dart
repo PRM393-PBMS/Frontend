@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/features/map/presentation/slot_map_picker.dart';
 import 'package:prm393_frontend/core/error/app_exception.dart';
 import 'package:prm393_frontend/core/widgets/password_confirm_dialog.dart';
 import 'package:prm393_frontend/features/subscriptions/presentation/widgets/pay_pending_sheet.dart';
@@ -960,6 +961,21 @@ class _RegistrationFormState extends State<_RegistrationForm> {
     }
   }
 
+  /// Chọn ô cố định trên sơ đồ bãi: thấy ô ở tầng nào, gần lối nào thay vì chỉ đọc mã ô.
+  Future<void> _pickSlotOnMap() async {
+    final picked = await SlotMapPicker.open(
+      context,
+      parkingId: _parkingId,
+      vehicleTypeId: _vehicleTypeId,
+      initialSlotId: _slotId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _slotId = picked.id;
+      _error = null;
+    });
+  }
+
   void _selectVehicleType(String id) {
     setState(() {
       _vehicleTypeId = id;
@@ -1031,90 +1047,65 @@ class _RegistrationFormState extends State<_RegistrationForm> {
     }
   }
 
+  /// Tên bãi và mã ô đã chọn, để tóm tắt trước khi thanh toán.
+  String? get _lotName =>
+      (_lots.state.data ?? const <ParkingLotModel>[]).where((l) => l.id == _parkingId).firstOrNull?.name;
+  String? get _slotCode =>
+      (_slots?.state.data ?? const <ParkingSlotModel>[]).where((s) => s.slotId == _slotId).firstOrNull?.slotCode;
+
+  bool get _placeDone => (!_needsLot || _parkingId != null) && (!_needsSlot || _slotId != null);
+
+  /// Việc còn thiếu đầu tiên (hiện trên nút); null khi đủ để thanh toán.
+  String? get _missing {
+    if (_vehicle == null) return 'chọn xe';
+    if (_selected == null) return 'chọn gói';
+    if (_needsLot && _parkingId == null) return 'chọn bãi';
+    if (_needsSlot && _slotId == null) return 'chọn ô đỗ cố định';
+    return null;
+  }
+
+  /// Chọn xe là biết loại xe: đổi loại thì chọn lại gói đầu tiên của loại đó.
+  void _selectVehicle(VehicleModel? v) {
+    setState(() {
+      _vehicle = v;
+      _error = null;
+    });
+    if (v != null && v.vehicleTypeId != _vehicleTypeId) _selectVehicleType(v.vehicleTypeId);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final types = _vehicleTypes;
     final selected = _selected;
+    final typeIds = _vehicleTypes.map((t) => t.$1).toSet();
+    final contract = (selected?.durationMonths ?? 0) >= 3;
 
     return PbmsCard(
       padding: const EdgeInsets.all(16),
-      child: Builder(
-        builder: (context) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Đăng ký vé tháng mới', style: PbmsText.title),
-            const SizedBox(height: 4),
-            const Text('Chọn phương tiện và kỳ hạn vé', style: PbmsText.caption),
-            const SizedBox(height: 17),
-            const Text('Bãi áp dụng vé', style: PbmsText.label),
-            const SizedBox(height: 6),
-            if (_needsLot)
-              ParkingLotPicker(lots: _lots, selectedId: _parkingId, onSelected: _selectLot)
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                decoration: BoxDecoration(
-                  color: PbmsTokens.surfaceLow,
-                  border: Border.all(color: PbmsTokens.border),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.public_rounded, size: 18, color: PbmsTokens.teal),
-                    SizedBox(width: 8),
-                    Text('Mọi bãi PBMS', style: PbmsText.body),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 14),
-            const Text('Loại phương tiện', style: PbmsText.label),
-            const SizedBox(height: 6),
-            SegmentedButton<String>(
-              segments: [
-                for (final t in types)
-                  ButtonSegment(
-                    value: t.$1,
-                    label: Text(t.$2),
-                    icon: Icon(t.$2.toLowerCase().contains('máy')
-                        ? Icons.two_wheeler_rounded
-                        : Icons.directions_car_rounded),
-                  ),
-              ],
-              selected: {_vehicleTypeId},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => _selectVehicleType(s.first),
-              style: ButtonStyle(
-                minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-                foregroundColor: WidgetStateProperty.resolveWith((states) =>
-                    states.contains(WidgetState.selected)
-                        ? PbmsTokens.teal
-                        : PbmsTokens.muted),
-                backgroundColor: WidgetStateProperty.resolveWith((states) =>
-                    states.contains(WidgetState.selected)
-                        ? PbmsTokens.tealTint
-                        : Colors.white),
-                side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                    color: states.contains(WidgetState.selected)
-                        ? PbmsTokens.teal
-                        : PbmsTokens.border)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text('Xe đăng ký vé', style: PbmsText.label),
-            const SizedBox(height: 6),
-            VehiclePicker(
-              selectedId: _vehicle?.id,
-              filter: (v) => v.vehicleTypeId == _vehicleTypeId,
-              preferredTypeId: _vehicleTypeId,
-              emptyMessage: 'Chưa có xe loại này trong tài khoản. Thêm xe để đăng ký vé.',
-              onChanged: (v) => setState(() {
-                _vehicle = v;
-                _error = null;
-              }),
-            ),
-            const SizedBox(height: 14),
-            const Text('Kỳ hạn cước', style: PbmsText.label),
-            const SizedBox(height: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Đăng ký vé tháng mới', style: PbmsText.title),
+          const SizedBox(height: 4),
+          const Text('Chọn xe, gói và nơi đỗ. Xe ra vào bằng biển số, không cần quét mã.', style: PbmsText.caption),
+          const SizedBox(height: 18),
+
+          _StepHeader(number: 1, title: 'Xe đăng ký', done: _vehicle != null),
+          const SizedBox(height: 8),
+          VehiclePicker(
+            selectedId: _vehicle?.id,
+            // Mọi xe có gói vé tháng phù hợp; chọn xe là biết loại xe.
+            filter: (v) => typeIds.contains(v.vehicleTypeId),
+            preferredTypeId: _vehicleTypeId,
+            emptyMessage: 'Thêm xe để đăng ký vé tháng.',
+            onChanged: _selectVehicle,
+          ),
+          const SizedBox(height: 20),
+
+          _StepHeader(number: 2, title: 'Gói vé', done: _vehicle != null && selected != null),
+          const SizedBox(height: 8),
+          if (_vehicle == null)
+            const _StepHint('Chọn xe ở bước 1 để xem gói phù hợp.')
+          else
             for (final p in _plans) ...[
               PlanOption(
                 selected: _packageId == p.packageId,
@@ -1131,10 +1122,35 @@ class _RegistrationFormState extends State<_RegistrationForm> {
               ),
               const SizedBox(height: 8),
             ],
+          const SizedBox(height: 12),
+
+          _StepHeader(number: 3, title: 'Nơi đỗ', done: _vehicle != null && selected != null && _placeDone),
+          const SizedBox(height: 8),
+          if (_vehicle == null || selected == null)
+            const _StepHint('Chọn gói để biết cần chọn bãi và ô nào.')
+          else if (!_needsLot)
+            const _StepHint('Gói này đỗ được ở mọi bãi PBMS, không cần chọn bãi.', icon: Icons.public_rounded)
+          else ...[
+            ParkingLotPicker(lots: _lots, selectedId: _parkingId, onSelected: _selectLot),
             if (_needsSlot && _slots != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
               const Text('Ô đỗ cố định tại tầng cư dân', style: PbmsText.label),
               const SizedBox(height: 6),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _parkingId == null ? null : _pickSlotOnMap,
+                  icon: const Icon(Icons.view_in_ar_rounded, size: 19),
+                  label: Text(_slotCode == null ? 'Chọn ô trên sơ đồ bãi' : 'Ô $_slotCode · đổi trên sơ đồ'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: PbmsTokens.teal,
+                    backgroundColor: PbmsTokens.tealTint,
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               FixedSlotPicker(
                 slots: _slots!,
                 selectedId: _slotId,
@@ -1144,73 +1160,175 @@ class _RegistrationFormState extends State<_RegistrationForm> {
                 }),
               ),
             ],
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                  color: PbmsTokens.surfaceLow,
-                  borderRadius: BorderRadius.circular(11)),
-              child: Row(
-                children: [
-                  const Expanded(
-                      child: Text('Tổng tiền', style: PbmsText.caption)),
-                  Text(
-                      selected == null
-                          ? 'Chọn gói'
-                          : CurrencyFormatter.format(selected.price),
-                      style: PbmsText.figure(16)),
-                ],
-              ),
-            ),
-            if ((selected?.durationMonths ?? 0) < 3) ...[
-              const SizedBox(height: 14),
-              const Text('Thanh toán', style: PbmsText.label),
-              const SizedBox(height: 6),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(
-                      value: false,
-                      label: Text('PayOS'),
-                      icon: Icon(Icons.credit_card_rounded)),
-                  ButtonSegment(
-                      value: true,
-                      label: Text('Ví PBMS'),
-                      icon: Icon(Icons.account_balance_wallet_rounded)),
-                ],
-                selected: {_payByWallet},
-                showSelectedIcon: false,
-                onSelectionChanged: (s) => setState(() => _payByWallet = s.first),
-                style: ButtonStyle(
-                  minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-                  foregroundColor: WidgetStateProperty.resolveWith((states) =>
-                      states.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.muted),
-                  backgroundColor: WidgetStateProperty.resolveWith((states) =>
-                      states.contains(WidgetState.selected) ? PbmsTokens.tealTint : Colors.white),
-                  side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                      color: states.contains(WidgetState.selected)
-                          ? PbmsTokens.teal
-                          : PbmsTokens.border)),
-                ),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(_error!,
-                  style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
-            ],
-            const SizedBox(height: 12),
-            PbmsPrimaryButton(
-              label: (selected?.durationMonths ?? 0) >= 3
-                  ? 'Tiếp tục ký hợp đồng'
-                  : (_payByWallet ? 'Trả bằng ví & kích hoạt' : 'Thanh toán & kích hoạt'),
-              icon: (selected?.durationMonths ?? 0) >= 3
-                  ? Icons.draw_rounded
-                  : Icons.credit_card_rounded,
-              busy: _busy,
-              onPressed: selected == null ? null : _submit,
-            ),
           ],
-        ),
+          const SizedBox(height: 20),
+
+          _StepHeader(number: 4, title: 'Thanh toán', done: false, last: true),
+          const SizedBox(height: 8),
+          if (contract)
+            const _StepHint('Gói từ 3 tháng ký hợp đồng điện tử trước, chọn cách trả ở bước ký.',
+                icon: Icons.draw_outlined)
+          else
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('PayOS'), icon: Icon(Icons.credit_card_rounded)),
+                ButtonSegment(value: true, label: Text('Ví PBMS'), icon: Icon(Icons.account_balance_wallet_rounded)),
+              ],
+              selected: {_payByWallet},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => setState(() => _payByWallet = s.first),
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+                foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.muted),
+                backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected) ? PbmsTokens.tealTint : Colors.white),
+                side: WidgetStateProperty.resolveWith((states) => BorderSide(
+                    color: states.contains(WidgetState.selected) ? PbmsTokens.teal : PbmsTokens.border)),
+              ),
+            ),
+          const SizedBox(height: 18),
+
+          // Tóm tắt ngay trên nút: khách thấy mình trả cho cái gì trước khi bấm.
+          _Summary(rows: [
+            ('Xe', _vehicle?.licensePlate),
+            ('Gói', selected?.packageName),
+            if (selected != null)
+              ('Nơi đỗ', !_needsLot
+                  ? 'Mọi bãi PBMS'
+                  : _lotName == null
+                      ? null
+                      : [_lotName!, if (_needsSlot) _slotCode == null ? 'chưa chọn ô' : 'ô $_slotCode'].join(' · ')),
+          ], total: selected == null ? null : CurrencyFormatter.format(selected.price)),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!, style: PbmsText.caption.copyWith(color: PbmsTokens.danger)),
+          ],
+          const SizedBox(height: 12),
+          // Thiếu gì thì nút nói rõ và khoá lại, không để khách bấm rồi mới báo lỗi.
+          PbmsPrimaryButton(
+            label: _missing != null
+                ? 'Còn thiếu: $_missing'
+                : contract
+                    ? 'Tiếp tục ký hợp đồng'
+                    : (_payByWallet ? 'Trả bằng ví & kích hoạt' : 'Thanh toán & kích hoạt'),
+            icon: contract ? Icons.draw_rounded : Icons.credit_card_rounded,
+            busy: _busy,
+            onPressed: _missing != null ? null : _submit,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tiêu đề bước: số thứ tự, đổi thành dấu tích khi bước đã xong.
+class _StepHeader extends StatelessWidget {
+  final int number;
+  final String title;
+  final bool done;
+  final bool last;
+
+  const _StepHeader({required this.number, required this.title, required this.done, this.last = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      label: 'Bước $number: $title${done ? ', đã xong' : ''}',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: done ? PbmsTokens.teal : PbmsTokens.tealTint,
+              shape: BoxShape.circle,
+            ),
+            child: done
+                ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                : Text('$number',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: PbmsTokens.teal)),
+          ),
+          const SizedBox(width: 10),
+          Text(title, style: PbmsText.bodyStrong),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dòng giải thích khi bước chưa cần chọn gì (thay vì để trống hoặc ẩn đi không lý do).
+class _StepHint extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const _StepHint(this.text, {this.icon = Icons.info_outline_rounded});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(color: PbmsTokens.surfaceLow, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: PbmsTokens.muted),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: PbmsText.caption)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tóm tắt đơn: các lựa chọn và tổng tiền, đặt ngay trên nút thanh toán.
+class _Summary extends StatelessWidget {
+  final List<(String, String?)> rows;
+  final String? total;
+
+  const _Summary({required this.rows, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: PbmsTokens.surfaceLow,
+        border: Border.all(color: PbmsTokens.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          for (final (label, value) in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 64, child: Text(label, style: PbmsText.caption)),
+                  Expanded(
+                    child: Text(
+                      value == null || value.isEmpty ? 'Chưa chọn' : value,
+                      textAlign: TextAlign.right,
+                      style: value == null || value.isEmpty
+                          ? PbmsText.caption
+                          : PbmsText.body.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const Divider(height: 14, color: PbmsTokens.border),
+          Row(
+            children: [
+              const Expanded(child: Text('Tổng tiền', style: PbmsText.bodyStrong)),
+              Text(total ?? 'Chọn gói', style: PbmsText.figure(18, color: PbmsTokens.ink)),
+            ],
+          ),
+        ],
       ),
     );
   }

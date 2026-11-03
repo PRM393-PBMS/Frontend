@@ -9,8 +9,15 @@ class LayoutSlot {
   final String code;
   final String status;
   final bool isCar;
+  final String vehicleTypeId;
 
-  const LayoutSlot({required this.id, required this.code, required this.status, required this.isCar});
+  const LayoutSlot({
+    required this.id,
+    required this.code,
+    required this.status,
+    required this.isCar,
+    this.vehicleTypeId = '',
+  });
 
   String get _s => status.toLowerCase();
   bool get isFree => _s == 'available';
@@ -107,6 +114,7 @@ class LotLayout {
               code: s.slotCode,
               status: s.status,
               isCar: isCarType(s.vehicleTypeName),
+              vehicleTypeId: s.vehicleTypeId,
             ));
       }
       final names = zones.keys.toList()..sort();

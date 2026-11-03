@@ -27,6 +27,30 @@ class LotColors {
               : other;
 }
 
+/// Chế độ chọn ô trên sơ đồ (vd. ô cố định khi đăng ký vé tháng): ô không chọn được vẽ mờ,
+/// ô đang chọn tô đỏ; bộ vẽ ghi vùng của từng ô vào [hits] để biết khách chạm ô nào.
+class SlotPickOptions {
+  final String? selectedSlotId;
+  final bool Function(String slotId) pickable;
+  final List<(Path, String)> hits = [];
+
+  SlotPickOptions({this.selectedSlotId, required this.pickable});
+
+  /// Ô chọn được dưới điểm chạm; ô vẽ sau nằm trên nên xét từ cuối danh sách.
+  String? slotAt(Offset point) {
+    for (final (path, id) in hits.reversed) {
+      if (path.contains(point) && pickable(id)) return id;
+    }
+    return null;
+  }
+
+  static const faded = Color(0xFFE2E8F0);
+}
+
+/// Vùng khối ô (mặt trên + hai mặt trước) để nhận chạm.
+Path boxHitPath(Offset Function(double dx, double dy, double z) q, double w, double h) => Path()
+  ..addPolygon([q(0, 0, h), q(w, 0, h), q(w, 0, 0), q(w, w, 0), q(0, w, 0), q(0, w, h)], true);
+
 /// Toạ độ lưới của một tầng: lối đi chính dọc mép trái (x âm), mỗi hàng ô có lối đi phía trước.
 /// Khu dài quá [perRow] ô thì xuống hàng.
 class FloorGrid {
@@ -77,8 +101,9 @@ class LotIsoPainter extends CustomPainter {
 
   /// 0..1 lặp lại: nhấp nháy ô đích và chạy vạch đường đi.
   final double t;
+  final SlotPickOptions? pick;
 
-  LotIsoPainter({required this.lot, required this.selectedFloorId, this.guide, this.t = 0});
+  LotIsoPainter({required this.lot, required this.selectedFloorId, this.guide, this.t = 0, this.pick});
 
   static const _cos = 0.8660254;
   static const _sin = 0.5;
@@ -158,6 +183,7 @@ class LotIsoPainter extends CustomPainter {
       return;
     }
     final target = guide?.floor?.id == f.id ? guide?.slot : null;
+    pick?.hits.clear();
     Offset? targetTop;
     LayoutZone? prevZone;
     for (final (zone, slots, y) in grid.rows) {
@@ -170,8 +196,11 @@ class LotIsoPainter extends CustomPainter {
       prevZone = zone;
       for (var c = 0; c < slots.length; c++) {
         final s = slots[c];
-        final top = _box(canvas, c.toDouble() + 0.08, y + 0.08, level, LotColors.of(s), highlight: s == target);
-        if (s == target) targetTop = top;
+        final p = pick;
+        final chosen = p != null ? s.id == p.selectedSlotId : s == target;
+        final color = p != null && !p.pickable(s.id) ? SlotPickOptions.faded : LotColors.of(s);
+        final top = _box(canvas, c.toDouble() + 0.08, y + 0.08, level, color, highlight: chosen, hitId: s.id);
+        if (chosen) targetTop = top;
       }
     }
     if (targetTop != null) _marker(canvas, targetTop);
@@ -186,11 +215,12 @@ class LotIsoPainter extends CustomPainter {
   }
 
   /// Vẽ khối ô, trả tâm mặt trên.
-  Offset _box(Canvas canvas, double x, double y, int level, Color color, {bool highlight = false}) {
+  Offset _box(Canvas canvas, double x, double y, int level, Color color, {bool highlight = false, String? hitId}) {
     const w = 0.84;
     final h = highlight ? _boxH * (1.4 + 0.4 * math.sin(t * 2 * math.pi)) : _boxH;
     final c = highlight ? LotColors.target : color;
     Offset q(double dx, double dy, double z) => _p(x + dx, y + dy, level, z);
+    if (pick != null && hitId != null) pick!.hits.add((boxHitPath(q, w, h), hitId));
     _poly(canvas, [q(0, w, 0), q(w, w, 0), q(w, w, h), q(0, w, h)], Paint()..color = Color.lerp(c, Colors.black, 0.25)!);
     _poly(canvas, [q(w, 0, 0), q(w, w, 0), q(w, w, h), q(w, 0, h)], Paint()..color = Color.lerp(c, Colors.black, 0.12)!);
     _poly(canvas, [q(0, 0, h), q(w, 0, h), q(w, w, h), q(0, w, h)], Paint()..color = c);
@@ -317,5 +347,9 @@ class LotIsoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(LotIsoPainter old) =>
-      old.t != t || old.selectedFloorId != selectedFloorId || old.lot != lot || old.guide != guide;
+      old.t != t ||
+      old.selectedFloorId != selectedFloorId ||
+      old.lot != lot ||
+      old.guide != guide ||
+      old.pick?.selectedSlotId != pick?.selectedSlotId;
 }
