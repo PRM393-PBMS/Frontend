@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
@@ -203,7 +205,37 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
   final _model = TextEditingController();
   late String? _typeId = widget.preferredTypeId;
   bool _busy = false;
+  bool _reading = false;
   String? _error;
+  String? _readNote;
+
+  /// Chụp biển số, máy chủ đọc và điền vào ô (khách vẫn sửa được trước khi lưu).
+  Future<void> _scanPlate() async {
+    // App có khai báo quyền camera (máy quét của nhân viên) nên phải xin trước khi mở máy ảnh.
+    if (!(await Permission.camera.request()).isGranted) {
+      if (mounted) setState(() => _error = 'Cần quyền máy ảnh để chụp biển số. Bạn vẫn có thể nhập tay.');
+      return;
+    }
+    final file = await ImagePicker()
+        .pickImage(source: ImageSource.camera, maxWidth: 1600, imageQuality: 85)
+        .catchError((_) => null);
+    if (file == null || !mounted) return;
+    setState(() {
+      _reading = true;
+      _error = null;
+      _readNote = null;
+    });
+    try {
+      final plate = await _repo.recognizeVehiclePlate(await file.readAsBytes(), file.name);
+      if (!mounted) return;
+      _plate.text = plate;
+      setState(() => _readNote = 'Đã đọc biển số $plate. Kiểm tra lại trước khi lưu.');
+    } catch (e) {
+      if (mounted) setState(() => _error = errorText(e));
+    } finally {
+      if (mounted) setState(() => _reading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -276,9 +308,25 @@ class _AddVehicleSheetState extends State<AddVehicleSheet> {
           },
         ),
         const SizedBox(height: 14),
-        const Text('Biển kiểm soát', style: PbmsText.label),
+        Row(
+          children: [
+            const Expanded(child: Text('Biển kiểm soát', style: PbmsText.label)),
+            TextButton.icon(
+              onPressed: _reading ? null : _scanPlate,
+              icon: _reading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.photo_camera_outlined, size: 18),
+              label: Text(_reading ? 'Đang đọc...' : 'Chụp biển số'),
+              style: TextButton.styleFrom(foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 44)),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
         Form(key: _form, child: PlateField(controller: _plate)),
+        if (_readNote != null) ...[
+          const SizedBox(height: 6),
+          Text(_readNote!, style: PbmsText.caption.copyWith(color: PbmsTokens.ok)),
+        ],
         const SizedBox(height: 14),
         VehicleNameFields(nickname: _nickname, model: _model),
         if (_error != null) ...[

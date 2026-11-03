@@ -51,6 +51,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
   Future<void> _openCheckout() async {
     final paid = await GatePaymentSheet.show(context, s.sessionId);
     if (paid == true && mounted) {
+      pbmsSuccessFeedback();
       showPbmsSnack(context, 'Đã thanh toán. Barie sẽ mở khi xe tới cổng ra.');
     }
   }
@@ -64,6 +65,7 @@ class _SessionDetailSheetState extends State<SessionDetailSheet> {
     );
     if (pass != null && mounted) {
       setState(() => _exitPass = pass);
+      pbmsSuccessFeedback();
       showPbmsSnack(context, 'Đã thanh toán. Dùng mã ra cổng để lấy xe.');
     }
   }

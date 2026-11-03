@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/api_endpoints.dart';
 import '../core/error/app_exception.dart';
@@ -76,11 +77,59 @@ class PbmsRepository {
 
   // ------------------------------------------------------------ sessions
 
+  static const _kActiveSession = 'cache_active_session';
+
+  /// Đăng xuất: xoá vé đã lưu để tài khoản khác trên cùng máy không thấy.
+  static Future<void> clearUserCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kActiveSession);
+  }
+
   Future<List<ParkingSessionModel>> getMySessions() async {
-    final items =
-        _list(await _get(ApiEndpoints.mySessions), ParkingSessionModel.fromJson);
+    final raw = JsonRead.list(await _get(ApiEndpoints.mySessions));
+    final items = raw.map(ParkingSessionModel.fromJson).toList();
     items.sort((a, b) => b.entryTime.compareTo(a.entryTime));
+    await _rememberActiveSession(raw);
     return items;
+  }
+
+  /// Lưu lượt đang gửi (kèm mã ra cổng) mỗi lần tải được: hầm xe mất sóng vẫn mở được vé và mã.
+  Future<void> _rememberActiveSession(List<J> raw) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final active = raw.where((j) => JsonRead.str(j, 'status').toLowerCase() == 'active').toList();
+      if (active.isEmpty) {
+        await prefs.remove(_kActiveSession);
+      } else {
+        await prefs.setString(
+            _kActiveSession, jsonEncode({'savedAt': DateTime.now().toIso8601String(), 'session': active.first}));
+      }
+    } catch (_) {
+      // Bộ nhớ đệm phụ: lỗi không ảnh hưởng dữ liệu tải từ máy chủ.
+    }
+  }
+
+  /// Lượt đang gửi đã lưu lần gần nhất (dùng khi mất mạng); null nếu chưa có.
+  Future<({ParkingSessionModel session, DateTime savedAt})?> cachedActiveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final text = prefs.getString(_kActiveSession);
+      if (text == null) return null;
+      final j = jsonDecode(text) as Map<String, dynamic>;
+      return (
+        session: ParkingSessionModel.fromJson(Map<String, dynamic>.from(j['session'] as Map)),
+        savedAt: DateTime.parse(j['savedAt'] as String),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Đọc biển số từ ảnh khách chụp khi thêm xe (máy chủ không lưu ảnh).
+  Future<String> recognizeVehiclePlate(Uint8List bytes, String fileName) async {
+    final form = FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: fileName)});
+    final result = await _api.post<dynamic>(ApiEndpoints.recognizeVehiclePlate, data: form);
+    return JsonRead.str(_obj(result.result, 'biển số'), 'licensePlate');
   }
 
   Future<FeePreviewModel> getFeePreview(String sessionId) async => FeePreviewModel.fromJson(

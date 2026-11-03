@@ -114,6 +114,7 @@ class ApiEndpoints {
   static String walletById(String walletId) => '/api/wallet/$walletId';
   static String walletTopUp(String walletId) => '/api/wallet/$walletId/top-up';
   static const String availablePromoCodes = '/api/PromoCode/available';
+  static const String recognizeVehiclePlate = '/api/vehicles/recognize-plate';
   static String receiptLink(String paymentId) => '/api/receipts/$paymentId/link';
   static String invoiceRequest(String paymentId) => '/api/receipts/$paymentId/invoice-request';
   static String walletTransactions(String walletId) => '/api/wallet/$walletId/transactions';

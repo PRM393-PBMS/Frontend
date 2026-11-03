@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/error_text.dart';
+import 'package:prm393_frontend/core/services/shell_actions.dart';
 import 'package:prm393_frontend/core/utils/date_formatter.dart';
 import 'package:prm393_frontend/core/widgets/push_toggle_tile.dart';
 import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
@@ -100,6 +101,15 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
     } catch (e) {
       if (mounted) showPbmsSnack(context, errorText(e), error: true);
     }
+  }
+
+  /// Bấm thông báo: đánh dấu đã đọc; có việc cần làm (gia hạn, nạp ví, đường tới ô) thì đóng danh sách và mở luôn.
+  Future<void> _open(NotificationModel item) async {
+    final action = actionFor(item);
+    await _markItemAsRead(item);
+    if (action == null || !mounted) return;
+    Navigator.of(context).pop();
+    ShellActions.request(action);
   }
 
   Future<void> _delete(NotificationModel item) async {
@@ -278,7 +288,7 @@ class _NotificationsBottomSheetState extends State<NotificationsBottomSheet> {
               item: item,
               icon: _iconForType(item.type),
               color: _colorForType(item.type),
-              onTap: () => _markItemAsRead(item),
+              onTap: () => _open(item),
             ),
           );
         },

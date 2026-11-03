@@ -1206,6 +1206,9 @@ class NotificationModel {
   final bool isRead;
   final DateTime createdAt;
 
+  /// Dữ liệu kèm theo (sessionId, slotCode, action...): bấm thông báo là mở đúng màn.
+  final Map<String, dynamic> metadata;
+
   const NotificationModel({
     required this.id,
     required this.title,
@@ -1213,6 +1216,7 @@ class NotificationModel {
     required this.type,
     required this.isRead,
     required this.createdAt,
+    this.metadata = const {},
   });
 
   NotificationModel copyWith({bool? isRead}) => NotificationModel(
@@ -1222,6 +1226,7 @@ class NotificationModel {
         type: type,
         isRead: isRead ?? this.isRead,
         createdAt: createdAt,
+        metadata: metadata,
       );
 
   factory NotificationModel.fromJson(J json) => NotificationModel(
@@ -1231,6 +1236,7 @@ class NotificationModel {
         type: JsonRead.str(json, 'type', 'system'),
         isRead: JsonRead.bool_(json, 'isRead'),
         createdAt: JsonRead.date(json, 'createdAt') ?? DateTime.now(),
+        metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata'] as Map) : const {},
       );
 }
 
