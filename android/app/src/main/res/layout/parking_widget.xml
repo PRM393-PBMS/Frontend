@@ -48,7 +48,8 @@
         android:textSize="13sp"
         android:visibility="gone" />
 
-    <View
+    <!-- Widget chỉ nhận các view RemoteViews hỗ trợ: <View> trống làm launcher báo không thêm được. -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
