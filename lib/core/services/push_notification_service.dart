@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/pbms_models.dart';
 import '../../data/pbms_repository.dart';
+import 'shell_actions.dart';
 
 /// Trạng thái thông báo đẩy trên điện thoại.
 enum PushState {
@@ -48,6 +49,9 @@ class PushNotificationService with WidgetsBindingObserver {
   );
 
   final _plugin = FlutterLocalNotificationsPlugin();
+
+  /// Plugin dùng chung (thông báo đang gửi xe dùng cùng kênh khởi tạo và cùng xử lý khi bấm).
+  FlutterLocalNotificationsPlugin get plugin => _plugin;
   final ValueNotifier<PushState> state = ValueNotifier(PushState.off);
 
   PbmsRepository? _repo;
@@ -57,18 +61,24 @@ class PushNotificationService with WidgetsBindingObserver {
 
   static bool get _supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  Future<void> init() => _init();
+
   Future<void> _init() async {
     if (_ready) return;
     _ready = true;
-    await _plugin.initialize(const InitializationSettings(
-      android: AndroidInitializationSettings('ic_stat_pbms'),
-      // Không tự hỏi quyền lúc khởi động: chỉ hỏi khi khách bật công tắc.
-      iOS: DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
+    await _plugin.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('ic_stat_pbms'),
+        // Không tự hỏi quyền lúc khởi động: chỉ hỏi khi khách bật công tắc.
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
-    ));
+      // Bấm thông báo (hoặc nút trên thông báo): mở đúng màn thay vì chỉ mở app.
+      onDidReceiveNotificationResponse: _onTap,
+    );
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
@@ -83,8 +93,23 @@ class PushNotificationService with WidgetsBindingObserver {
     }
     _repo = repo;
     await _init();
+    // App được mở từ một thông báo khi đang tắt hẳn.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch?.didNotificationLaunchApp ?? false) {
+      final response = launch!.notificationResponse;
+      if (response != null) _onTap(response);
+    }
     await refresh();
     _poll();
+  }
+
+  static void _onTap(NotificationResponse response) {
+    // Nút "Mã ra cổng" trên thông báo đang gửi xe.
+    if (response.actionId == 'exit-pass') {
+      ShellActions.request(const OpenExitPass());
+      return;
+    }
+    ShellActions.request(decodeActionPayload(response.payload));
   }
 
   /// Đăng xuất: ngừng kiểm tra, xoá thông báo đang hiện.
@@ -208,7 +233,8 @@ class PushNotificationService with WidgetsBindingObserver {
       return;
     }
     for (final n in items) {
-      await _plugin.show(n.id.hashCode & 0x7fffffff, n.title, n.message, details);
+      await _plugin.show(n.id.hashCode & 0x7fffffff, n.title, n.message, details,
+          payload: encodeActionPayload(n.type, n.metadata));
     }
   }
 }

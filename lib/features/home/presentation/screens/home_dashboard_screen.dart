@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:prm393_frontend/core/error/app_exception.dart';
 import 'package:prm393_frontend/core/services/location_service.dart';
+import 'package:prm393_frontend/core/services/parking_ongoing_notification.dart';
 import 'package:prm393_frontend/core/state/async_cubit.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/utils/currency_formatter.dart';
@@ -22,15 +26,25 @@ import 'package:prm393_frontend/features/home/presentation/widgets/notifications
 import 'package:prm393_frontend/features/home/presentation/widgets/lot_photo.dart';
 import 'package:prm393_frontend/features/home/presentation/widgets/promo_carousel.dart';
 import 'package:prm393_frontend/features/map/data/pbms_facility.dart';
+import 'package:prm393_frontend/features/map/presentation/lot_map_screen.dart';
 import 'package:prm393_frontend/features/reservations/presentation/widgets/reservation_actions.dart';
 import 'package:prm393_frontend/features/wallet/presentation/screens/wallet_screen.dart';
 
 /// Lượt gửi đang diễn ra, đặt chỗ sắp tới hoặc đăng ký gửi xe 1 lần, ưu tiên xe đang trong bãi.
+/// [offlineAt]: mất mạng, đang hiện vé đã lưu lúc đó.
 typedef _Activity = ({
   ParkingSessionModel? session,
   ReservationModel? reservation,
   EntryPassModel? entryPass,
+  DateTime? offlineAt,
 });
+
+/// Vừa vào bãi (trong 15 phút) và chưa tự mở sơ đồ cho lượt này: mở sơ đồ chỉ đường tới ô.
+bool shouldAutoOpenLotMap(ParkingSessionModel? s, Set<String> opened, {DateTime? now}) {
+  if (s == null || !s.isActive || s.slotCode == null || opened.contains(s.sessionId)) return false;
+  final age = (now ?? DateTime.now()).difference(s.entryTime);
+  return !age.isNegative && age <= const Duration(minutes: 15);
+}
 
 class HomeDashboardScreen extends StatefulWidget {
   /// Mở bản đồ, có thể chọn sẵn một bãi.
@@ -79,9 +93,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       ..add(_lots.stream.listen((_) {
         if (mounted) setState(() {});
       }))
-      ..add(_activity.stream.listen((_) {
+      ..add(_activity.stream.listen((state) {
         if (mounted) setState(() {});
         _refreshFee();
+        final data = state.data;
+        if (!state.isLoading && data != null) _onActivity(data);
       }));
     // Đồng hồ thời gian đỗ và phí tạm tính cập nhật mỗi phút.
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -110,6 +126,34 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   }
 
   Future<_Activity> _loadActivity() async {
+    try {
+      return await _loadActivityOnline();
+    } on NetworkException {
+      // Hầm xe mất sóng: vẫn mở được vé và mã ra cổng đã lưu lần gần nhất.
+      final cached = await _repo.cachedActiveSession();
+      if (cached == null) rethrow;
+      return (session: cached.session, reservation: null, entryPass: null, offlineAt: cached.savedAt);
+    }
+  }
+
+  static const _kAutoMapOpened = 'auto_map_opened_sessions';
+
+  /// Sau mỗi lần tải: cập nhật thông báo đang gửi xe; xe vừa vào bãi thì rung nhẹ và mở sơ đồ tới ô (một lần).
+  Future<void> _onActivity(_Activity a) async {
+    if (a.offlineAt == null) await ParkingOngoingNotification.sync(a.session);
+    final s = a.session;
+    if (s == null || a.offlineAt != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final opened = (prefs.getStringList(_kAutoMapOpened) ?? const <String>[]).toSet();
+    if (!shouldAutoOpenLotMap(s, opened) || !mounted) return;
+    await prefs.setStringList(_kAutoMapOpened, [s.sessionId, ...opened].take(20).toList());
+    HapticFeedback.mediumImpact();
+    if (!mounted) return;
+    await LotMapScreen.open(context,
+        targetSlotCode: s.slotCode, entryGateName: s.entryGateName, car: !s.isMotorbike);
+  }
+
+  Future<_Activity> _loadActivityOnline() async {
     final results = await Future.wait([
       _repo.getMySessions(),
       _repo.getMyReservations(),
@@ -125,6 +169,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       session: sessions.where((s) => s.isActive).firstOrNull,
       reservation: upcoming.firstOrNull,
       entryPass: passes.where((p) => p.isActive).firstOrNull,
+      offlineAt: null,
     );
   }
 
@@ -224,14 +269,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
             children: [
               _buildHeader(context),
               const SizedBox(height: 20),
-              _buildPromos(context),
-              const SizedBox(height: 20),
+              if (!_ticketFirst) ...[
+                _buildPromos(context),
+                const SizedBox(height: 20),
+              ],
               PbmsAsync<_Activity>(
                 cubit: _activity,
                 loadingHeight: 220,
                 errorTitle: 'Không tải được lượt gửi xe',
                 builder: _buildActivity,
               ),
+              if (_ticketFirst) ...[
+                const SizedBox(height: 24),
+                _buildPromos(context),
+              ],
               const SizedBox(height: 24),
               PbmsAsync<List<LotView>>(
                 cubit: _lots,
@@ -470,7 +521,35 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     ]);
   }
 
+  /// Đang gửi xe hoặc có đặt chỗ sắp tới: vé là thứ khách cần, lên trước khuyến mãi.
+  bool get _ticketFirst {
+    final a = _activity.state.data;
+    return a != null && (a.session != null || a.reservation != null);
+  }
+
   Widget _buildActivity(_Activity activity) {
+    final offlineAt = activity.offlineAt;
+    if (offlineAt != null && activity.session != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off_rounded, size: 16, color: PbmsTokens.warn),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('Ngoại tuyến · vé lưu lúc ${DateFormatter.formatTime(offlineAt)}. Mã ra cổng vẫn dùng được.',
+                      style: PbmsText.caption.copyWith(color: PbmsTokens.warn)),
+                ),
+              ],
+            ),
+          ),
+          _buildActiveSession(activity.session!),
+        ],
+      );
+    }
     final session = activity.session;
     if (session != null) return _buildActiveSession(session);
     final reservation = activity.reservation;
@@ -551,6 +630,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           const SizedBox(height: 4),
           Text('Vào lúc ${DateFormatter.formatDayTime(s.entryTime)}',
               style: PbmsText.caption),
+          if (s.slotCode != null) ...[
+            const SizedBox(height: 6),
+            TextButton.icon(
+              onPressed: () => LotMapScreen.open(context,
+                  targetSlotCode: s.slotCode, entryGateName: s.entryGateName, car: !s.isMotorbike),
+              icon: const Icon(Icons.alt_route_rounded, size: 18),
+              label: Text('Ô ${s.slotCode}${s.entryGateName == null ? '' : ' · ${s.entryGateName}'} · Xem đường'),
+              style: TextButton.styleFrom(
+                foregroundColor: PbmsTokens.teal,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(48, 44),
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+          ],
         ],
       ),
       stub: Column(
@@ -638,7 +732,24 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           ],
         ],
       ),
-      stub: r.isPending
+      stub: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _reservationPrimary(r, ticket, plate),
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: () => LotMapScreen.open(context, lotId: r.parkingId, lotName: r.parkingName),
+            icon: const Icon(Icons.alt_route_rounded, size: 18),
+            label: const Text('Đường vào bãi'),
+            style: TextButton.styleFrom(foregroundColor: PbmsTokens.teal, minimumSize: const Size(48, 44)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reservationPrimary(ReservationModel r, TicketModel? ticket, String? plate) {
+    return r.isPending
           ? PbmsPrimaryButton(
               label: 'Đặt cọc để giữ chỗ',
               icon: Icons.payments_outlined,
@@ -664,8 +775,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                           ),
                         ],
                       ),
-            ),
-    );
+            );
   }
 }
 

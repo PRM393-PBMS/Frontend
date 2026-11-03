@@ -244,11 +244,14 @@ class _TransactionRow extends StatelessWidget {
 class TopUpSheet extends StatefulWidget {
   final WalletModel wallet;
 
-  const TopUpSheet({super.key, required this.wallet});
+  /// Số tiền điền sẵn (vd. phần còn thiếu để tự gia hạn vé tháng).
+  final int? initialAmount;
+
+  const TopUpSheet({super.key, required this.wallet, this.initialAmount});
 
   /// Trả `true` nếu PayOS đã xác nhận lệnh nạp.
-  static Future<bool?> show(BuildContext context, WalletModel wallet) =>
-      PbmsSheetFrame.show<bool>(context, (_) => TopUpSheet(wallet: wallet));
+  static Future<bool?> show(BuildContext context, WalletModel wallet, {int? initialAmount}) =>
+      PbmsSheetFrame.show<bool>(context, (_) => TopUpSheet(wallet: wallet, initialAmount: initialAmount));
 
   @override
   State<TopUpSheet> createState() => _TopUpSheetState();
@@ -256,7 +259,9 @@ class TopUpSheet extends StatefulWidget {
 
 class _TopUpSheetState extends State<TopUpSheet> {
   static const _presets = [50000, 100000, 200000, 500000];
-  final _amount = TextEditingController(text: '100000');
+  // Số tiền điền sẵn được làm tròn lên mức nạp tối thiểu.
+  late final _amount = TextEditingController(
+      text: '${widget.initialAmount == null ? 100000 : widget.initialAmount!.clamp(widget.wallet.topUpMin, widget.wallet.topUpMax).round()}');
   final _code = TextEditingController();
   bool _busy = false;
   String? _error;

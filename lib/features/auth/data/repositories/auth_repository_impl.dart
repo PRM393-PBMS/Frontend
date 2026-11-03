@@ -1,3 +1,6 @@
+import 'package:prm393_frontend/core/services/parking_ongoing_notification.dart';
+import 'package:prm393_frontend/core/services/push_notification_service.dart';
+import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -110,6 +113,10 @@ class AuthRepositoryImpl implements AuthRepository {
       // Bỏ qua lỗi logout phía server
     } finally {
       await _storageService.clearAuthData();
+      // Dữ liệu của tài khoản vừa đăng xuất: vé lưu khi mất mạng, thông báo đang gửi xe, thông báo đẩy.
+      await PbmsRepository.clearUserCache().catchError((_) {});
+      await ParkingOngoingNotification.sync(null);
+      await PushNotificationService.instance.detach().catchError((_) {});
     }
   }
 

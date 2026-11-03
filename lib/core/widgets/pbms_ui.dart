@@ -73,6 +73,9 @@ class PbmsText {
 }
 
 /// Con dấu "Đã thanh toán" in nghiêng trên vé.
+/// Rung nhẹ khi thanh toán xong / qua cổng: xác nhận mà không cần nhìn màn hình.
+void pbmsSuccessFeedback() => HapticFeedback.mediumImpact();
+
 class PbmsPaidStamp extends StatelessWidget {
   final String label;
 
@@ -80,6 +83,18 @@ class PbmsPaidStamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Dấu "đóng" xuống khi vừa hiện; tắt khi khách bật giảm chuyển động.
+    final still = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: still ? 1 : 1.35, end: 1),
+      duration: still ? Duration.zero : const Duration(milliseconds: 320),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) => Transform.scale(scale: scale, alignment: Alignment.centerLeft, child: child),
+      child: _stamp(),
+    );
+  }
+
+  Widget _stamp() {
     return Transform.rotate(
       angle: -0.05,
       alignment: Alignment.centerLeft,
@@ -786,7 +801,10 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
     }
     if (silent) {
       try {
-        if (await verify() == PaymentCheck.paid && mounted) Navigator.pop(context, true);
+        if (await verify() == PaymentCheck.paid && mounted) {
+          pbmsSuccessFeedback();
+          Navigator.pop(context, true);
+        }
       } catch (_) {}
       return;
     }
@@ -798,6 +816,7 @@ class _PbmsPaymentSheetState extends State<PbmsPaymentSheet> {
       final result = await verify();
       if (!mounted) return;
       if (result == PaymentCheck.paid) {
+        pbmsSuccessFeedback();
         Navigator.pop(context, true);
         return;
       }

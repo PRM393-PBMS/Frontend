@@ -4,6 +4,7 @@ import '../config/app_config.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage_service.dart';
 import 'api_response.dart';
+import 'connectivity_status.dart';
 import 'auth_interceptor.dart';
 import 'logging_interceptor.dart';
 
@@ -154,6 +155,7 @@ class ApiClient {
     Response response,
     T Function(dynamic json)? fromJsonT,
   ) {
+    ConnectivityStatus.offline.value = false;
     final dynamic data = response.data;
 
     final isEnvelope = data is Map<String, dynamic> &&
@@ -191,6 +193,7 @@ class ApiClient {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError ||
         (error.message != null && error.message!.contains('XMLHttpRequest'))) {
+      ConnectivityStatus.offline.value = true;
       return const NetworkException(
         message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc kết nối server.',
       );
@@ -198,6 +201,7 @@ class ApiClient {
 
     final response = error.response;
     if (response != null) {
+      ConnectivityStatus.offline.value = false;
       final statusCode = response.statusCode ?? 500;
       final dynamic data = response.data;
       String errorMessage = 'Đã xảy ra lỗi ($statusCode)';

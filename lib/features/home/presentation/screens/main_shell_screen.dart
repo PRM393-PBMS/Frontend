@@ -3,7 +3,14 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prm393_frontend/core/error/error_text.dart';
+import 'package:prm393_frontend/core/network/connectivity_status.dart';
 import 'package:prm393_frontend/core/services/push_notification_service.dart';
+import 'package:prm393_frontend/core/services/shell_actions.dart';
+import 'package:prm393_frontend/core/widgets/pbms_ui.dart';
+import 'package:prm393_frontend/features/history/presentation/widgets/session_detail_sheet.dart';
+import 'package:prm393_frontend/features/map/presentation/lot_map_screen.dart';
+import 'package:prm393_frontend/data/models/pbms_models.dart';
 import 'package:prm393_frontend/data/pbms_repository.dart';
 import 'package:prm393_frontend/core/theme/app_colors.dart';
 import 'package:prm393_frontend/core/widgets/pbms_bottom_bar.dart';
@@ -30,12 +37,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final ValueNotifier<int> _revision = ValueNotifier(0);
 
   StreamSubscription<Uri>? _links;
+  Timer? _retry;
 
   @override
   void initState() {
     super.initState();
     // Chỉ khi đã đăng nhập mới kiểm tra thông báo mới để đẩy lên điện thoại.
     PushNotificationService.instance.attach(context.read<PbmsRepository>());
+    // Bấm thông báo (khay, danh sách, thông báo đang gửi xe): mở đúng màn.
+    ShellActions.pending.addListener(_runPendingAction);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runPendingAction());
+    // Mất mạng: thử tải lại mỗi 20 giây, có mạng lại thì thanh ngoại tuyến tự tắt.
+    ConnectivityStatus.offline.addListener(_onConnectivity);
     // Trang kết quả PayOS mở lại app: tải lại dữ liệu và báo kết quả.
     _links = AppLinks().uriLinkStream.listen(_onLink, onError: (_) {});
   }
@@ -58,6 +71,74 @@ class _MainShellScreenState extends State<MainShellScreen> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 110),
       ));
+  }
+
+  void _onConnectivity() {
+    if (!mounted) return;
+    setState(() {});
+    _retry?.cancel();
+    _retry = ConnectivityStatus.offline.value
+        ? Timer.periodic(const Duration(seconds: 20), (_) => _revision.value++)
+        : null;
+  }
+
+  Future<void> _runPendingAction() async {
+    final action = ShellActions.pending.value;
+    if (action == null || !mounted) return;
+    ShellActions.pending.value = null;
+    final repo = context.read<PbmsRepository>();
+    try {
+      switch (action) {
+        case OpenLotMap(:final slotCode, :final entryGateName, :final parkingId):
+          await LotMapScreen.open(context, lotId: parkingId, targetSlotCode: slotCode, entryGateName: entryGateName);
+        case OpenTopUp(:final amount):
+          final wallet = await repo.getWallet();
+          if (!mounted) return;
+          final paid = await TopUpSheet.show(context, wallet, initialAmount: amount);
+          if (paid == true) _revision.value++;
+        case OpenRenew(:final subscriptionId):
+          _goTab(AppTab.pass);
+          MonthlyPassScreen.renewRequest.value = subscriptionId;
+        case OpenExitPass():
+          await _openExitPass(repo);
+      }
+    } catch (e) {
+      if (mounted) showPbmsSnack(context, errorText(e), error: true);
+    }
+  }
+
+  /// Mã ra cổng của xe đang gửi; chưa trả trước thì mở vé để trả. Mất mạng thì dùng vé đã lưu.
+  Future<void> _openExitPass(PbmsRepository repo) async {
+    _goTab(AppTab.home);
+    ParkingSessionModel? session;
+    try {
+      session = (await repo.getMySessions()).where((s) => s.isActive).firstOrNull;
+    } catch (_) {
+      session = (await repo.cachedActiveSession())?.session;
+    }
+    if (!mounted) return;
+    if (session == null) {
+      showPbmsSnack(context, 'Không còn xe nào đang gửi.');
+      return;
+    }
+    final pass = session.exitPass;
+    if (pass == null) {
+      await SessionDetailSheet.show(context, session);
+      _revision.value++;
+      return;
+    }
+    await PbmsQrDialog.show(
+      context,
+      title: 'Mã ra cổng',
+      payload: pass.qrPayload,
+      plate: session.licensePlateIn,
+      isMotorbike: session.isMotorbike,
+      code: pass.code,
+      rows: [
+        (Icons.info_outline_rounded, 'Dùng khi', 'Camera không đọc được biển số'),
+        if (session.slotCode != null) (Icons.local_parking_rounded, 'Vị trí đỗ', session.slotCode!),
+      ],
+    );
   }
 
   // ---- Main destinations ----
@@ -116,6 +197,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   void dispose() {
+    ShellActions.pending.removeListener(_runPendingAction);
+    ConnectivityStatus.offline.removeListener(_onConnectivity);
+    _retry?.cancel();
     _links?.cancel();
     _revision.dispose();
     super.dispose();
@@ -135,13 +219,25 @@ class _MainShellScreenState extends State<MainShellScreen> {
           backgroundColor: AppColors.bgLight,
           // extendBody so ListView content scrolls behind the floating bar
           extendBody: true,
-          body: IndexedStack(
-            index: _currentTab,
+          body: Column(
             children: [
-              for (var i = 0; i < _tabs.length; i++)
-                _visited.contains(i)
-                    ? TickerMode(enabled: i == _currentTab, child: _bodyForTab(i))
-                    : const SizedBox.shrink(),
+              if (ConnectivityStatus.offline.value) const _OfflineBar(),
+              Expanded(
+                child: MediaQuery.removePadding(
+                  context: context,
+                  // Thanh ngoại tuyến đã chiếm phần tai thỏ: các tab không chừa thêm lần nữa.
+                  removeTop: ConnectivityStatus.offline.value,
+                  child: IndexedStack(
+                    index: _currentTab,
+                    children: [
+                      for (var i = 0; i < _tabs.length; i++)
+                        _visited.contains(i)
+                            ? TickerMode(enabled: i == _currentTab, child: _bodyForTab(i))
+                            : const SizedBox.shrink(),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           bottomNavigationBar: PbmsBottomBar(
@@ -152,6 +248,35 @@ class _MainShellScreenState extends State<MainShellScreen> {
             centerLabel: 'Ví của tôi',
             onCenterTap: _openWallet,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mất kết nối tới máy chủ: một thanh chung thay vì báo lỗi ở từng chỗ.
+class _OfflineBar extends StatelessWidget {
+  const _OfflineBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        color: const Color(0xFF1E293B),
+        padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + 6, 16, 8),
+        child: const Row(
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 16, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Đang ngoại tuyến. Vé đang gửi và mã ra cổng vẫn mở được.',
+                style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ),
       ),
     );

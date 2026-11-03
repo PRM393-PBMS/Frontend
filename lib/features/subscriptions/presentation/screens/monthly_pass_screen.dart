@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prm393_frontend/core/error/app_exception.dart';
@@ -20,6 +22,9 @@ import 'package:prm393_frontend/features/vehicles/presentation/widgets/vehicle_p
 class MonthlyPassScreen extends StatefulWidget {
   const MonthlyPassScreen({super.key});
 
+  /// Vé cần mở màn gia hạn ngay (bấm thông báo "Vé sắp hết hạn"); màn tự xử lý khi danh sách vé đã tải.
+  static final ValueNotifier<String?> renewRequest = ValueNotifier(null);
+
   @override
   State<MonthlyPassScreen> createState() => _MonthlyPassScreenState();
 }
@@ -32,6 +37,28 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
   late final _changes = AsyncCubit(_repo.getMyVehicleChangeRequests);
 
   int _activeTab = 0;
+  StreamSubscription<Object?>? _passSub;
+
+  @override
+  void initState() {
+    super.initState();
+    MonthlyPassScreen.renewRequest.addListener(_handleRenewRequest);
+    _passSub = _passes.stream.listen((_) => _handleRenewRequest());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleRenewRequest());
+  }
+
+  void _handleRenewRequest() {
+    final id = MonthlyPassScreen.renewRequest.value;
+    final passes = _passes.state.data;
+    if (id == null || passes == null || !mounted) return;
+    MonthlyPassScreen.renewRequest.value = null;
+    final sub = passes.where((p) => p.subscriptionId == id).firstOrNull;
+    if (sub == null || sub.isCancelled || sub.isPendingPayment) {
+      showPbmsSnack(context, 'Vé tháng này không gia hạn được nữa.');
+      return;
+    }
+    _renew(sub);
+  }
 
   @override
   void reloadAll() {
@@ -46,6 +73,8 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
 
   @override
   void dispose() {
+    MonthlyPassScreen.renewRequest.removeListener(_handleRenewRequest);
+    _passSub?.cancel();
     _passes.close();
     _packages.close();
     _changes.close();
@@ -93,6 +122,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
     if (r.activated) {
       _changed();
       if (!mounted) return;
+      pbmsSuccessFeedback();
       showPbmsSnack(context, 'Đã trả bằng ví và kích hoạt vé tháng.');
       setState(() => _activeTab = 0);
       return;
@@ -114,7 +144,8 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
       if (!mounted) return;
       if (result.activated) {
         _changed();
-        showPbmsSnack(context, 'Đã trả bằng ví và kích hoạt vé tháng.');
+        pbmsSuccessFeedback();
+      showPbmsSnack(context, 'Đã trả bằng ví và kích hoạt vé tháng.');
         setState(() => _activeTab = 0);
         return;
       }
@@ -196,6 +227,7 @@ class _MonthlyPassScreenState extends State<MonthlyPassScreen>
     if (result == null || !mounted) return;
     if (result.activated) {
       _changed();
+      pbmsSuccessFeedback();
       showPbmsSnack(context, 'Đã trừ ví và gia hạn vé tháng.');
       return;
     }
